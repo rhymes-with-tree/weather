@@ -12,7 +12,7 @@
 <link rel="icon" href="data:,">
 <style>
   :root{ --page:#FFF; --ink:#16232F; --mid:#5B6B7A; --line:#E4E4E4; --link:#1B57C8;
-         --rowh:74px; }
+         --rowh:78px; --gap:8px; }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;background:var(--page);color:var(--ink);}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
@@ -51,7 +51,7 @@
   /* Daily facts become a two-up grid of squares. Nothing to read
      across their width, so they trade length for a bigger field of
      colour. */
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:17px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);margin-top:17px;}
   .card.sm{min-height:var(--rowh);display:flex;flex-direction:column;
            align-items:center;justify-content:center;text-align:center;
            padding:10px 12px;font-size:14.5px;border-radius:14px;margin:0;width:auto;
@@ -87,20 +87,14 @@
     #homeBody, #shoreBody{display:grid;grid-template-columns:minmax(300px,0.95fr) 1.25fr;
                           gap:12px;align-items:stretch;}
     #homeBody > .alert, #homeBody > .note{grid-column:1 / -1;}
-    /* The tiles get their height from aspect-ratio, so without a rule of
-       their own the hourly cards ended up shorter than the tiles beside
-       them \u2014 backwards, since these are the ones whose gradients carry
-       a whole day. They now divide the column evenly and both sides end
-       on the same line. */
     /* Both sides share one row height, so a card on the left lines up
        with a tile on the right instead of each being sized by its own
        rule. */
-    .hourly{display:flex;flex-direction:column;gap:8px;}
+    .hourly{display:flex;flex-direction:column;gap:var(--gap);}
     .hourly > .card{margin-bottom:0;flex:0 0 auto;min-height:var(--rowh);
                     display:flex;flex-direction:column;justify-content:center;}
     .card.sm{aspect-ratio:auto;min-height:var(--rowh);font-size:15px;}
     .grid{grid-template-columns:repeat(3,1fr);margin-top:0;}
-    .card.sm{aspect-ratio:2.5/1;font-size:15px;}
     .card.sm.open{grid-column:span 3;min-height:0;}
   }
   @media (min-width:1180px){
@@ -109,7 +103,7 @@
     .card.sm.open{grid-column:span 4;min-height:0;}
   }
   @media (max-width:370px){ .card{font-size:16px;padding:12px 14px;} .hdr .l2{font-size:21px;}
-    .card.sm{font-size:13px;padding:9px 10px;} .grid{gap:7px;} }
+    .card.sm{font-size:13px;padding:9px 10px;} }
 
   /* ---- public build additions ---- */
   .bar{display:flex;align-items:center;justify-content:center;gap:14px;margin:0 0 10px;}
