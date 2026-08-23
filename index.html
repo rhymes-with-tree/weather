@@ -41,7 +41,7 @@
   .now{position:absolute;top:-13px;bottom:-13px;width:2px;margin-left:-1px;
        background:rgba(22,35,47,.30);box-shadow:0 0 0 1px rgba(255,255,255,.45);
        pointer-events:none;border-radius:1px;}
-  .card{border-radius:15px;padding:13px 18px;margin:0 0 var(--gap);width:100%;overflow:hidden;
+  .card{border-radius:15px;padding:13px 18px;margin:0 0 var(--gap);width:100%;
         min-height:var(--rowh);display:flex;flex-direction:column;justify-content:center;
         border:none;font:inherit;color:var(--ink);text-align:center;
         font-size:17.5px;display:block;cursor:pointer;}
@@ -64,8 +64,9 @@
            line-height:1.25;}
   /* Tapped open, a tile takes the full row so the detail has somewhere
      to go instead of straining the square. */
-  .card.sm.open{min-height:0;grid-column:span 2;justify-content:flex-start;
-                align-items:stretch;text-align:left;padding:13px 16px;}
+  .card.open{min-height:0;height:auto;justify-content:flex-start;align-items:stretch;
+             text-align:left;padding:13px 16px;}
+  .card.sm.open{grid-column:span 2;}
   .card.sm .tip{text-align:left;}
   .card.sm.skel{height:auto;}
   .row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
@@ -100,6 +101,7 @@
     .hourly > .card{margin-bottom:0;flex:0 0 auto;min-height:var(--rowh);
                     display:flex;flex-direction:column;justify-content:center;}
     .hourly > .card:not(.open){height:var(--rowh);}
+    .hourly > .card.open{height:auto;}
     .card.sm{aspect-ratio:auto;min-height:var(--rowh);font-size:15px;}
     .grid{grid-template-columns:repeat(3,1fr);margin-top:0;}
     .card.sm.open{grid-column:span 3;min-height:0;}
@@ -516,6 +518,7 @@
       tMax: D.temperature_2m_max[di], tMin: D.temperature_2m_min[di],
       tSwing: D.temperature_2m_max[di] - D.temperature_2m_min[di],
       rhMean: avg(grab(H.relative_humidity_2m)),
+      windMean: avg(grab(H.wind_speed_10m)),
       gustMax: maxOf(grab(H.wind_gusts_10m || [])) || 0,
       // Pre-dawn is when frost forms and when the air is coldest.
       dewDawn: (function () {
@@ -1965,9 +1968,7 @@
         var open = t.style.display === 'none';
         t.style.display = open ? 'block' : 'none';
         el.setAttribute('aria-expanded', open ? 'true' : 'false');
-        if (el.className.indexOf('sm') > -1) {
-          el.className = open ? el.className + ' open' : el.className.replace(/ open/g, '');
-        }
+        el.className = open ? el.className + ' open' : el.className.replace(/ open/g, '');
       });
     }
     return el;
