@@ -70,6 +70,27 @@
   .card.sm.skel{height:38px;}
   .busy{opacity:.45;}
   .foot{font-size:11.5px;color:#8A97A3;line-height:1.5;margin:14px 4px 0;}
+  /* Phone stays as it was: one column, tiles two across. From tablet
+     width up, the hourly cards become a column of their own beside a
+     three-across tile grid \u2014 the tiles carry one fact each, so they
+     lose nothing by being narrower, while the hourly cards keep the
+     width their gradients need. */
+  @media (min-width:760px){
+    .wrap{max-width:1080px;}
+    #homeBody, #shoreBody{display:grid;grid-template-columns:minmax(300px,0.95fr) 1.25fr;
+                          gap:12px;align-items:start;}
+    #homeBody > .alert, #homeBody > .note{grid-column:1 / -1;}
+    .hourly > .card:last-child{margin-bottom:0;}
+    .grid{grid-template-columns:repeat(3,1fr);margin-top:0;}
+    .card.sm{aspect-ratio:2.5/1;font-size:15px;}
+    .card.sm.wide2{grid-column:span 2;aspect-ratio:5.2/1;}
+    .card.sm.open{grid-column:span 3;}
+  }
+  @media (min-width:1180px){
+    .wrap{max-width:1240px;}
+    .grid{grid-template-columns:repeat(4,1fr);}
+    .card.sm.open{grid-column:span 4;}
+  }
   @media (max-width:370px){ .card{font-size:16px;padding:12px 14px;} .hdr .l2{font-size:21px;}
     .card.sm{font-size:13px;padding:9px 10px;} .grid{gap:7px;} }
 
@@ -91,6 +112,23 @@
   .opt span small{display:block;font-size:12.5px;color:var(--mid);line-height:1.35;margin-top:1px;}
   .panel input[type=text]{font:inherit;width:100%;padding:7px 9px;border:1px solid var(--line);
                           border-radius:8px;background:#FFF;color:inherit;margin-top:4px;}
+  .presets{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 12px;}
+  .preset{background:#FFF;border:1px solid var(--line);border-radius:10px;padding:7px 10px;
+          font:inherit;font-size:13.5px;cursor:pointer;display:flex;align-items:center;gap:8px;}
+  .preset.sel{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);}
+  .preset .sw{display:flex;gap:2px;}
+  .preset .sw i{width:11px;height:11px;border-radius:3px;display:block;}
+  .contrast{margin-top:8px;padding-left:9px;border-left:2px solid #C9BFA9;}
+  .contrast.ok{border-left-color:#7FA86B;}
+  .contrast.bad{border-left-color:#C4703F;}
+  .reset{margin-top:10px;background:#FFF;border:1px solid var(--line);border-radius:9px;
+         padding:7px 12px;font:inherit;font-size:14px;cursor:pointer;}
+  .ord{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:14.5px;
+       border-top:1px solid #E8E4DC;}
+  .ord span{flex:1 1 auto;}
+  .ord button{background:#FFF;border:1px solid var(--line);border-radius:7px;width:30px;height:28px;
+              font:inherit;font-size:15px;line-height:1;cursor:pointer;color:var(--ink);}
+  .ord button:disabled{opacity:.32;cursor:default;}
   .disc{font-size:12px;color:#7C8996;line-height:1.55;margin:16px 4px 0;
         border-top:1px solid var(--line);padding-top:12px;}
   .disc b{color:var(--mid);}
@@ -208,25 +246,70 @@
      comfortable dew point rendered as purple-to-yellow, implying
      danger that was not there.
      ========================================================== */
-  var RAMP = {
-    feels: [[0,[159,196,228]],[25,[175,212,222]],[38,[190,220,207]],[50,[203,223,175]],
-            [60,[216,222,150]],[70,[228,220,147]],[78,[233,198,140]],[86,[232,172,133]],
-            [94,[224,144,128]],[105,[196,140,176]]],
-    sweat: [[0,[183,154,207]],[15,[168,182,220]],[30,[173,202,223]],[45,[196,220,184]],
-            [55,[217,222,150]],[62,[229,218,144]],[68,[233,194,137]],[74,[229,160,133]],[80,[196,140,176]]],
-    aqi:   [[0,[187,217,168]],[50,[213,222,156]],[100,[231,218,147]],[150,[235,193,137]],
-            [200,[227,158,134]],[300,[196,140,176]]],
-    risk:  [[0,[187,217,168]],[30,[213,222,156]],[55,[233,200,140]],[80,[224,144,128]],[100,[196,140,176]]],
-    burn:  [[0,[237,226,154]],[3,[233,213,140]],[6,[233,184,132]],[9,[222,144,132]],[12,[201,124,120]]],
-    rain:  [[0,[222,222,149]],[30,[194,217,174]],[60,[168,203,216]],[100,[123,159,208]]],
-    water: [[32,[155,184,220]],[55,[165,206,221]],[68,[188,220,196]],[76,[211,222,160]],[85,[226,219,146]]],
-    /* Saturated yellow is the good end; the scale simply drains of
-       colour toward grey and then white for snow. Desaturation is
-       itself the signal that it will not be nice out, and anything
-       genuinely dangerous arrives as an alert card instead. */
-    sky:   [[0,[242,217,122]],[25,[235,226,170]],[50,[214,216,208]],[70,[211,214,216]],
-            [85,[228,231,233]],[100,[244,246,247]]]
+  /* ---- theme ----
+     Eight ramps, but only four semantic anchors underneath: cold/dry,
+     good, warm, danger. Fixing the structure and varying only the
+     anchors keeps the colour grammar coherent no matter what someone
+     picks \u2014 blue still means cold, green still means fine.
+     Page chrome is deliberately NOT themed, so a catastrophic palette
+     still leaves Settings and Reset readable. */
+  var PRESETS = {
+    default: { name: 'Original', cold: '#9FC4E4', good: '#D8DE96', warm: '#E9C68C', danger: '#C48CB0' },
+    contrast: { name: 'Higher contrast', cold: '#7FB4E0', good: '#B9DC74', warm: '#F0AE58', danger: '#DE8095' },
+    cbsafe: { name: 'Colourblind-safe', cold: '#7FB0DE', good: '#BFD9EA', warm: '#F0C97A', danger: '#C9793B' },
+    muted: { name: 'Muted', cold: '#B6C6D2', good: '#CBD3B8', warm: '#DFC7A8', danger: '#C3A3AE' }
   };
+  function anchors() {
+    var t = store.theme || {};
+    var base = PRESETS[t.preset || 'default'] || PRESETS.default;
+    return { cold: t.cold || base.cold, good: t.good || base.good,
+             warm: t.warm || base.warm, danger: t.danger || base.danger };
+  }
+  function hex2rgb(h) {
+    h = String(h).replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    var n = parseInt(h, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function rgb2hex(c) {
+    return '#' + c.map(function (x) {
+      var v = Math.max(0, Math.min(255, Math.round(x))).toString(16);
+      return v.length < 2 ? '0' + v : v;
+    }).join('');
+  }
+  function blend(a, b, t) { return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
+  function lighten(c, t) { return blend(c, [255, 255, 255], t); }
+
+  var RAMP = {};
+  function buildRamps() {
+    var A = anchors();
+    var COLD = hex2rgb(A.cold), GOOD = hex2rgb(A.good),
+        WARM = hex2rgb(A.warm), DANGER = hex2rgb(A.danger);
+    var MIDCOOL = blend(COLD, GOOD, 0.5);
+    RAMP = {
+      // cold at the bottom, danger at both practical extremes of heat
+      feels: [[0,COLD],[25,blend(COLD,MIDCOOL,.6)],[38,MIDCOOL],[50,blend(MIDCOOL,GOOD,.7)],
+              [60,GOOD],[70,GOOD],[78,blend(GOOD,WARM,.6)],[86,WARM],
+              [94,blend(WARM,DANGER,.6)],[105,DANGER]],
+      // double-ended: bone dry is its own hazard
+      sweat: [[0,DANGER],[15,blend(DANGER,COLD,.7)],[30,COLD],[45,blend(COLD,GOOD,.7)],
+              [55,GOOD],[62,GOOD],[68,blend(GOOD,WARM,.7)],[74,WARM],[80,DANGER]],
+      aqi:   [[0,GOOD],[50,blend(GOOD,WARM,.35)],[100,blend(GOOD,WARM,.7)],[150,WARM],
+              [200,blend(WARM,DANGER,.7)],[300,DANGER]],
+      risk:  [[0,GOOD],[30,blend(GOOD,WARM,.4)],[55,WARM],[80,blend(WARM,DANGER,.75)],[100,DANGER]],
+      burn:  [[0,lighten(GOOD,.25)],[3,blend(GOOD,WARM,.5)],[6,WARM],
+              [9,blend(WARM,DANGER,.6)],[12,DANGER]],
+      // dry is the good end; wet deepens to cold, never to danger
+      rain:  [[0,GOOD],[30,blend(GOOD,MIDCOOL,.6)],[60,MIDCOOL],[100,COLD]],
+      water: [[32,COLD],[55,blend(COLD,MIDCOOL,.7)],[68,MIDCOOL],[76,blend(MIDCOOL,GOOD,.8)],[85,GOOD]],
+      // saturated good-end hue drains to grey, then white for snow
+      sky:   [[0,GOOD],[35,lighten(GOOD,.45)],[60,[207,211,214]],[75,[221,224,227]],
+              [88,[234,237,239]],[100,[244,246,247]]]
+    };
+    SUN = GOOD; GREY = [196,200,204]; STORM = [163,169,176];
+    SNOW = [246,248,249]; DUSK = blend(COLD, [150,158,170], .5);
+  }
+
   function colorAt(ramp, v) {
     var r = RAMP[ramp];
     if (v <= r[0][0]) return css(r[0][1]);
@@ -267,8 +350,7 @@
      because it changes the quality of the light, not just wetness.
      Night hours fade toward dusk slate, because a clear midnight is
      not a sunny midnight. */
-  var SUN = [242,217,122], GREY = [196,200,204], STORM = [163,169,176],
-      SNOW = [246,248,249], DUSK = [176,184,195];
+  var SUN, GREY, STORM, SNOW, DUSK;
   function mix3(a, b, t) { return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
   var SNOW_CODES = [71,73,75,77,85,86], STORM_CODES = [95,96,99];
   function skyColor(rec) {
@@ -730,8 +812,9 @@
                         .slice(0, 2).map(function (p) { return cap(p.name.toLowerCase()); });
         var sc = Math.round((idx / 5) * 100);
         return { bg: bgFrom('risk', sc),
-          bold: plants.length ? level(sc) + ' ' + listJoin(plants) + ' Allergies' : 'No Pollen in Season',
-          tip: 'Pollen index ' + idx + ' out of 5, from the Google Pollen API. ' + advice(sc) };
+          bold: plants.length ? level(sc) + ' Allergies' : 'No Pollen in Season',
+          tip: (plants.length ? listJoin(plants) + '. ' : '')
+             + 'Pollen index ' + idx + ' out of 5, from the Google Pollen API. ' + advice(sc) };
       }
     }
     if (pollen && pollen.error) return { plain: true, bold: 'Allergens Unavailable', tip: pollen.error };
@@ -747,9 +830,9 @@
     if (d.rhMean > 85) s2 -= .12;
     var sc2 = Math.round(Math.max(0, Math.min(1, s2)) * 100);
     return { bg: bgFrom('risk', sc2),
-      bold: level(sc2) + ' ' + listJoin(names.map(cap)) + ' Allergies',
-      tip: 'Scored ' + sc2 + ' out of 100, from a bloom calendar for the ' + cal.name
-         + ' rather than any pollen data. ' + advice(sc2) };
+      bold: level(sc2) + ' Allergies',
+      tip: listJoin(names.map(cap)) + '. Scored ' + sc2 + ' out of 100, from a bloom calendar for the '
+         + cal.name + ' rather than any pollen data. ' + advice(sc2) };
   }
 
   function migraineScore(d) {
@@ -1407,6 +1490,73 @@
   }
 
 
+  /* ---- contrast ----
+     Ramps are checked rather than warned about in the abstract: sample
+     each one, compute the WCAG ratio against the ink colour, and name
+     the ramp that fails so a single anchor can be nudged. */
+  function lum(c) {
+    var v = c.map(function (x) {
+      x = x / 255;
+      return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+  }
+  function ratio(a, b) {
+    var l1 = lum(a), l2 = lum(b);
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+  }
+  var INK = [22, 35, 47];
+  var RAMP_LABEL = { feels: 'Feels Like', sweat: 'Humidity', aqi: 'Air quality',
+    risk: 'the risk tiles', burn: 'Sunburn', rain: 'Precipitation',
+    water: 'Water', sky: 'Sun and cloud' };
+  function sampleRamp(key, v) {
+    var r = RAMP[key];
+    if (v <= r[0][0]) return r[0][1];
+    for (var i = 1; i < r.length; i++) {
+      if (v <= r[i][0]) {
+        var a = r[i - 1], b = r[i], t = (v - a[0]) / (b[0] - a[0]);
+        return blend(a[1], b[1], t);
+      }
+    }
+    return r[r.length - 1][1];
+  }
+  function contrastReport() {
+    var worst = null;
+    Object.keys(RAMP).forEach(function (k) {
+      var r = RAMP[k], lo = r[0][0], hi = r[r.length - 1][0];
+      for (var i = 0; i <= 12; i++) {
+        var v = lo + (hi - lo) * (i / 12);
+        var rr = ratio(sampleRamp(k, v), INK);
+        if (!worst || rr < worst.r) worst = { r: rr, ramp: k, at: i / 12 };
+      }
+    });
+    if (!worst) return null;
+    if (worst.r >= 4.5) return { ok: true, text: 'Text stays readable across every card.' };
+    var where = worst.at < 0.34 ? 'low end' : worst.at > 0.66 ? 'high end' : 'middle';
+    return { ok: false, text: 'Hard to read at the ' + where + ' of ' + (RAMP_LABEL[worst.ramp] || worst.ramp)
+           + ' \u2014 contrast ' + worst.r.toFixed(1) + ' to 1, below the 4.5 guideline. '
+           + 'Try a lighter colour for that anchor.' };
+  }
+
+  /* ---- card order ----
+     Stored as a list of ids; anything unlisted keeps its default slot,
+     so adding a card later does not strand it. */
+  var DEFAULT_TILE_ORDER = ['burn','frostbite','frost','pipe','fire','bug','pavement','shoe',
+    'rust','mow','wind','frizz','mold','arthritis','allergy','migraine','air','light','aurora','moon'];
+  function tileOrder() {
+    var saved = store.order || [];
+    var out = saved.filter(function (id) { return DEFAULT_TILE_ORDER.indexOf(id) > -1; });
+    DEFAULT_TILE_ORDER.forEach(function (id) { if (out.indexOf(id) < 0) out.push(id); });
+    return out;
+  }
+  function moveTile(id, dir) {
+    var o = tileOrder(), i = o.indexOf(id), j = i + dir;
+    if (i < 0 || j < 0 || j >= o.length) return;
+    o.splice(j, 0, o.splice(i, 1)[0]);
+    store.order = o; saveStore();
+    buildSettings(); renderHome();
+  }
+
   /* ================= data =================
      Every request goes straight from this browser to a public,
      keyless endpoint. Nothing is proxied. */
@@ -1720,9 +1870,11 @@
   }
   function skeleton(host, tall, short) {
     host.innerHTML = '';
+    var c = document.createElement('div'); c.className = 'hourly';
     for (var i = 0; i < tall; i++) {
-      var a = document.createElement('div'); a.className = 'card flat skel'; host.appendChild(a);
+      var a = document.createElement('div'); a.className = 'card flat skel'; c.appendChild(a);
     }
+    host.appendChild(c);
     var g = document.createElement('div'); g.className = 'grid';
     for (var jx = 0; jx < short; jx++) {
       var b2 = document.createElement('div'); b2.className = 'card flat sm skel'; g.appendChild(b2);
@@ -1751,33 +1903,38 @@
     var ahead = aheadCard(p, state.tz, state.dayOffset);
     if (ahead) host.appendChild(card(ahead));
 
-    addCard(host, 'feels',    function () { return feelsCard(d); });
-    addCard(host, 'sweat',    function () { return sweatCard(d); });
-    addCard(host, 'sky',      function () { return skyCard(d); });
-    addCard(host, 'rain',     function () { return rainCard(d); });
-    addCard(host, 'daylight', function () { return daylightCard(d); });
+    var col = document.createElement('div'); col.className = 'hourly';
+    addCard(col, 'feels',    function () { return feelsCard(d); });
+    addCard(col, 'sweat',    function () { return sweatCard(d); });
+    addCard(col, 'sky',      function () { return skyCard(d); });
+    addCard(col, 'rain',     function () { return rainCard(d); });
+    addCard(col, 'daylight', function () { return daylightCard(d); });
+    host.appendChild(col);
 
     var grid = document.createElement('div'); grid.className = 'grid';
-    addCard(grid, 'burn',      function () { return burnCard(d); });
-    addCard(grid, 'frostbite', function () { return frostbiteCard(d); });
-    addCard(grid, 'frost',     function () { return frostCard(d); });
-    addCard(grid, 'pipe',      function () { return pipeCard(d); });
-    addCard(grid, 'fire',      function () { return fireCard(d); });
-    addCard(grid, 'bug',       function () { return bugCard(d); });
-    addCard(grid, 'pavement',  function () { return pavementCard(d); });
-    addCard(grid, 'shoe',      function () { return shoeCard(d); });
-    addCard(grid, 'rust',      function () { return rustCard(d); });
-    addCard(grid, 'mow',       function () { return mowCard(d, lat); });
-    addCard(grid, 'wind',      function () { return windCard(d); });
-    addCard(grid, 'frizz',     function () { return frizzCard(d); });
-    addCard(grid, 'mold',      function () { return moldCard(d); });
-    addCard(grid, 'arthritis', function () { return arthritisCard(d); });
-    addCard(grid, 'allergy',   function () { return allergyCard(d, p.pollen, cal); });
-    addCard(grid, 'migraine',  function () { return migraineCard(d); });
-    addCard(grid, 'air',       function () { return airCard(d, p.airGoogle); });
-    addCard(grid, 'light',     function () { return lightCard(d); });
-    addCard(grid, 'aurora',    function () { return auroraCard(d, p.kp); });
-    addCard(grid, 'moon',      function () { return moonCard(d.date); });
+    var builders = {
+      burn:      function () { return burnCard(d); },
+      frostbite: function () { return frostbiteCard(d); },
+      frost:     function () { return frostCard(d); },
+      pipe:      function () { return pipeCard(d); },
+      fire:      function () { return fireCard(d); },
+      bug:       function () { return bugCard(d); },
+      pavement:  function () { return pavementCard(d); },
+      shoe:      function () { return shoeCard(d); },
+      rust:      function () { return rustCard(d); },
+      mow:       function () { return mowCard(d, lat); },
+      wind:      function () { return windCard(d); },
+      frizz:     function () { return frizzCard(d); },
+      mold:      function () { return moldCard(d); },
+      arthritis: function () { return arthritisCard(d); },
+      allergy:   function () { return allergyCard(d, p.pollen, cal); },
+      migraine:  function () { return migraineCard(d); },
+      air:       function () { return airCard(d, p.airGoogle); },
+      light:     function () { return lightCard(d); },
+      aurora:    function () { return auroraCard(d, p.kp); },
+      moon:      function () { return moonCard(d.date); }
+    };
+    tileOrder().forEach(function (id) { addCard(grid, id, builders[id]); });
     host.appendChild(grid);
   }
 
@@ -1801,11 +1958,13 @@
     try { d = derive(p.wx, null, p.wx.timezone || state.tz, state.dayOffset); }
     catch (e) { return fail(host, e.message); }
     host.innerHTML = '';
-    addCard(host, 'feels',    function () { return feelsCard(d); });
-    addCard(host, 'sweat',    function () { return sweatCard(d); });
-    addCard(host, 'sky',      function () { return skyCard(d); });
-    addCard(host, 'rain',     function () { return rainCard(d); });
-    addCard(host, 'daylight', function () { return daylightCard(d); });
+    var scol = document.createElement('div'); scol.className = 'hourly';
+    addCard(scol, 'feels',    function () { return feelsCard(d); });
+    addCard(scol, 'sweat',    function () { return sweatCard(d); });
+    addCard(scol, 'sky',      function () { return skyCard(d); });
+    addCard(scol, 'rain',     function () { return rainCard(d); });
+    addCard(scol, 'daylight', function () { return daylightCard(d); });
+    host.appendChild(scol);
     var g = document.createElement('div'); g.className = 'grid';
     addCard(g, 'burn', function () { return burnCard(d); });
     addCard(g, 'wind', function () { return windCard(d); });
@@ -1826,10 +1985,11 @@
   }
 
   /* ================= controls ================= */
+  var shoreBox = document.getElementById('shoreBox');
   var daySel = document.getElementById('daySel'), placeSel = document.getElementById('placeSel'),
       beachSel = document.getElementById('beachSel'), searchBox = document.getElementById('searchBox'),
       results = document.getElementById('results'), qIn = document.getElementById('q'),
-      shoreBox = document.getElementById('shoreBox'), shoreResults = document.getElementById('shoreResults'),
+      shoreResults = document.getElementById('shoreResults'),
       shoreQ = document.getElementById('shoreQ');
 
   function buildDays() {
@@ -1844,8 +2004,11 @@
   function buildPlaces() {
     placeSel.innerHTML = '';
     if (!state.place) {
+      var ph = document.createElement('option');
+      ph.textContent = 'Choose your town'; ph.disabled = true; ph.selected = true;
+      placeSel.appendChild(ph);
       var f = document.createElement('option'); f.value = '__search';
-      f.textContent = 'Choose your town'; placeSel.appendChild(f);
+      f.textContent = 'Search a town'; placeSel.appendChild(f);
       return;
     }
     var seen = {};
@@ -1861,8 +2024,17 @@
   function buildBeaches() {
     beachSel.innerHTML = '';
     if (!state.shoreSel) {
+      // A one-option select is a dead control: re-picking the option
+      // already selected fires no change event. So the placeholder is a
+      // disabled option and the real action sits below it, and the
+      // search box opens straight away.
+      var ph = document.createElement('option');
+      ph.textContent = 'Choose a shore'; ph.disabled = true; ph.selected = true;
+      beachSel.appendChild(ph);
       var f = document.createElement('option'); f.value = '__shoresearch';
-      f.textContent = 'Choose a shore'; beachSel.appendChild(f); return;
+      f.textContent = 'Search a coast or lake town'; beachSel.appendChild(f);
+      shoreBox.style.display = 'block';
+      return;
     }
     (state.shoreRecents || []).forEach(function (x) {
       var o = document.createElement('option');
@@ -1913,6 +2085,12 @@
     }
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); go(); } });
     input.addEventListener('search', go);
+    // Search as you type, so nobody has to guess that Enter is required.
+    var timer = null;
+    input.addEventListener('input', function () {
+      clearTimeout(timer);
+      timer = setTimeout(go, 350);
+    });
   }
   wireSearch(qIn, results, function (x) { searchBox.style.display = 'none'; loadHome(x); });
   wireSearch(shoreQ, shoreResults, function (x) { shoreBox.style.display = 'none'; loadShore(x); });
@@ -1947,6 +2125,80 @@
       });
     });
 
+    // ---- appearance ----
+    var ah = document.createElement('h3'); ah.textContent = 'Colours'; settingsPanel.appendChild(ah);
+    var al = document.createElement('p'); al.className = 'lede';
+    al.textContent = 'Blue always means cold or dry, green and yellow mean fine, and orange through purple means increasingly not fine. You are picking the four anchor colours; every card is built from them, so the grammar holds whatever you choose.';
+    settingsPanel.appendChild(al);
+
+    var pr = document.createElement('div'); pr.className = 'presets';
+    Object.keys(PRESETS).forEach(function (k) {
+      var b = document.createElement('button');
+      b.className = 'preset' + ((store.theme && store.theme.preset || 'default') === k
+                                 && !(store.theme && store.theme.cold) ? ' sel' : '');
+      b.textContent = PRESETS[k].name;
+      var sw = document.createElement('span'); sw.className = 'sw';
+      ['cold','good','warm','danger'].forEach(function (a) {
+        var d2 = document.createElement('i'); d2.style.background = PRESETS[k][a]; sw.appendChild(d2);
+      });
+      b.appendChild(sw);
+      b.addEventListener('click', function () {
+        store.theme = { preset: k }; saveStore(); buildRamps();
+        buildSettings(); renderHome(); renderShore();
+      });
+      pr.appendChild(b);
+    });
+    settingsPanel.appendChild(pr);
+
+    var A = anchors();
+    [['cold', 'Cold and dry'], ['good', 'Fine'], ['warm', 'Warm'], ['danger', 'Dangerous']]
+      .forEach(function (pairA) {
+        var row = document.createElement('label'); row.className = 'opt';
+        var inp = document.createElement('input'); inp.type = 'color'; inp.value = A[pairA[0]];
+        inp.style.cssText = 'width:34px;height:26px;padding:0;border:1px solid #D6D0C4;border-radius:6px;background:none';
+        inp.addEventListener('input', function () {
+          store.theme = store.theme || {};
+          store.theme[pairA[0]] = inp.value;
+          saveStore(); buildRamps(); renderHome(); renderShore();
+          updateContrast();
+        });
+        var sp = document.createElement('span'); sp.textContent = pairA[1];
+        row.appendChild(inp); row.appendChild(sp); settingsPanel.appendChild(row);
+      });
+
+    var warn = document.createElement('p'); warn.className = 'lede contrast'; warn.id = 'contrastNote';
+    settingsPanel.appendChild(warn);
+
+    var reset = document.createElement('button'); reset.className = 'reset';
+    reset.textContent = 'Reset colours';
+    reset.addEventListener('click', function () {
+      store.theme = { preset: 'default' }; saveStore(); buildRamps();
+      buildSettings(); renderHome(); renderShore();
+    });
+    settingsPanel.appendChild(reset);
+    updateContrast();
+
+    // ---- order ----
+    var oh = document.createElement('h3'); oh.textContent = 'Tile order'; settingsPanel.appendChild(oh);
+    var ol = document.createElement('p'); ol.className = 'lede';
+    ol.textContent = 'Arrows rather than dragging, because dragging is miserable on a phone. Tiles that do not apply today stay hidden wherever you put them.';
+    settingsPanel.appendChild(ol);
+    tileOrder().forEach(function (id, i, arr) {
+      var meta = null;
+      CARDS.forEach(function (c) { if (c.id === id) meta = c; });
+      if (!meta || !on(id)) return;
+      var row = document.createElement('div'); row.className = 'ord';
+      var nm = document.createElement('span'); nm.textContent = meta.name; row.appendChild(nm);
+      var up = document.createElement('button'); up.textContent = '\u2191'; up.title = 'Move up';
+      up.disabled = i === 0;
+      up.addEventListener('click', function () { moveTile(id, -1); });
+      var dn = document.createElement('button'); dn.textContent = '\u2193'; dn.title = 'Move down';
+      dn.disabled = i === arr.length - 1;
+      dn.addEventListener('click', function () { moveTile(id, 1); });
+      row.appendChild(up); row.appendChild(dn);
+      settingsPanel.appendChild(row);
+    });
+
     var kh = document.createElement('h3'); kh.textContent = 'Optional Google API key';
     settingsPanel.appendChild(kh);
     var kl = document.createElement('p'); kl.className = 'lede';
@@ -1960,6 +2212,15 @@
       if (state.place) loadHome(state.place);
     });
     settingsPanel.appendChild(input);
+  }
+
+  function updateContrast() {
+    var el = document.getElementById('contrastNote');
+    if (!el) return;
+    var r = contrastReport();
+    if (!r) { el.textContent = ''; return; }
+    el.textContent = r.text;
+    el.className = 'lede contrast' + (r.ok ? ' ok' : ' bad');
   }
 
   function buildAbout() {
@@ -2004,6 +2265,7 @@
     + 'check local flags and signage before you swim.';
 
   /* ================= start ================= */
+  buildRamps();
   buildDays(); buildPlaces(); buildBeaches();
   renderShore();
   if (state.place) loadHome(state.place);
