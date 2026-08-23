@@ -41,7 +41,8 @@
   .now{position:absolute;top:-13px;bottom:-13px;width:2px;margin-left:-1px;
        background:rgba(22,35,47,.30);box-shadow:0 0 0 1px rgba(255,255,255,.45);
        pointer-events:none;border-radius:1px;}
-  .card{border-radius:15px;padding:13px 18px;margin:0 0 8px;width:100%;overflow:hidden;
+  .card{border-radius:15px;padding:13px 18px;margin:0 0 var(--gap);width:100%;overflow:hidden;
+        min-height:var(--rowh);display:flex;flex-direction:column;justify-content:center;
         border:none;font:inherit;color:var(--ink);text-align:center;
         font-size:17.5px;display:block;cursor:pointer;}
   .card.flat{cursor:default;}
@@ -51,7 +52,12 @@
   /* Daily facts become a two-up grid of squares. Nothing to read
      across their width, so they trade length for a bigger field of
      colour. */
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);margin-top:17px;}
+  /* Every card is one row tall, sized to hold two lines of label. Rows
+     never stretch to fill leftover space \u2014 that is what made a single
+     row of water tiles swell to the height of the whole column. Only a
+     card opened by tapping is allowed to grow. */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);margin-top:17px;
+        grid-auto-rows:minmax(var(--rowh),auto);align-content:start;}
   .card.sm{min-height:var(--rowh);display:flex;flex-direction:column;
            align-items:center;justify-content:center;text-align:center;
            padding:10px 12px;font-size:14.5px;border-radius:14px;margin:0;width:auto;
@@ -85,7 +91,7 @@
   @media (min-width:760px){
     .wrap{max-width:1080px;}
     #homeBody, #shoreBody{display:grid;grid-template-columns:minmax(300px,0.95fr) 1.25fr;
-                          gap:12px;align-items:stretch;}
+                          gap:12px;align-items:start;}
     #homeBody > .alert, #homeBody > .note{grid-column:1 / -1;}
     /* Both sides share one row height, so a card on the left lines up
        with a tile on the right instead of each being sized by its own
@@ -93,6 +99,7 @@
     .hourly{display:flex;flex-direction:column;gap:var(--gap);}
     .hourly > .card{margin-bottom:0;flex:0 0 auto;min-height:var(--rowh);
                     display:flex;flex-direction:column;justify-content:center;}
+    .hourly > .card:not(.open){height:var(--rowh);}
     .card.sm{aspect-ratio:auto;min-height:var(--rowh);font-size:15px;}
     .grid{grid-template-columns:repeat(3,1fr);margin-top:0;}
     .card.sm.open{grid-column:span 3;min-height:0;}
