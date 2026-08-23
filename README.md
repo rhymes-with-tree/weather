@@ -1,4 +1,4 @@
-# Morning Brief
+# Visual Weather Health
 
 A weather page for the things weather actually does to you — sunburn, pollen,
 joints, migraines, bugs, mud, frost on the windshield, and whether the water is
@@ -7,7 +7,7 @@ safe to get into.
 One static HTML file. No server, no build step, no account, no tracking.
 Open it and it works.
 
-**Live:** _add your GitHub Pages URL here_
+**Live:** 	rhymes-with-tree.github.io/weather/
 
 ---
 
