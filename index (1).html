@@ -1,0 +1,2022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Morning Brief</title>
+<meta name="description" content="A weather brief for the things weather actually does to you — sunburn, pollen, joints, migraines, bugs, mud, and whether the water is safe.">
+<meta property="og:title" content="Morning Brief">
+<meta property="og:description" content="A weather brief for the things weather actually does to you.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:,">
+<style>
+  :root{ --page:#FFF; --ink:#16232F; --mid:#5B6B7A; --line:#E4E4E4; --link:#1B57C8; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--page);color:var(--ink);}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+       line-height:1.3;-webkit-font-smoothing:antialiased;padding:14px 12px 26px;}
+  .wrap{max-width:440px;margin:0 auto;}
+
+  .hdr{background:#FFF;border:1px solid var(--line);border-radius:18px;
+       padding:14px 18px 16px;text-align:center;margin:0 0 9px;}
+  .hdr.section{margin-top:22px;}
+  .hdr .l1{font-size:19px;color:var(--mid);margin-bottom:5px;}
+  .hdr .l2{font-size:24px;font-weight:700;letter-spacing:-.015em;}
+  select{font:inherit;color:inherit;background:transparent;border:none;
+         border-bottom:1.5px dashed #B9C4CC;padding:0 2px 3px;cursor:pointer;
+         -webkit-appearance:none;appearance:none;text-align:center;text-align-last:center;max-width:100%;}
+  .hdr .l2 select{font-weight:700;}
+  select:focus-visible{outline:2px solid var(--link);outline-offset:3px;}
+
+  .face{position:relative;}
+  .now{position:absolute;top:-13px;bottom:-13px;width:2px;margin-left:-1px;
+       background:rgba(22,35,47,.30);box-shadow:0 0 0 1px rgba(255,255,255,.45);
+       pointer-events:none;border-radius:1px;}
+  .card{border-radius:15px;padding:13px 18px;margin:0 0 8px;width:100%;overflow:hidden;
+        border:none;font:inherit;color:var(--ink);text-align:center;
+        font-size:17.5px;display:block;cursor:pointer;}
+  .card.flat{cursor:default;}
+  /* Compact tier. A card whose gradient runs midnight to midnight
+     needs the width to be read across; a card that is one word does
+     not, so it gets less height and a slightly smaller face. */
+  /* Daily facts become a two-up grid of squares. Nothing to read
+     across their width, so they trade length for a bigger field of
+     colour. */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:17px;}
+  .card.sm{aspect-ratio:3/1;display:flex;flex-direction:column;
+           align-items:center;justify-content:center;text-align:center;
+           padding:10px 12px;font-size:14.5px;border-radius:14px;margin:0;width:auto;
+           line-height:1.25;}
+  /* Tapped open, a tile takes the full row so the detail has somewhere
+     to go instead of straining the square. */
+  .card.sm.wide2{grid-column:span 2;aspect-ratio:6.2/1;}
+  .card.sm.open{aspect-ratio:auto;grid-column:span 2;justify-content:flex-start;
+                align-items:stretch;text-align:left;padding:13px 16px;}
+  .card.sm .tip{text-align:left;}
+  .card.sm.skel{height:auto;}
+  .row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
+  .card b{font-weight:700;}
+  .det{font-weight:400;opacity:.72;}
+  .alert{background:#FBE9E9;border:1px solid #F1D2D2;}
+  .note{background:#F4EEDF;border:1px solid #E4D8BE;}
+  .ahead{background:#EAF0F7;border:1px solid #CFDCEA;}
+  .plain{background:#F2F0EB;}
+  .tip{font-size:14.5px;line-height:1.45;text-align:left;margin:11px 0 0;padding-top:10px;
+       border-top:1px solid rgba(22,35,47,.16);opacity:.82;}
+  .linkcard{background:#F2F0EB;border-radius:15px;padding:14px;text-align:center;margin:0 0 8px;}
+  .linkcard a{color:var(--link);font-weight:700;font-size:17px;text-decoration:underline;}
+  .skel{background:#F1EFEA;height:48px;}
+  .card.sm.skel{height:38px;}
+  .busy{opacity:.45;}
+  .foot{font-size:11.5px;color:#8A97A3;line-height:1.5;margin:14px 4px 0;}
+  @media (max-width:370px){ .card{font-size:16px;padding:12px 14px;} .hdr .l2{font-size:21px;}
+    .card.sm{font-size:13px;padding:9px 10px;} .grid{gap:7px;} }
+
+  /* ---- public build additions ---- */
+  .bar{display:flex;align-items:center;justify-content:center;gap:14px;margin:0 0 10px;}
+  .bar button{background:none;border:none;font:inherit;font-size:14px;color:var(--mid);
+              cursor:pointer;padding:4px 8px;border-bottom:1px dashed #C3CCD4;}
+  .bar button:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
+  .panel{background:#F7F5F1;border:1px solid var(--line);border-radius:18px;
+         padding:16px 18px;margin:0 0 12px;}
+  .panel h2{font-size:17px;margin:0 0 4px;}
+  .panel h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);
+            margin:16px 0 6px;font-weight:600;}
+  .panel p.lede{font-size:13.5px;color:var(--mid);margin:0 0 6px;line-height:1.45;}
+  .opt{display:flex;align-items:flex-start;gap:10px;padding:7px 0;font-size:15px;
+       border-top:1px solid #E8E4DC;cursor:pointer;}
+  .opt:first-of-type{border-top:none;}
+  .opt input{margin:3px 0 0;width:17px;height:17px;flex:0 0 auto;}
+  .opt span small{display:block;font-size:12.5px;color:var(--mid);line-height:1.35;margin-top:1px;}
+  .panel input[type=text]{font:inherit;width:100%;padding:7px 9px;border:1px solid var(--line);
+                          border-radius:8px;background:#FFF;color:inherit;margin-top:4px;}
+  .disc{font-size:12px;color:#7C8996;line-height:1.55;margin:16px 4px 0;
+        border-top:1px solid var(--line);padding-top:12px;}
+  .disc b{color:var(--mid);}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <div class="l1"><select id="daySel" aria-label="Day"></select></div>
+    <div class="l2"><select id="placeSel" aria-label="Location"></select></div>
+    <div id="searchBox" style="display:none;margin-top:10px">
+      <input id="q" type="search" placeholder="Search any US town" autocomplete="off"
+             style="font:inherit;width:100%;text-align:center;border:none;border-bottom:1.5px dashed #B9C4CC;padding:4px;background:transparent;color:inherit">
+      <ul id="results" style="list-style:none;margin:8px 0 0;padding:0;font-size:16px"></ul>
+    </div>
+  </div>
+
+  <div class="bar">
+    <button id="settingsBtn" aria-expanded="false">Settings</button>
+    <button id="aboutBtn" aria-expanded="false">About</button>
+  </div>
+
+  <div id="settingsPanel" class="panel" style="display:none"></div>
+  <div id="aboutPanel" class="panel" style="display:none"></div>
+
+  <div id="homeBody"></div>
+
+  <div id="shoreSection">
+    <div class="hdr section">
+      <div class="l1">Water</div>
+      <div class="l2"><select id="beachSel" aria-label="Shore"></select></div>
+      <div id="shoreBox" style="display:none;margin-top:10px">
+        <input id="shoreQ" type="search" placeholder="Search any coast or lake town"
+               style="font:inherit;width:100%;text-align:center;border:none;border-bottom:1.5px dashed #B9C4CC;padding:4px;background:transparent;color:inherit">
+        <ul id="shoreResults" style="list-style:none;margin:8px 0 0;padding:0;font-size:16px"></ul>
+      </div>
+    </div>
+    <div id="shoreBody"></div>
+  </div>
+
+  <p class="disc" id="disclaimer"></p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var DEG = '\u00B0', DASH = '\u2013', MID = '\u00B7';
+
+  /* ================= storage =================
+     Everything lives in this browser. No account, no server, and
+     nothing about anyone's location or health leaves the device
+     except as coordinates in a weather request. */
+  var KEY = 'morningbrief.v1';
+  function loadStore() {
+    try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; }
+  }
+  function saveStore() {
+    try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {}
+  }
+  var store = loadStore();
+  if (!store.cards) store.cards = {};          // absent means on
+  if (!store.recents) store.recents = [];
+  if (!store.shores) store.shores = [];
+  if (!store.keys) store.keys = {};
+
+  /* Which cards exist, what each assumes about you, and which section
+     of the settings panel it sits in. Everything defaults to on. */
+  var CARDS = [
+    { id: 'feels',     name: 'Feels Like',        group: 'Weather',  always: true },
+    { id: 'sweat',     name: 'Humidity',          group: 'Weather' },
+    { id: 'sky',       name: 'Sun and cloud',     group: 'Weather' },
+    { id: 'rain',      name: 'Precipitation',     group: 'Weather' },
+    { id: 'daylight',  name: 'Sunrise and sunset',group: 'Weather' },
+    { id: 'wind',      name: 'Wind',              group: 'Weather', note: 'Kite and sailing notes in the tap' },
+    { id: 'burn',      name: 'Sunburn',           group: 'Body' },
+    { id: 'frostbite', name: 'Frostbite',         group: 'Body', note: 'Only below freezing' },
+    { id: 'air',       name: 'Air quality',       group: 'Body' },
+    { id: 'asthma',    name: 'Asthma advice',     group: 'Body', note: 'Adds inhaler guidance to the air quality tap' },
+    { id: 'allergy',   name: 'Allergens',         group: 'Body' },
+    { id: 'migraine',  name: 'Migraine',          group: 'Body', note: 'Barometric pressure and temperature swings' },
+    { id: 'arthritis', name: 'Arthritis',         group: 'Body', note: 'Weather links here are widely reported and weakly evidenced' },
+    { id: 'frizz',     name: 'Hair frizz',        group: 'Body' },
+    { id: 'bug',       name: 'Bug spray',         group: 'Outdoors' },
+    { id: 'shoe',      name: 'Which shoes',       group: 'Outdoors' },
+    { id: 'fire',      name: 'Fire weather',      group: 'Outdoors', note: 'Only when conditions approach a Red Flag' },
+    { id: 'light',     name: 'Daylight exposure', group: 'Outdoors' },
+    { id: 'aurora',    name: 'Aurora',            group: 'Outdoors', note: 'Only during a geomagnetic storm' },
+    { id: 'moon',      name: 'Moon phase',        group: 'Outdoors' },
+    { id: 'pavement',  name: 'Pavement and paws', group: 'If you have', note: 'A dog' },
+    { id: 'frost',     name: 'Windshield frost',  group: 'If you have', note: 'A car' },
+    { id: 'rust',      name: 'Road salt and rust',group: 'If you have', note: 'A car' },
+    { id: 'pipe',      name: 'Pipe freeze',       group: 'If you have', note: 'A house with exposed plumbing' },
+    { id: 'mold',      name: 'Basement damp',     group: 'If you have', note: 'A basement or crawl space' },
+    { id: 'mow',       name: 'Mowing',            group: 'If you have', note: 'A lawn you cut yourself' },
+    { id: 'shore',     name: 'Water section',     group: 'If you have', note: 'A coast or lake worth checking' }
+  ];
+  function on(id) { return store.cards[id] !== false; }
+
+  var state = { place: store.place || null, tz: 'America/Detroit', dayOffset: 0,
+                home: null, shore: null, shoreSel: store.shore || null,
+                recents: store.recents, shoreRecents: store.shores, kp: null };
+
+  /* ================= colour ==================================
+     Pale enough for dark text on top. Three fill modes, because
+     the ramps do not all mean the same thing:
+
+       range  low colour to high colour        (Feels Like)
+       from   the calm end up to the value     (scales where the
+              minimum is the good end: rain, sunburn, AQI, risk)
+       at     a narrow band around the value   (scales where the
+              minimum is ALSO bad: sweat, water temperature, sky)
+
+     Using "from" on a double-ended scale was a real bug: a
+     comfortable dew point rendered as purple-to-yellow, implying
+     danger that was not there.
+     ========================================================== */
+  var RAMP = {
+    feels: [[0,[159,196,228]],[25,[175,212,222]],[38,[190,220,207]],[50,[203,223,175]],
+            [60,[216,222,150]],[70,[228,220,147]],[78,[233,198,140]],[86,[232,172,133]],
+            [94,[224,144,128]],[105,[196,140,176]]],
+    sweat: [[0,[183,154,207]],[15,[168,182,220]],[30,[173,202,223]],[45,[196,220,184]],
+            [55,[217,222,150]],[62,[229,218,144]],[68,[233,194,137]],[74,[229,160,133]],[80,[196,140,176]]],
+    aqi:   [[0,[187,217,168]],[50,[213,222,156]],[100,[231,218,147]],[150,[235,193,137]],
+            [200,[227,158,134]],[300,[196,140,176]]],
+    risk:  [[0,[187,217,168]],[30,[213,222,156]],[55,[233,200,140]],[80,[224,144,128]],[100,[196,140,176]]],
+    burn:  [[0,[237,226,154]],[3,[233,213,140]],[6,[233,184,132]],[9,[222,144,132]],[12,[201,124,120]]],
+    rain:  [[0,[222,222,149]],[30,[194,217,174]],[60,[168,203,216]],[100,[123,159,208]]],
+    water: [[32,[155,184,220]],[55,[165,206,221]],[68,[188,220,196]],[76,[211,222,160]],[85,[226,219,146]]],
+    /* Saturated yellow is the good end; the scale simply drains of
+       colour toward grey and then white for snow. Desaturation is
+       itself the signal that it will not be nice out, and anything
+       genuinely dangerous arrives as an alert card instead. */
+    sky:   [[0,[242,217,122]],[25,[235,226,170]],[50,[214,216,208]],[70,[211,214,216]],
+            [85,[228,231,233]],[100,[244,246,247]]]
+  };
+  function colorAt(ramp, v) {
+    var r = RAMP[ramp];
+    if (v <= r[0][0]) return css(r[0][1]);
+    for (var i = 1; i < r.length; i++) {
+      if (v <= r[i][0]) {
+        var a = r[i - 1], b = r[i], t = (v - a[0]) / (b[0] - a[0]);
+        return css([a[1][0] + (b[1][0] - a[1][0]) * t,
+                    a[1][1] + (b[1][1] - a[1][1]) * t,
+                    a[1][2] + (b[1][2] - a[1][2]) * t]);
+      }
+    }
+    return css(r[r.length - 1][1]);
+  }
+  function css(c) { return 'rgb(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ')'; }
+  function grad(a, b) { return 'linear-gradient(100deg,' + a + ',' + b + ')'; }
+  function bgRange(r, lo, hi) { return grad(colorAt(r, lo), colorAt(r, hi)); }
+  function bgFrom(r, v)       { return grad(colorAt(r, RAMP[r][0][0]), colorAt(r, v)); }
+  function bgAt(r, v, sp)     { return grad(colorAt(r, v - sp), colorAt(r, v + sp)); }
+
+  /* Midnight to midnight, sampled every hour. The middle of the card
+     is the middle of the day, so the shape of the day is the picture:
+     cool edges and a warm centre, or grey morning clearing to sun. */
+  function bgDay(d, fn) {
+    var stops = [];
+    for (var h = 0; h < 24; h++) {
+      var rec = d.hours[h] || d.hours[Object.keys(d.hours)[0]];
+      stops.push(fn(rec, h) + ' ' + ((h / 23) * 100).toFixed(1) + '%');
+    }
+    return 'linear-gradient(90deg,' + stops.join(',') + ')';
+  }
+
+  /* Sky is not one axis. Three corners, blended by weight:
+       sun   saturated yellow   the share of the hour that is clear
+       grey  overcast or rain   cloud that is not frozen
+       white snow               cloud that is frozen
+     Rain needs no corner of its own: a rainy day is a grey day, and
+     the wetness is already the Precipitation card. Snow earns one
+     because it changes the quality of the light, not just wetness.
+     Night hours fade toward dusk slate, because a clear midnight is
+     not a sunny midnight. */
+  var SUN = [242,217,122], GREY = [196,200,204], STORM = [163,169,176],
+      SNOW = [246,248,249], DUSK = [176,184,195];
+  function mix3(a, b, t) { return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
+  var SNOW_CODES = [71,73,75,77,85,86], STORM_CODES = [95,96,99];
+  function skyColor(rec) {
+    var cloud = (rec.cloud == null ? 50 : rec.cloud) / 100;
+    var frozen = SNOW_CODES.indexOf(rec.code) > -1;
+    var stormy = STORM_CODES.indexOf(rec.code) > -1;
+    var greyHue = stormy ? STORM : GREY;
+    var white = cloud * (frozen ? 1 : 0);
+    var grey  = cloud * (frozen ? 0 : 1);
+    var sun   = 1 - cloud;
+    var c = [ SUN[0]*sun + greyHue[0]*grey + SNOW[0]*white,
+              SUN[1]*sun + greyHue[1]*grey + SNOW[1]*white,
+              SUN[2]*sun + greyHue[2]*grey + SNOW[2]*white ];
+    if (!rec.day) c = mix3(c, DUSK, 0.62);
+    return css(c);
+  }
+
+  /* ================= helpers ================= */
+  function hourOf(iso) { return parseInt(iso.slice(11, 13), 10); }
+  function hr(h) {
+    if (h >= 24) h -= 24;
+    var m = Math.round((h % 1) * 60), base = Math.floor(h);
+    var s = base < 12 ? ' AM' : ' PM', d = base % 12; if (d === 0) d = 12;
+    return d + (m ? ':' + (m < 10 ? '0' : '') + m : '') + s;
+  }
+  function dateStrIn(tz, off) {
+    var d = new Date(Date.now() + (off || 0) * 86400000);
+    var p = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(d);
+    function g(t) { for (var i = 0; i < p.length; i++) if (p[i].type === t) return p[i].value; }
+    return g('year') + '-' + g('month') + '-' + g('day');
+  }
+  function labelFor(tz, off) {
+    return new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long', month: 'long', day: 'numeric' })
+      .format(new Date(Date.now() + off * 86400000));
+  }
+  function shortTime(iso, tz) {
+    try {
+      return new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' })
+        .format(new Date(iso)).replace(':00', '');
+    } catch (e) { return ''; }
+  }
+  function nowFraction() {
+    var parts = new Intl.DateTimeFormat('en-US', { timeZone: state.tz, hour: 'numeric', minute: '2-digit', hour12: false })
+      .formatToParts(new Date());
+    var h = 0, m = 0;
+    parts.forEach(function (x) { if (x.type === 'hour') h = parseInt(x.value, 10); if (x.type === 'minute') m = parseInt(x.value, 10); });
+    if (h === 24) h = 0;
+    return Math.max(0, Math.min(1, (h + m / 60) / 23));
+  }
+
+  function placeLabel(p) { return p.name + (p.region ? ', ' + p.region : (p.country ? ', ' + p.country : '')); }
+  var avg = function (a) { var s = 0, n = 0; for (var i = 0; i < a.length; i++) if (a[i] != null) { s += a[i]; n++; } return n ? s / n : 0; };
+  var maxOf = function (a) { var m = null; for (var i = 0; i < a.length; i++) if (a[i] != null && (m === null || a[i] > m)) m = a[i]; return m; };
+  function listJoin(a) { return !a.length ? '' : a.length === 1 ? a[0] : a.slice(0, -1).join(', ') + ' & ' + a[a.length - 1]; }
+  var topOf = function (a) { a.sort(function (x, y) { return y.w - x.w; }); return a.length ? a[0].t : null; };
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function clock(iso) {
+    var h = parseInt(iso.slice(11, 13), 10), m = iso.slice(14, 16);
+    var suf = h < 12 ? ' AM' : ' PM', d = h % 12; if (d === 0) d = 12;
+    return d + ':' + m + suf;
+  }
+  function frac(iso) { return parseInt(iso.slice(11, 13), 10) + parseInt(iso.slice(14, 16), 10) / 60; }
+  function span(a, b) { return Math.round((frac(b) - frac(a)) * 60); }
+  function hm(mins) {
+    var h = Math.floor(mins / 60), m = mins % 60;
+    return h + ' h ' + (m < 10 ? '0' : '') + m + ' min';
+  }
+
+  /* ================= derive ================= */
+  function derive(wx, aq, tz, off) {
+    var day = dateStrIn(tz, off), H = wx.hourly, D = wx.daily;
+    var di = D.time.indexOf(day), idx = [];
+    for (var i = 0; i < H.time.length; i++) if (H.time[i].slice(0, 10) === day) idx.push(i);
+    if (di < 0 || !idx.length) throw new Error('No forecast for that day yet.');
+    var grab = function (a) { return idx.map(function (i) { return a[i]; }); };
+    var sr = hourOf(D.sunrise[di]), ss = hourOf(D.sunset[di]), noon = (sr + ss) / 2;
+    var dayIdx = idx.filter(function (i) { var h = hourOf(H.time[i]); return h >= sr && h <= ss; });
+
+    var best = null, cur = null;
+    idx.forEach(function (i) {
+      var h = hourOf(H.time[i]), p = H.precipitation_probability[i] || 0;
+      if (p >= 40) { cur = cur ? { a: cur.a, b: h } : { a: h, b: h };
+        if (!best || (cur.b - cur.a) >= (best.b - best.a)) best = { a: cur.a, b: cur.b }; } else cur = null;
+    });
+    var noonI = idx[0], gap = 99;
+    idx.forEach(function (i) { var g = Math.abs(hourOf(H.time[i]) - noon); if (g < gap) { gap = g; noonI = i; } });
+    var pM = H.pressure_msl[noonI], pP = H.pressure_msl[noonI - 24];
+
+    var aqiMax = null, ozoneMax = null;
+    if (aq && aq.hourly && aq.hourly.time) {
+      var ai = [];
+      for (var k = 0; k < aq.hourly.time.length; k++) if (aq.hourly.time[k].slice(0, 10) === day) ai.push(k);
+      if (ai.length) {
+        aqiMax = maxOf(ai.map(function (k) { return aq.hourly.us_aqi ? aq.hourly.us_aqi[k] : null; }));
+        ozoneMax = maxOf(ai.map(function (k) { return aq.hourly.ozone ? aq.hourly.ozone[k] : null; }));
+      }
+    }
+    // Hour-indexed record of the day, so cards can paint the whole
+    // day rather than a single summary number.
+    var hours = {};
+    idx.forEach(function (i) {
+      var h = hourOf(H.time[i]);
+      hours[h] = {
+        feels: H.apparent_temperature[i],
+        dew: H.dew_point_2m[i],
+        cloud: H.cloud_cover[i],
+        code: H.weather_code[i],
+        pop: H.precipitation_probability[i] || 0,
+        uv: H.uv_index[i] || 0,
+        gust: H.wind_gusts_10m ? (H.wind_gusts_10m[i] || 0) : 0,
+        day: h >= sr && h <= ss
+      };
+    });
+    var feelsPeak = null, fpv = -999;
+    idx.forEach(function (i) {
+      var v = H.apparent_temperature[i];
+      if (v != null && v > fpv) { fpv = v; feelsPeak = hourOf(H.time[i]); }
+    });
+
+    return {
+      hours: hours, sunrise: sr, sunset: ss, feelsPeakHour: feelsPeak,
+      sunriseISO: D.sunrise[di], sunsetISO: D.sunset[di],
+      prevSunriseISO: di > 0 ? D.sunrise[di - 1] : null,
+      prevSunsetISO: di > 0 ? D.sunset[di - 1] : null,
+      date: day, code: D.weather_code[di],
+      cloudDay: avg(dayIdx.map(function (i) { return H.cloud_cover[i]; })),
+      feelsMax: D.apparent_temperature_max[di], feelsMin: D.apparent_temperature_min[di],
+      tMax: D.temperature_2m_max[di], tMin: D.temperature_2m_min[di],
+      tSwing: D.temperature_2m_max[di] - D.temperature_2m_min[di],
+      rhMean: avg(grab(H.relative_humidity_2m)),
+      gustMax: maxOf(grab(H.wind_gusts_10m || [])) || 0,
+      // Pre-dawn is when frost forms and when the air is coldest.
+      dewDawn: (function () {
+        var v = [];
+        for (var h = Math.max(0, sr - 3); h <= sr; h++) {
+          var i2 = idx.filter(function (x) { return hourOf(H.time[x]) === h; })[0];
+          if (i2 != null && H.dew_point_2m[i2] != null) v.push(H.dew_point_2m[i2]);
+        }
+        return v.length ? Math.min.apply(null, v) : null;
+      })(),
+      cloudDawn: (function () {
+        var v = [];
+        for (var h = Math.max(0, sr - 3); h <= sr; h++) {
+          var i2 = idx.filter(function (x) { return hourOf(H.time[x]) === h; })[0];
+          if (i2 != null && H.cloud_cover[i2] != null) v.push(H.cloud_cover[i2]);
+        }
+        return v.length ? avg(v) : null;
+      })(),
+      windDawn: (function () {
+        var v = [];
+        for (var h = Math.max(0, sr - 3); h <= sr; h++) {
+          var i2 = idx.filter(function (x) { return hourOf(H.time[x]) === h; })[0];
+          if (i2 != null && H.wind_speed_10m[i2] != null) v.push(H.wind_speed_10m[i2]);
+        }
+        return v.length ? avg(v) : null;
+      })(),
+      // Longest unbroken run of hours at or below 20 F wind chill.
+      coldRun: (function () {
+        var best = 0, run = 0;
+        idx.forEach(function (i2) {
+          var f = H.apparent_temperature[i2];
+          if (f != null && f <= 20) { run++; if (run > best) best = run; } else run = 0;
+        });
+        return best;
+      })(),
+      // How many days in a row have been overcast, today included.
+      greyStreak: (function () {
+        var streak = 0;
+        for (var back = 0; back < 4; back++) {
+          var target = D.time[di - back];
+          if (!target) break;
+          var vals = [];
+          for (var k2 = 0; k2 < H.time.length; k2++) {
+            if (H.time[k2].slice(0, 10) !== target) continue;
+            var hh = hourOf(H.time[k2]);
+            if (hh >= 9 && hh <= 17 && H.cloud_cover[k2] != null) vals.push(H.cloud_cover[k2]);
+          }
+          if (vals.length && avg(vals) >= 70) streak++; else break;
+        }
+        return streak;
+      })(),
+      // Ground state, for the shoe call. Soil moisture is volumetric
+      // (roughly 0.10 bone dry to 0.45 saturated) and is not offered by
+      // every model, so everything downstream tolerates a null.
+      soilMoist: (function () {
+        var v = grab(H.soil_moisture_0_to_1cm || []).filter(function (x) { return x != null; });
+        return v.length ? Math.max.apply(null, v) : null;
+      })(),
+      soilDeep: (function () {
+        var v = grab(H.soil_moisture_3_to_9cm || []).filter(function (x) { return x != null; });
+        return v.length ? Math.max.apply(null, v) : null;
+      })(),
+      radSum: D.shortwave_radiation_sum ? (D.shortwave_radiation_sum[di] || 0) : null,
+      rainNext: D.precipitation_sum[di + 1] != null ? D.precipitation_sum[di + 1] : null,
+      popNext: D.precipitation_probability_max[di + 1] != null ? D.precipitation_probability_max[di + 1] : null,
+      tMinNext: D.temperature_2m_min[di + 1] != null ? D.temperature_2m_min[di + 1] : null,
+      soilTemp: (function () {
+        var v = grab(H.soil_temperature_0cm || []).filter(function (x) { return x != null; });
+        return v.length ? avg(v) : null;
+      })(),
+      snowToday: D.snowfall_sum ? (D.snowfall_sum[di] || 0) : 0,
+      // Three-day history: what has fallen, and whether it was cold
+      // enough that the roads would have been salted.
+      snow3: (function () {
+        var t = 0;
+        for (var k2 = 0; k2 < 3; k2++) if (D.snowfall_sum && D.snowfall_sum[di - k2] != null) t += D.snowfall_sum[di - k2];
+        return t;
+      })(),
+      rain3: (function () {
+        var t = 0;
+        for (var k2 = 0; k2 < 3; k2++) if (D.precipitation_sum[di - k2] != null) t += D.precipitation_sum[di - k2];
+        return t;
+      })(),
+      saltCold: (function () {
+        for (var k2 = 0; k2 < 4; k2++) {
+          var v = D.temperature_2m_min[di - k2];
+          if (v != null && v <= 28) return true;
+        }
+        return false;
+      })(),
+      rhMin: (function () {
+        var v = grab(H.relative_humidity_2m).filter(function (x) { return x != null; });
+        return v.length ? Math.min.apply(null, v) : null;
+      })(),
+      dewMax: maxOf(dayIdx.map(function (i) { return H.dew_point_2m[i]; })) || 0,
+      windMax: maxOf(grab(H.wind_speed_10m)) || 0,
+      rainChance: D.precipitation_probability_max[di] || 0,
+      rainSum: D.precipitation_sum[di] || 0,
+      rainYesterday: di > 0 ? (D.precipitation_sum[di - 1] || 0) : 0,
+      rainRun: best, uvMax: D.uv_index_max[di] || 0,
+      uvNoon: H.uv_index[noonI] || 0, solarNoon: noon,
+      drop24: (pM != null && pP != null) ? pP - pM : null,
+      aqiMax: aqiMax, ozoneMax: ozoneMax
+    };
+  }
+
+  /* ================= cards =================
+     Every card is one line: a bold phrase that stands on its own,
+     plus a lighter detail. No label row — the phrase has to say
+     which condition it is, so "Likely" became "Migraine Likely".
+     ========================================= */
+  function tempWord(f) {
+    return f < 0 ? 'Frigid' : f < 32 ? 'Freezing' : f < 45 ? 'Very Cold' : f < 55 ? 'Cold'
+         : f < 64 ? 'Cool' : f < 72 ? 'Comfortable' : f < 80 ? 'Warm' : f < 88 ? 'Hot' : 'Sweltering';
+  }
+  function pair(lo, hi) { return lo === hi ? lo : lo + ' to ' + hi; }
+
+  function feelsCard(d) {
+    var lo = tempWord(d.feelsMin), hi = tempWord(d.feelsMax);
+    return { timeline: true, bg: bgDay(d, function (r) { return colorAt('feels', r.feels == null ? 60 : r.feels); }),
+      bold: pair(lo, hi),
+      tip: 'Feels like ' + Math.round(d.feelsMin) + DEG + ' overnight, ' + Math.round(d.feelsMax) + DEG
+         + (d.feelsPeakHour != null ? ' around ' + hr(d.feelsPeakHour) : ' at its peak') + '.'
+         + ' Actual air temperature runs ' + Math.round(d.tMin) + DEG + ' to ' + Math.round(d.tMax) + DEG + '.' };
+  }
+
+  /* Only the adjectives that are ambiguous on their own get a noun. */
+  function sweatWord(dp) {
+    return dp < 15 ? 'Bone Dry' : dp < 30 ? 'Very Dry' : dp < 45 ? 'Dry'
+         : dp < 55 ? 'Comfortably Dry' : dp < 60 ? 'Comfortable Humidity' : dp < 65 ? 'Humid'
+         : dp < 70 ? 'Muggy' : dp < 75 ? 'Oppressive Humidity' : 'Miserable Humidity';
+  }
+  function sweatCard(d) {
+    var dp = d.dewMax, extra = null;
+    if (dp < 15) extra = 'Static-shock air. Skin cracks and chaps at this dew point \u2014 heavy moisturizer, humidifier on, short warm showers rather than hot.';
+    else if (dp < 30) extra = 'Dry enough to pull moisture out of skin. Moisturize while you are still damp from the shower.';
+    else if (dp >= 70 && dp < 75) extra = 'Sweat will not evaporate well. Shade, loose clothing, and more water than feels necessary.';
+    else if (dp >= 75) extra = 'Your body cannot cool itself efficiently at this dew point. Treat outdoor exertion as a real risk.';
+    else if (dp >= 65) extra = 'Sticky. Expect to feel it during anything strenuous.';
+    return { timeline: true, bg: bgDay(d, function (r) { return colorAt('sweat', r.dew == null ? 50 : r.dew); }),
+      bold: sweatWord(dp),
+      tip: 'Dew point peaks near ' + Math.round(dp) + DEG + '.' + (extra ? ' ' + extra : '') };
+  }
+
+  function burnCard(d) {
+    var uv = d.uvNoon;
+    if (uv < 2) return { bg: bgFrom('burn', uv), bold: 'No Sunburn Risk',
+      tip: 'UV only reaches ' + uv.toFixed(1) + ' at solar noon. Nothing to protect against.' };
+    var mins = Math.max(6, Math.round(150 / uv));
+    return { bg: bgFrom('burn', uv), bold: 'Fair Skin Burns in ' + mins + ' min',
+      tip: 'UV ' + uv.toFixed(1) + ' at solar noon, ' + hr(d.solarNoon)
+         + '. Unprotected, and roughly doubling for each step darker your skin is. '
+         + (uv >= 8 ? 'Sunscreen before you leave, plus a hat, and shade in the middle of the day. Sunburn can provoke new plaques.'
+          : uv >= 6 ? 'Sunscreen before ' + burnStart(d) + ', and again after you swim or sweat.'
+          : 'Sunscreen past half an hour outside. This is also the useful range for short, deliberate sun on affected skin.') };
+  }
+
+  /* The hour UV first crosses 3 is when protection starts to matter,
+     which beats a flat "before noon". */
+  function burnStart(d) {
+    for (var h = 4; h <= 14; h++) {
+      var r = d.hours[h];
+      if (r && r.uv >= 3) return hr(h);
+    }
+    return hr(d.solarNoon);
+  }
+
+  function skyWord(cloud, codes) {
+    for (var i = 0; i < codes.length; i++) {
+      var c = codes[i];
+      if (SNOW_CODES.indexOf(c) > -1) return 'Snow';
+      if (STORM_CODES.indexOf(c) > -1) return 'Thunderstorms';
+    }
+    for (var j = 0; j < codes.length; j++) {
+      var k = codes[j];
+      if ([61,63,65,80,81,82].indexOf(k) > -1) return 'Rain';
+      if ([51,53,55,56,57,66,67].indexOf(k) > -1) return 'Drizzle';
+      if ([45,48].indexOf(k) > -1) return 'Fog';
+    }
+    return cloud < 15 ? 'Sunny' : cloud < 35 ? 'Mostly Sunny' : cloud < 65 ? 'Partly Cloudy'
+         : cloud < 85 ? 'Mostly Cloudy' : 'Cloudy';
+  }
+  function skyCard(d) {
+    var mid = (d.sunrise + d.sunset) / 2;
+    var am = [], amC = [], pm = [], pmC = [];
+    for (var h = d.sunrise; h <= d.sunset; h++) {
+      var r = d.hours[h]; if (!r) continue;
+      if (h < mid) { am.push(r.cloud == null ? 50 : r.cloud); amC.push(r.code); }
+      else { pm.push(r.cloud == null ? 50 : r.cloud); pmC.push(r.code); }
+    }
+    var wAM = skyWord(avg(am), amC), wPM = skyWord(avg(pm), pmC);
+
+    // Evening clarity plus how bright the moon is decides whether it
+    // is worth going out to look up.
+    var ev = [];
+    for (var e = d.sunset + 1; e <= d.sunset + 4; e++) {
+      var er = d.hours[e % 24];
+      if (er) ev.push(er.cloud == null ? 50 : er.cloud);
+    }
+    var evCloud = ev.length ? avg(ev) : null;
+    var lit = Math.round(((1 - Math.cos(2 * Math.PI * (moonAge(d.date) / LUNATION))) / 2) * 100);
+    var stars = evCloud == null ? ''
+      : evCloud >= 60 ? ' Evening sky stays cloudy, so not a stargazing night.'
+      : evCloud >= 30 ? ' Evening sky is broken cloud \u2014 patchy stargazing at best.'
+      : lit >= 60 ? ' Clear evening, but a ' + lit + '% moon will wash out the faint stars.'
+      : ' Clear evening and only a ' + lit + '% moon \u2014 a good night for stargazing.';
+
+    return { timeline: true, bg: bgDay(d, skyColor), bold: pair(wAM, wPM),
+      tip: Math.round(d.cloudDay) + '% average cloud cover through daylight.'
+         + (wAM !== wPM ? ' ' + wAM + ' in the morning, ' + wPM.toLowerCase() + ' by afternoon.' : '')
+         + stars };
+  }
+
+  function rainCard(d) {
+    var v = Math.round(d.rainChance);
+    var w = v < 15 ? 'Dry' : v < 40 ? 'Slight Chance of Rain' : v < 65 ? 'Maybe Rain'
+          : v < 85 ? 'Likely Rain' : 'Rain';
+    var tip = v + '% chance at its highest. ';
+    if (v >= 15) {
+      tip += d.rainRun
+        ? 'Likeliest ' + hr(d.rainRun.a) + DASH + hr(d.rainRun.b + 1) + ', though showers can turn up outside that stretch. '
+        : 'Scattered, with no clear window. ';
+      tip += v >= 60 ? 'Take the umbrella.' : 'Worth an umbrella or rain jacket, but it should not run your day.';
+      if (d.rainSum >= 0.05) tip += ' About ' + d.rainSum.toFixed(2) + '\u2033 expected in total.';
+    } else { tip += 'Nothing to plan around.'; }
+    return { timeline: true, bg: bgDay(d, function (r) { return colorAt('rain', r.pop); }), bold: w, tip: tip };
+  }
+
+  function airCard(d, gAir) {
+    var a = null, src = 'cams', lung = '', dom = '';
+    if (gAir && gAir.days && gAir.days[d.date]) {
+      var g = gAir.days[d.date]; a = g.aqi; src = 'google';
+      lung = g.lungAdvice || g.generalAdvice || ''; dom = g.dominant || '';
+    } else if (gAir && gAir.error && d.aqiMax == null) {
+      return { plain: true, bold: 'Air Quality Unavailable', tip: gAir.error };
+    } else { a = d.aqiMax; }
+    if (a == null) return { plain: true, bold: 'Air Quality Unavailable' };
+
+    // Face carries the standard EPA category; what to do about it
+    // lives in the expansion.
+    var w = a <= 50 ? 'Good Air Quality' : a <= 100 ? 'Moderate Air Quality'
+          : a <= 150 ? 'Unhealthy for Sensitive Groups' : a <= 200 ? 'Unhealthy Air Quality'
+          : a <= 300 ? 'Very Unhealthy Air Quality' : 'Hazardous Air Quality';
+    var tip = 'US AQI peaks at ' + Math.round(a) + (dom ? ', mostly ' + dom.toUpperCase() : '') + '. ';
+    tip += lung || (a <= 50 ? 'Nothing in the air arguing against outdoor time.'
+         : a <= 100 ? 'Keep the rescue inhaler on you, and warm up slowly if you are exercising outside.'
+         : a <= 150 ? 'Pre-medicate before anything outdoors, and keep exertion indoors if you can. Consider masking.'
+         : 'Windows shut, and skip outdoor exercise entirely.');
+    var extras = [];
+    if (d.tMin < 45 && d.rhMean < 55) extras.push('cold dry air');
+    if (d.windMax > 25) extras.push('high wind');
+    if (d.ozoneMax != null && d.ozoneMax >= 120) extras.push('high ozone');
+    if (extras.length) tip += ' ' + (a <= 50 ? 'Air is clean, but ' : 'Also, ') + listJoin(extras) + ' can set things off on its own.';
+    // Fine particulate leading the mix at these levels is usually smoke.
+    if (dom && dom.toLowerCase().indexOf('pm25') > -1 && a > 75) {
+      tip += ' Fine particulate is the dominant pollutant at this level, which usually means smoke rather than traffic.';
+    }
+    // Neither source is a thermometer on your street. Google fuses
+    // ground stations, satellite and dispersion models onto a 500 m
+    // grid; CAMS is a global model on a ~45 km grid. Say which, not
+    // "measured".
+    tip += src === 'google' ? ' Google Air Quality, 500 m grid.' : ' Copernicus CAMS, ~45 km grid.';
+    return { bg: bgFrom('aqi', a), bold: w, tip: tip };
+  }
+
+  /* Bloom calendars by region. The old single calendar was tuned to the
+     Great Lakes and is simply wrong elsewhere: Texas cedar peaks in
+     January, the Southeast starts trees in February and never really
+     stops with mould, and the desert Southwest barely has a dormant
+     season. These are still models, not counts \u2014 the card says so. */
+  var CALENDARS = {
+    great_lakes: { name: 'Great Lakes and Northeast',
+      m: {1:[],2:['cedar','elm'],3:['maple','elm','alder'],4:['oak','birch','poplar'],
+          5:['oak','grass'],6:['grass'],7:['grass'],8:['ragweed','mold'],9:['ragweed','mold'],
+          10:['ragweed','leaf mold'],11:['leaf mold'],12:[]},
+      s: {1:.05,2:.10,3:.45,4:.85,5:.90,6:.80,7:.50,8:.75,9:.95,10:.50,11:.20,12:.05} },
+    southeast: { name: 'Southeast',
+      m: {1:['cedar','elm'],2:['oak','maple','juniper'],3:['oak','pine','birch'],4:['oak','pine','grass'],
+          5:['grass','mold'],6:['grass','mold'],7:['grass','mold'],8:['ragweed','grass','mold'],
+          9:['ragweed','mold'],10:['ragweed','mold'],11:['mold'],12:['cedar','mold']},
+      s: {1:.30,2:.70,3:.90,4:.85,5:.65,6:.55,7:.55,8:.75,9:.90,10:.70,11:.35,12:.25} },
+    texas: { name: 'Texas and southern plains',
+      m: {1:['mountain cedar'],2:['mountain cedar','elm','ash'],3:['oak','elm'],4:['oak','grass'],
+          5:['grass'],6:['grass'],7:['grass'],8:['ragweed','grass'],9:['ragweed'],
+          10:['ragweed','mold'],11:['mold'],12:['mountain cedar']},
+      s: {1:.95,2:.80,3:.75,4:.65,5:.55,6:.45,7:.40,8:.60,9:.80,10:.60,11:.30,12:.75} },
+    southwest: { name: 'desert Southwest',
+      m: {1:['juniper'],2:['juniper','ash','mulberry'],3:['mulberry','olive','ash'],
+          4:['olive','mesquite','grass'],5:['mesquite','grass'],6:['grass'],7:['grass'],
+          8:['ragweed','grass'],9:['ragweed','sagebrush'],10:['ragweed','sagebrush'],
+          11:['juniper'],12:['juniper']},
+      s: {1:.35,2:.60,3:.80,4:.85,5:.70,6:.45,7:.40,8:.60,9:.75,10:.60,11:.35,12:.30} },
+    california: { name: 'California',
+      m: {1:['juniper','alder'],2:['oak','alder','ash'],3:['oak','olive','walnut'],
+          4:['oak','olive','grass'],5:['grass','olive'],6:['grass'],7:['grass'],
+          8:['ragweed','grass'],9:['ragweed','sagebrush'],10:['ragweed'],11:['mold'],12:['juniper']},
+      s: {1:.30,2:.60,3:.85,4:.85,5:.70,6:.50,7:.40,8:.50,9:.60,10:.45,11:.25,12:.20} },
+    pacific_nw: { name: 'Pacific Northwest',
+      m: {1:['alder'],2:['alder','cedar','hazel'],3:['alder','birch','maple'],
+          4:['birch','cedar','oak'],5:['grass','oak'],6:['grass'],7:['grass'],
+          8:['grass','mold'],9:['ragweed','mold'],10:['mold'],11:['mold'],12:[]},
+      s: {1:.20,2:.55,3:.80,4:.85,5:.90,6:.75,7:.45,8:.35,9:.35,10:.30,11:.15,12:.05} }
+  };
+  function calendarFor(lat, lon) {
+    if (lat == null || lon == null) return CALENDARS.great_lakes;
+    if (lon <= -117 && lat >= 42) return CALENDARS.pacific_nw;
+    if (lon <= -114 && lat < 42) return CALENDARS.california;
+    if (lon > -114 && lon <= -100 && lat < 40) return CALENDARS.southwest;
+    if (lon > -106 && lon <= -93 && lat < 37) return CALENDARS.texas;
+    if (lon > -95 && lat < 37) return CALENDARS.southeast;
+    return CALENDARS.great_lakes;
+  }
+
+  function allergyCard(d, pollen, cal) {
+    var advice = function (s) {
+      return s >= 65 ? 'Antihistamine before you go out, not after. Shower and change clothes when you get home, and keep windows shut.'
+           : s >= 35 ? 'Worth taking the antihistamine on schedule, and rinsing off after real time outside.'
+           : 'Low pressure on this front today.';
+    };
+    var level = function (s) { return s >= 65 ? 'High' : s >= 35 ? 'Moderate' : 'Low'; };
+
+    if (pollen && pollen.days) {
+      var day = null;
+      for (var i = 0; i < pollen.days.length; i++) if (pollen.days[i].date === d.date) day = pollen.days[i];
+      if (day) {
+        var idx = 0;
+        (day.types || []).forEach(function (t) { if (t.index != null && t.index > idx) idx = t.index; });
+        var plants = (day.plants || []).sort(function (a, b) { return b.index - a.index; })
+                        .slice(0, 2).map(function (p) { return cap(p.name.toLowerCase()); });
+        var sc = Math.round((idx / 5) * 100);
+        return { bg: bgFrom('risk', sc),
+          bold: plants.length ? level(sc) + ' ' + listJoin(plants) + ' Allergies' : 'No Pollen in Season',
+          tip: 'Pollen index ' + idx + ' out of 5, from the Google Pollen API. ' + advice(sc) };
+      }
+    }
+    if (pollen && pollen.error) return { plain: true, bold: 'Allergens Unavailable', tip: pollen.error };
+
+    cal = cal || CALENDARS.great_lakes;
+    var m = parseInt(d.date.slice(5, 7), 10), names = cal.m[m];
+    if (!names.length) return { bg: bgFrom('risk', 4), bold: 'Pollen Quiet',
+      tip: 'Little is in bloom this time of year.' };
+    var s2 = cal.s[m];
+    if (d.rhMean < 55 && d.tMax > 55) s2 += .12;
+    if (d.windMax > 10 && d.windMax < 28) s2 += .12;
+    if (d.rainSum >= .15) s2 -= .32; else if (d.rainYesterday >= .15) s2 -= .08;
+    if (d.rhMean > 85) s2 -= .12;
+    var sc2 = Math.round(Math.max(0, Math.min(1, s2)) * 100);
+    return { bg: bgFrom('risk', sc2),
+      bold: level(sc2) + ' ' + listJoin(names.map(cap)) + ' Allergies',
+      tip: 'Scored ' + sc2 + ' out of 100, from a bloom calendar for the ' + cal.name
+         + ' rather than any pollen data. ' + advice(sc2) };
+  }
+
+  function migraineScore(d) {
+    var s = 0, why = [];
+    if (d.drop24 != null && Math.abs(d.drop24) >= 3) {
+      var w = (d.drop24 > 0 ? 1 : .7) * Math.min(50, Math.abs(d.drop24) * 4.2); s += w;
+      why.push({ w: w, t: 'pressure ' + (d.drop24 > 0 ? 'fell ' : 'rose ') + Math.abs(d.drop24).toFixed(0) + ' hPa' });
+    }
+    if (d.tSwing > 18) { var a = Math.min(14, (d.tSwing - 18) * .8 + 6); s += a; why.push({ w: a, t: Math.round(d.tSwing) + DEG + ' temperature swing' }); }
+    if (d.rhMean > 75 && d.tMax > 72) { s += 12; why.push({ w: 12, t: 'warm and muggy air' }); }
+    if (d.uvMax >= 7 && d.cloudDay < 35) { s += 11; why.push({ w: 11, t: 'bright glare' }); }
+    if (d.windMax > 28) { s += 7; why.push({ w: 7, t: 'gusty wind' }); }
+        return { s: Math.min(100, Math.round(s)), why: why };
+  }
+
+  function migraineCard(d) {
+    var r = migraineScore(d), s = r.s, why = r.why;
+    return { bg: bgFrom('risk', s),
+      bold: 'Migraine ' + (s >= 45 ? 'Likely' : s >= 24 ? 'Possible' : 'Unlikely'),
+      tip: cap(topOf(why) || 'pressure steady, no sharp swings') + '. '
+         + (s >= 45 ? 'Front-load water, hold your sleep and meal times, sunglasses outdoors, abortive meds within reach.'
+          : s >= 24 ? 'Hydrate early and do not skip meals.' : 'Atmospherically quiet.') };
+  }
+
+  function arthritisScore(d) {
+    var s = 0, why = [];
+    if (d.drop24 != null && d.drop24 >= 2) { var a = Math.min(34, d.drop24 * 3.4); s += a; why.push({ w: a, t: 'pressure fell ' + d.drop24.toFixed(0) + ' hPa' }); }
+    if (d.tMax < 55 && d.rhMean > 70) { var b = 24 + Math.min(12, (55 - d.tMax) * .5); s += b; why.push({ w: b, t: 'damp and cool air' }); }
+    else if (d.tMax < 45) { var c = Math.min(24, (45 - d.tMax) * .7 + 8); s += c; why.push({ w: c, t: 'cold, high of ' + Math.round(d.tMax) + DEG }); }
+    else if (d.rhMean > 82) { s += 11; why.push({ w: 11, t: 'heavy humidity' }); }
+    if (d.rainSum >= .05) { var e = Math.min(12, d.rainSum * 14 + 4); s += e; why.push({ w: e, t: d.rainSum.toFixed(2) + '\u2033 of rain' }); }
+    if (d.tSwing > 22) { var f = Math.min(10, (d.tSwing - 22) * .6 + 5); s += f; why.push({ w: f, t: Math.round(d.tSwing) + DEG + ' swing' }); }
+    if (d.tMax >= 65 && d.rhMean < 65 && Math.abs(d.drop24 || 0) < 3) s = Math.max(0, s - 14);
+        return { s: Math.min(100, Math.round(s)), why: why };
+  }
+
+  function arthritisCard(d) {
+    var r = arthritisScore(d), s = r.s, why = r.why;
+    return { bg: bgFrom('risk', s),
+      bold: 'Arthritis Flare ' + (s >= 45 ? 'Likely' : s >= 24 ? 'Possible' : 'Unlikely'),
+      tip: cap(topOf(why) || 'settled, warm and dry') + '. '
+         + (s >= 45 ? 'Heat on the worst joints before you move them, a longer warm-up, and push the physical parts of the day later rather than first thing.'
+          : s >= 24 ? 'Extra warm-up time, and keep moving \u2014 sitting still is what tightens up.'
+          : 'Nothing pushing on the joints today.') };
+  }
+
+  function waterCard(water, dateStr) {
+    if (!water) {
+      return { bold: 'No Water Temperature', plain: true,
+        tip: 'Nothing covers this spot. Ocean models stop at the coast and there is no buoy nearby \u2014 the Great Lakes in particular are outside every sea surface model, which is why the Michigan beaches use buoys instead.' };
+    }
+
+    var w, waveFt = null, provenance;
+    if (water.kind === 'buoy') {
+      if (!water.available) {
+        return { bold: 'Water Temperature Unavailable', plain: true,
+          tip: water.station + ' is not reporting. Buoys come out of the lake for the winter. Assume the water is cold.' };
+      }
+      w = water.waterF; waveFt = water.waveFt;
+      provenance = 'Measured at the ' + water.station + ', ' + water.miles
+                 + ' miles out. Nearshore water can be far colder after an upwelling.';
+    } else {
+      var day = water.days && water.days[dateStr];
+      if (!day) {
+        return { bold: 'Water Temperature Unavailable', plain: true,
+          tip: 'No sea surface reading for that day.' };
+      }
+      w = day.waterF; waveFt = day.waveFt;
+      provenance = 'Modelled sea surface temperature, not a measurement, and it describes open water rather than the shallows you would actually wade into.';
+    }
+
+    var word = w < 60 ? 'Dangerously Cold Water' : w < 68 ? 'Cold Water'
+             : w < 74 ? 'Bracing Water' : 'Pleasant Water';
+    var tip = w + DEG + (waveFt != null ? ', waves ' + waveFt + ' ft' : '') + '. ';
+    if (w < 65) tip = 'Cold enough for cold-water shock \u2014 get in slowly, never jump. ' + tip;
+    return { bg: bgAt('water', w, 6), bold: word, tip: tip + provenance };
+  }
+
+  /* The card is the day: slate at the edges, warm gold through the
+     middle, with the colour turning at the actual sunrise and sunset. */
+  var NIGHT = [168,177,193], TWILIGHT = [233,190,150], DAYLIT = [248,238,190];
+  function daylightCard(d) {
+    var srF = frac(d.sunriseISO), ssF = frac(d.sunsetISO);
+    var mins = span(d.sunriseISO, d.sunsetISO);
+    var bg = bgDay(d, function (r, h) {
+      var up = Math.max(0, Math.min(1, (h - (srF - 0.75)) / 1.5));
+      var down = Math.max(0, Math.min(1, ((ssF + 0.75) - h) / 1.5));
+      var t = up * down;
+      var c = t < 0.5 ? mix3(NIGHT, TWILIGHT, t * 2) : mix3(TWILIGHT, DAYLIT, (t - 0.5) * 2);
+      return css(c);
+    });
+    var tip = hm(mins) + ' of daylight. Solar noon at ' + hr((srF + ssF) / 2) + '.';
+    if (d.prevSunriseISO) {
+      var delta = mins - span(d.prevSunriseISO, d.prevSunsetISO);
+      if (delta !== 0) {
+        tip += ' That is ' + Math.abs(delta) + ' minute' + (Math.abs(delta) === 1 ? '' : 's')
+             + (delta > 0 ? ' longer' : ' shorter') + ' than the day before.';
+      }
+    }
+    return { timeline: true, bg: bg,
+      bold: 'Sunrise ' + clock(d.sunriseISO) + ' \u00B7 Sunset ' + clock(d.sunsetISO), tip: tip };
+  }
+
+  /* Moon phase is arithmetic, not an API call: the synodic month is
+     29.530588853 days from a known new moon. Good to within a few
+     hours, which is far finer than naming a phase needs. */
+  var LUNATION = 29.530588853;
+  var KNOWN_NEW = Date.UTC(2000, 0, 6, 18, 14);
+  function moonAge(dateStr) {
+    var noonLocal = Date.parse(dateStr + 'T12:00:00Z');
+    var age = ((noonLocal - KNOWN_NEW) / 86400000) % LUNATION;
+    return age < 0 ? age + LUNATION : age;
+  }
+  function moonCard(dateStr) {
+    var age = moonAge(dateStr);
+    var f = age / LUNATION;
+    var illum = Math.round(((1 - Math.cos(2 * Math.PI * f)) / 2) * 100);
+    // Bands are one day either side of the four principal phases
+    // (new 0, first quarter 7.38, full 14.765, last quarter 22.15).
+    // Eyeballed thresholds put a 99%-lit moon in the gibbous band.
+    var name = age < 1.0 ? 'New Moon' : age < 6.38 ? 'Waxing Crescent' : age < 8.38 ? 'First Quarter'
+             : age < 13.765 ? 'Waxing Gibbous' : age < 15.765 ? 'Full Moon' : age < 21.15 ? 'Waning Gibbous'
+             : age < 23.15 ? 'Last Quarter' : age < 28.53 ? 'Waning Crescent' : 'New Moon';
+    var waxing = f < 0.5;
+
+    // The gradient is the moon itself: the lit limb sits on the side
+    // that is actually lit, and the terminator falls where it falls.
+    var DARK = 'rgb(176,184,198)', LIT = 'rgb(246,248,251)';
+    var edge = illum, soft = 9;
+    var bg = waxing
+      ? 'linear-gradient(90deg,' + DARK + ' 0%,' + DARK + ' ' + Math.max(0, 100 - edge - soft) + '%,'
+        + LIT + ' ' + Math.min(100, 100 - edge + soft) + '%,' + LIT + ' 100%)'
+      : 'linear-gradient(90deg,' + LIT + ' 0%,' + LIT + ' ' + Math.max(0, edge - soft) + '%,'
+        + DARK + ' ' + Math.min(100, edge + soft) + '%,' + DARK + ' 100%)';
+
+    var toFull = ((14.765 - age) % LUNATION + LUNATION) % LUNATION;
+    var toNew = ((LUNATION - age) % LUNATION + LUNATION) % LUNATION;
+    var next = toFull < toNew
+      ? 'Full moon in ' + Math.round(toFull) + ' day' + (Math.round(toFull) === 1 ? '' : 's') + '.'
+      : 'New moon in ' + Math.round(toNew) + ' day' + (Math.round(toNew) === 1 ? '' : 's') + '.';
+    var seen = age < 1.4 ? 'Up with the sun all day, so effectively invisible.'
+             : age < 6.4 ? 'Low in the west just after sunset, then gone.'
+             : age < 8.4 ? 'Rises around midday, sets around midnight — best in the evening.'
+             : age < 13.8 ? 'Up most of the night, setting in the small hours.'
+             : age < 15.8 ? 'Rises at sunset and sets at sunrise — up all night.'
+             : age < 21.1 ? 'Rises mid-evening and stays up past dawn.'
+             : age < 23.1 ? 'Rises around midnight, sets around midday — best before dawn.'
+             : 'Low in the east just before sunrise.';
+    return { bg: bg, bold: name,
+      tip: illum + '% illuminated, ' + Math.round(age) + ' days into the cycle. ' + seen + ' ' + next };
+  }
+
+  /* Solar longitude passes 0, 90, 180 and 270 degrees at the equinoxes
+     and solstices. Solve for the instant rather than testing day
+     boundaries: the June solstice often lands late on the 20th local
+     time in North America while sitting on the 21st in UTC. Accurate
+     to about fifteen minutes, which only matters if an event falls
+     within fifteen minutes of local midnight. */
+  function solLon(n) {
+    var L = 280.460 + 0.9856474 * n;
+    var g = (357.528 + 0.9856003 * n) * Math.PI / 180;
+    return ((L + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) % 360 + 360) % 360;
+  }
+  var J2000 = Date.UTC(2000, 0, 1, 12, 0);
+  function seasonInstant(k, year, approxDay) {
+    var start = (Date.UTC(year, 0, 1) - J2000) / 86400000 + approxDay - 5;
+    var f = function (n) { return ((solLon(n) - k + 540) % 360) - 180; };
+    for (var a = start; a < start + 10; a += 0.25) {
+      if (f(a) < 0 && f(a + 0.25) >= 0) {
+        var lo = a, hi = a + 0.25;
+        for (var i = 0; i < 40; i++) {
+          var m = (lo + hi) / 2;
+          if (f(lo) < 0 && f(m) >= 0) hi = m; else lo = m;
+        }
+        return new Date(J2000 + (lo + hi) / 2 * 86400000);
+      }
+    }
+    return null;
+  }
+  function dateInTz(dateObj, tz) {
+    var p = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(dateObj);
+    function g(t) { for (var i = 0; i < p.length; i++) if (p[i].type === t) return p[i].value; }
+    return g('year') + '-' + g('month') + '-' + g('day');
+  }
+  function seasonCard(dateStr, tz, lat) {
+    var year = parseInt(dateStr.slice(0, 4), 10);
+    var north = lat == null || lat >= 0;
+    var events = [
+      [0,   79,  north ? 'Spring Equinox' : 'Autumn Equinox',  'Day and night are near enough equal.'],
+      [90,  172, north ? 'Summer Solstice' : 'Winter Solstice', north ? 'The longest day of the year.' : 'The shortest day of the year.'],
+      [180, 266, north ? 'Autumn Equinox' : 'Spring Equinox',  'Day and night are near enough equal.'],
+      [270, 355, north ? 'Winter Solstice' : 'Summer Solstice', north ? 'The shortest day of the year.' : 'The longest day of the year.']
+    ];
+    for (var i = 0; i < events.length; i++) {
+      var t = seasonInstant(events[i][0], year, events[i][1]);
+      if (t && dateInTz(t, tz) === dateStr) {
+        var at = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(t);
+        return { note: true, bold: events[i][2],
+                 tip: events[i][3] + ' The exact moment is ' + at + ' local time, when the sun reaches its turning point.' };
+      }
+    }
+    return null;
+  }
+
+  /* Mosquitoes. Warm, humid, calm, and water standing around from
+     recent rain. No free mosquito index exists, so this is a rule of
+     thumb rather than data. */
+  function bugCard(d) {
+    if (d.tMax < 50) return null;
+    var s = 0, why = [];
+    if (d.tMax >= 65 && d.tMax <= 92) { s += 34; why.push('warm enough for them to fly'); }
+    else if (d.tMax >= 55) { s += 16; }
+    if (d.dewMax >= 62) { s += 26; why.push('humid'); }
+    else if (d.dewMax >= 52) { s += 13; }
+    if (d.windMax < 8) { s += 20; why.push('barely any wind to keep them off'); }
+    else if (d.windMax < 13) { s += 9; }
+    else if (d.windMax >= 18) { s -= 12; why.push('windy enough to keep them down'); }
+    if (d.rainYesterday >= 0.1 || d.rainSum >= 0.1) { s += 18; why.push('recent rain leaves standing water'); }
+    if (d.tMin < 42) { s -= 20; why.push('a cold night knocks them back'); }
+    s = Math.max(0, Math.min(100, s));
+    var word = s >= 65 ? 'Bugs Are Brutal' : s >= 40 ? 'Bring Bug Spray' : s >= 20 ? 'A Few Bugs' : 'Bug-Free';
+    return { bg: bgFrom('risk', s), bold: word,
+      tip: (why.length ? cap(listJoin(why)) + '. ' : '')
+         + (s >= 40 ? 'Worst at dawn and dusk. Repellent on exposed skin, and long sleeves after sunset. '
+                    : 'You can probably skip the repellent. ')
+         + 'Estimated from temperature, dew point, wind and recent rain \u2014 there is no free mosquito data to check it against.' };
+  }
+
+  /* Frostbite, using apparent temperature as the wind chill. Times
+     follow the National Weather Service wind chill chart. Only shown
+     when it is cold enough to matter. */
+  function frostbiteCard(d) {
+    var wc = d.feelsMin;
+    if (wc > 32) return null;
+    var word = wc <= -48 ? 'Frostbite in 5 min' : wc <= -32 ? 'Frostbite in 10 min'
+             : wc <= -18 ? 'Frostbite in 30 min' : wc <= 5 ? 'Cover Exposed Skin'
+             : 'Frostbite Unlikely';
+    var tip = 'Wind chill bottoms out near ' + Math.round(wc) + DEG + '. ';
+    tip += wc <= -18
+      ? 'Those are National Weather Service wind chill thresholds for frostbite on uncovered skin. Nothing bare outdoors \u2014 face, ears, fingers.'
+      : wc <= 5
+        ? 'Not fast frostbite weather, but cold enough that uncovered skin suffers over a long stretch outside. Hat, gloves, something over your face.'
+        : 'Below freezing, but not near frostbite territory. Frostbite needs a wind chill around 18 below before it happens in half an hour.';
+    // Wind chill charts assume you are dry. Soaked fabric conducts heat
+    // away many times faster, so a merely cold day turns dangerous.
+    if (d.rainChance >= 40 || d.rainSum >= 0.05) {
+      tip += ' Those figures assume you stay dry. Wet clothing pulls heat away many times faster than dry \u2014 melted snow soaking through changes a cold day into a genuinely risky one.';
+    }
+    // Cold plus wind constricts blood vessels and raises the load on
+    // the heart. Advice, not a risk score.
+    if (wc <= 15 && d.windMax >= 12) {
+      tip += ' Cold this sharp with wind on top of it tightens blood vessels and puts more load on the heart, so heavy work outdoors \u2014 shovelling especially \u2014 costs more than it looks. Warm up inside first and take it in short stretches.';
+    }
+    return { bg: bgAt('feels', wc, 9), bold: word, tip: tip };
+  }
+
+  /* Frizz is a dew point story, and it fails at both ends: damp air
+     swells the hair shaft, bone-dry air turns it to static. Same ramp
+     as Sweat, different consequence. */
+  function frizzCard(d) {
+    var dp = d.dewMax, w, why;
+    if (dp < 20)      { w = 'Static & Flyaways'; why = 'Air this dry pulls moisture out of hair and leaves it charged.'; }
+    else if (dp < 45) { w = 'Hair Behaves';      why = 'Dry enough to hold a style, damp enough to avoid static.'; }
+    else if (dp < 56) { w = 'Slight Frizz';      why = 'Borderline. Fine on a good hair day, not on a bad one.'; }
+    else if (dp < 66) { w = 'Frizz Likely';      why = 'Enough moisture in the air to swell the hair shaft.'; }
+    else              { w = 'Frizz Guaranteed';  why = 'Saturated air. Nothing is holding today.'; }
+    if (d.rainChance >= 60 && dp >= 45) why += ' Rain on top of it will not help.';
+    return { bg: bgAt('sweat', dp, 7), bold: w,
+      tip: 'Dew point peaks near ' + Math.round(dp) + DEG + '. ' + why };
+  }
+
+  /* Fire weather. The National Weather Service issues Red Flag
+     Warnings on roughly low humidity, strong sustained wind and dry
+     fuels. A real warning arrives through the alert feed already; this
+     tile is the day or two of lead time before one gets issued.
+     Fuel dryness is the piece weather data cannot see, so this reads
+     conditions, not fire danger. */
+  function fireCard(d) {
+    var rh = d.rhMin;
+    if (rh == null) return null;
+    var dryGround = d.rainSum < 0.05 && d.rainYesterday < 0.1;
+    var inRange = rh <= 35 && d.windMax >= 15 && dryGround && d.tMax >= 40;
+    if (!inRange) return null;
+
+    var full = rh <= 25 && d.windMax >= 25;
+    var near = rh <= 30 && d.windMax >= 20;
+    var score = full ? 88 : near ? 62 : 40;
+    var word = full ? 'Red Flag Conditions' : near ? 'Near Red Flag Conditions' : 'Elevated Fire Risk';
+
+    var tip = 'Humidity bottoms out at ' + Math.round(rh) + '% with wind to '
+            + Math.round(d.windMax) + ' mph, and no rain to speak of. ';
+    tip += full
+      ? 'That is the shape of a Red Flag Warning: fire spreads fast and is hard to stop. No burning, no sparks, and be careful where you park on dry grass.'
+      : 'Not full Red Flag territory, but dry and windy enough that anything lit will run. Hold off on burning.';
+    tip += ' Fuel dryness is the part this cannot see \u2014 an official Red Flag Warning would show up as an alert card at the top.';
+    return { bg: bgFrom('risk', score), bold: word, tip: tip };
+  }
+
+  /* Frost forms on a surface, not in the air. A clear calm night lets
+     the windshield radiate several degrees below air temperature, so
+     you can get frost with the thermometer above freezing. Needs the
+     surface at or below both freezing and the dew point. */
+  function frostCard(d) {
+    if (d.cloudDawn == null || d.dewDawn == null) return null;
+    var clearCalm = d.cloudDawn < 45 && (d.windDawn == null || d.windDawn < 7);
+    var drop = clearCalm ? 5 : d.cloudDawn < 70 ? 2 : 0;
+    var surface = d.tMin - drop;
+    if (surface > 34 || d.dewDawn < surface - 2) return null;
+
+    var hard = surface <= 28;
+    return { bg: bgAt('feels', surface, 8),
+      bold: hard ? 'Scrape the Windshield' : 'Light Frost Likely',
+      tip: 'Air bottoms out at ' + Math.round(d.tMin) + DEG
+         + (drop ? ', and a ' + (clearCalm ? 'clear, calm' : 'partly clear') + ' night lets glass radiate to about '
+                   + Math.round(surface) + DEG : '')
+         + '. Dew point sits near ' + Math.round(d.dewDawn) + DEG + ', so moisture will freeze onto the surface. '
+         + (hard ? 'Build ten minutes into the morning, or cover the glass tonight.'
+                 : 'A quick scrape, or a few minutes of defrost.') };
+  }
+
+  /* Pipes burst on duration, not on the low. Roughly six hours below
+     20 F is the point plumbers start warning about uninsulated runs. */
+  function pipeCard(d) {
+    if (d.coldRun < 4) return null;
+    var severe = d.coldRun >= 10 || d.feelsMin <= -5;
+    return { bg: bgAt('feels', d.feelsMin, 8),
+      bold: severe ? 'Drip the Faucets' : 'Pipe Freeze Watch',
+      tip: Math.round(d.coldRun) + ' straight hours at or below 20' + DEG
+         + ', bottoming out near ' + Math.round(d.feelsMin) + DEG + '. '
+         + (severe
+            ? 'Long enough for uninsulated pipes in crawl spaces and exterior walls to freeze. Let a faucet drip on the coldest runs and open cabinet doors under sinks.'
+            : 'Getting toward the range where exposed pipes are at risk. Worth checking anything in a crawl space or against an outside wall.') };
+  }
+
+  /* Mould grows where humid air meets a cold surface. A basement in
+     summer sits around 60-65 F, so an outdoor dew point above that
+     means condensation on every wall you let the air touch. */
+  function moldCard(d) {
+    var dp = d.dewMax;
+    if (dp < 58 || d.tMax < 55) return null;
+    var bad = dp >= 68;
+    return { bg: bgFrom('risk', bad ? 78 : 48),
+      bold: bad ? 'Keep the Basement Shut' : 'Basement Damp Risk',
+      tip: 'Outdoor dew point reaches ' + Math.round(dp) + DEG
+         + ', above the surface temperature of a typical basement or crawl space. '
+         + (bad
+            ? 'Opening windows down there will condense water onto the walls. Keep it closed and run the dehumidifier.'
+            : 'Borderline. Airing the basement out today will do more harm than good.')
+         + ' Mould spores off damp surfaces are the same trigger as the outdoor mould in the allergen card.' };
+  }
+
+  /* Asphalt in full sun runs far hotter than the air, and paw pads
+     burn well before a person notices through shoes. Cold is the other
+     end: salt and ice cut pads below about 20 F. */
+  function pavementCard(d) {
+    var midCloud = (function () {
+      var v = [];
+      for (var h = 11; h <= 16; h++) { var r = d.hours[h]; if (r && r.cloud != null) v.push(r.cloud); }
+      return v.length ? avg(v) : 50;
+    })();
+    var loading = midCloud < 30 ? 45 : midCloud < 60 ? 30 : 14;
+    var surface = d.tMax + loading;
+    var hot = d.tMax >= 75 && surface >= 125;
+    var cold = d.feelsMin <= 15;
+    if (!hot && !cold) return null;
+
+    if (cold) {
+      return { bg: bgAt('feels', d.feelsMin, 8), bold: 'Hard on Paws',
+        tip: 'Wind chill near ' + Math.round(d.feelsMin) + DEG
+           + '. Ice and road salt split pads at this range. Keep walks short, and rinse paws afterwards.' };
+    }
+    return { bg: bgFrom('risk', Math.min(100, (surface - 110) * 3)),
+      bold: surface >= 140 ? 'Pavement Burns Paws' : 'Hot Pavement',
+      tip: 'Air reaches ' + Math.round(d.tMax) + DEG + ', and asphalt in '
+         + (midCloud < 30 ? 'full sun' : 'this much sun') + ' runs roughly '
+         + Math.round(surface) + DEG + '. '
+         + 'Hold the back of your hand to it for seven seconds \u2014 if you cannot, neither can a dog. Walk early or after sunset, and stay on grass.' };
+  }
+
+  /* Wind, which the app had been fetching and never showing. Gust
+     factor is the interesting part: steady wind is workable, gusty
+     wind is what makes sailing and flying miserable. */
+  function windCard(d) {
+    var mean = d.windMean, gust = d.gustMax || d.windMax;
+    var factor = mean > 1 ? gust / mean : 1;
+    var word = gust < 8 ? 'Calm' : gust < 15 ? 'Light Wind' : gust < 25 ? 'Breezy'
+             : gust < 38 ? 'Windy' : 'Strong Wind';
+    var steady = factor < 1.6 ? 'steady' : factor < 2.2 ? 'a bit gusty' : 'very gusty';
+    var use = gust < 6 ? 'Too still for a kite or a sail.'
+            : (gust >= 8 && gust <= 22 && factor < 1.9) ? 'Good steady air for a kite or a small sail.'
+            : gust > 30 ? 'Too much for recreational sailing, and a kite will not survive it.'
+            : 'Flyable, but the gusts will fight you.';
+    return { bg: bgFrom('risk', Math.min(100, gust * 2.2)), bold: word,
+      tip: 'Averaging ' + Math.round(mean) + ' mph with gusts to ' + Math.round(gust)
+         + ' mph \u2014 ' + steady + '. ' + use };
+  }
+
+  /* The light-exposure card. Not a mood score: how much bright light
+     the day actually offers, and when to go get it. */
+  function lightCard(d) {
+    var mins = Math.round((d.sunset - d.sunrise) * 60 * (1 - d.cloudDay / 140));
+    var word = d.cloudDay >= 80 ? 'Little Bright Light' : d.cloudDay >= 55 ? 'Patchy Light'
+             : d.cloudDay >= 25 ? 'Decent Light' : 'Plenty of Light';
+    var best = null;
+    for (var h = d.sunrise; h <= Math.min(d.sunset, d.sunrise + 6); h++) {
+      var r = d.hours[h];
+      if (r && r.cloud != null && r.cloud < 55) { best = h; break; }
+    }
+    var tip = 'Roughly ' + hm(mins) + ' of usable outdoor light, '
+            + Math.round(d.cloudDay) + '% cloud through the day. ';
+    tip += best != null
+      ? 'The clearest early stretch starts around ' + hr(best) + ' \u2014 morning light does more for your body clock than the same time later on.'
+      : 'No clear morning window, so take whatever midday offers.';
+    if (d.greyStreak >= 3) {
+      tip += ' That is ' + d.greyStreak + ' overcast days running; if you use a lamp, this is the week for it.';
+    }
+    return { bg: bgFrom('sky', Math.min(100, d.cloudDay)), bold: word, tip: tip };
+  }
+
+  /* Aurora needs three things at once: a disturbed magnetosphere, a
+     clear evening, and a dark-enough moon. At Great Lakes latitudes
+     the Kp bar is high, so this fires rarely and means something. */
+  function auroraCard(d, kp) {
+    if (!kp || kp.max < 5) return null;
+    var ev = [];
+    for (var e = d.sunset + 1; e <= d.sunset + 5; e++) {
+      var r = d.hours[e % 24];
+      if (r && r.cloud != null) ev.push(r.cloud);
+    }
+    var cloud = ev.length ? avg(ev) : 100;
+    var lit = Math.round(((1 - Math.cos(2 * Math.PI * (moonAge(d.date) / LUNATION))) / 2) * 100);
+    var strong = kp.max >= 7;
+    var word = strong && cloud < 40 ? 'Aurora Possible Tonight'
+             : strong ? 'Aurora Active, Sky Cloudy' : 'Aurora Watch';
+    return { bg: bgFrom('risk', Math.min(100, kp.max * 11)), bold: word,
+      tip: 'Planetary K index forecast to reach ' + kp.max.toFixed(1)
+         + '. Aurora usually needs Kp 7 or better to be seen this far south. '
+         + 'Evening cloud around ' + Math.round(cloud) + '%, moon ' + lit + '% lit. '
+         + (strong && cloud < 40
+            ? 'Worth driving north away from town lights and looking low on the northern horizon.'
+            : 'Conditions are not there tonight, but the storm may hold for another day.')
+         + ' From NOAA Space Weather Prediction Center.' };
+  }
+
+  /* Which shoes. Rain, snow and ice were already in the data; mud and
+     road salt were the gaps, and those are the two that cost you a
+     cleaning job afterwards. Written as a recommendation, not a report
+     \u2014 "boots, not the good ones" is useful before you leave, and
+     "your shoes got muddy" is not. */
+  function shoeCard(d) {
+    var codes = [];
+    for (var h = 6; h <= 20; h++) { var r = d.hours[h]; if (r && r.code != null) codes.push(r.code); }
+    var icy = codes.some(function (c) { return [56, 57, 66, 67].indexOf(c) > -1; });
+    var snowing = d.snowToday >= 0.2 || codes.some(function (c) { return [71, 73, 75, 77, 85, 86].indexOf(c) > -1; });
+    var slush = d.snow3 >= 0.5 && d.tMax > 33 && d.tMax < 46;
+    var freezeThaw = d.snow3 >= 0.2 && d.tMin <= 32 && d.tMax > 33;
+    // Salt sits on dry pavement after a cold snowy stretch.
+    var salty = d.snow3 >= 0.2 && d.saltCold && d.rainSum < 0.05 && !snowing;
+    // Mud needs unfrozen, saturated ground. Fall back to rainfall when
+    // the model gives no soil data.
+    var muddy = d.soilMoist != null
+      ? (d.soilMoist >= 0.33 && (d.soilTemp == null || d.soilTemp > 34))
+      : (d.rain3 >= 0.4 && d.tMin > 34);
+    var wet = d.rainChance >= 50 || d.rainSum >= 0.10;
+
+    var word, why, dirty = false;
+    if (icy || freezeThaw) {
+      word = 'Traction, Not Style';
+      why = (icy ? 'Freezing rain in the forecast. ' : 'Snow on the ground with the temperature crossing freezing, so it thaws and refreezes. ')
+          + 'Whatever has the best grip, and take the shorter route if there is one.';
+      dirty = true;
+    } else if (snowing) {
+      word = 'Waterproof Boots';
+      why = Math.round(d.snowToday * 10) / 10 + '\u2033 of snow expected. Boots that seal at the ankle, not shoes you will be drying on a radiator.';
+      dirty = true;
+    } else if (slush) {
+      word = 'Waterproof Boots';
+      why = 'Snow on the ground and a high near ' + Math.round(d.tMax) + DEG + ', which makes slush. Deeper and wetter than it looks at the curb.';
+      dirty = true;
+    } else if (muddy && wet) {
+      word = 'Boots You Can Hose Off';
+      why = 'Ground is saturated and more rain is coming. Anything off pavement will be mud.';
+      dirty = true;
+    } else if (salty) {
+      word = 'Not the Good Leather';
+      why = 'Cold and snowy the last few days, dry today \u2014 that leaves salt crust on the walks. It stains leather and suede for good.';
+      dirty = true;
+    } else if (muddy) {
+      word = 'Boots You Can Hose Off';
+      why = 'Ground is still saturated from recent rain, so grass and trails will be soft.';
+      dirty = true;
+    } else if (wet) {
+      word = 'Waterproof Shoes';
+      why = Math.round(d.rainChance) + '% chance of rain. Wet feet all day is the main risk, not the shoes themselves.';
+    } else {
+      word = 'Any Shoes You Like';
+      why = 'Dry ground, nothing falling, no salt or mud to speak of.';
+    }
+
+    if (dirty) why += ' Expect to be cleaning these afterwards, so pick a pair you do not mind that with.';
+    var score = word === 'Any Shoes You Like' ? 8 : word === 'Waterproof Shoes' ? 32
+              : word === 'Traction, Not Style' ? 82 : 58;
+    return { bg: bgFrom('risk', score), bold: word,
+      tip: why + (d.soilMoist == null ? ' Ground wetness estimated from rainfall \u2014 no soil data for this location.' : '') };
+  }
+
+  /* The app fetches a week and shows one day. This is the only card
+     that looks past the day you selected: it scans the next six and
+     surfaces the one thing worth knowing in advance. Silent unless
+     something genuinely stands out, and only while you are looking at
+     today \u2014 there is no "ahead" when you are already browsing
+     Thursday. */
+  function dayName(dateStr, tz, off) {
+    if (off === 1) return 'Tomorrow';
+    var t = Date.parse(dateStr + 'T12:00:00Z');
+    return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long' }).format(new Date(t));
+  }
+
+  function aheadCard(p, tz, offset) {
+    if (offset !== 0 || !p || !p.wx) return null;
+    var today;
+    try { today = derive(p.wx, p.aq, tz, 0); } catch (e) { return null; }
+    var todayWorst = Math.max(migraineScore(today).s, arthritisScore(today).s);
+
+    var days = [];
+    for (var off = 1; off <= 6; off++) {
+      try {
+        var dd = derive(p.wx, p.aq, tz, off);
+        days.push({ off: off, d: dd, m: migraineScore(dd), a: arthritisScore(dd) });
+      } catch (e) { /* beyond the forecast */ }
+    }
+    if (!days.length) return null;
+
+    // 1. A day that is both bad and notably worse than today.
+    var worst = null;
+    days.forEach(function (x) {
+      var v = Math.max(x.m.s, x.a.s);
+      if (!worst || v > worst.v) worst = { v: v, x: x };
+    });
+    if (worst && worst.v >= 45 && worst.v - todayWorst >= 12) {
+      var x = worst.x;
+      var which = x.m.s >= x.a.s ? 'migraine' : 'joints';
+      var driver = topOf(x.m.s >= x.a.s ? x.m.why : x.a.why);
+      var name = dayName(x.d.date, tz, x.off);
+      return { note: true, ahead: true, bold: name + ' looks like a rough one',
+        tip: 'Worst day in the week ahead for ' + which + (driver ? ' \u2014 ' + driver : '')
+           + '. Today scores ' + todayWorst + ' out of 100 and ' + name + ' scores '
+           + worst.v + '. Worth not stacking anything demanding onto it.' };
+    }
+
+    // 2. First freeze of the run, when today is above it.
+    if (today.tMin > 34) {
+      for (var i = 0; i < days.length; i++) {
+        if (days[i].d.tMin <= 32) {
+          var n2 = dayName(days[i].d.date, tz, days[i].off);
+          return { note: true, ahead: true, bold: 'First freeze ' + n2,
+            tip: 'Low of ' + Math.round(days[i].d.tMin) + DEG + ' on ' + n2
+               + '. Time for the outside tap, the hose, and anything still in the garden.' };
+        }
+      }
+    }
+
+    // 3. A swing large enough to plan around.
+    var drop = null, rise = null;
+    days.forEach(function (x) {
+      var diff = x.d.tMax - today.tMax;
+      if (diff <= -18 && (!drop || diff < drop.diff)) drop = { diff: diff, x: x };
+      if (diff >= 20 && (!rise || diff > rise.diff)) rise = { diff: diff, x: x };
+    });
+    var swing = drop || rise;
+    if (swing) {
+      var n3 = dayName(swing.x.d.date, tz, swing.x.off);
+      return { note: true, ahead: true,
+        bold: (swing.diff < 0 ? 'Cools ' : 'Warms ') + Math.abs(Math.round(swing.diff)) + DEG + ' by ' + n3,
+        tip: 'High goes from ' + Math.round(today.tMax) + DEG + ' today to '
+           + Math.round(swing.x.d.tMax) + DEG + ' on ' + n3
+           + '. Swings that size are their own trigger, separate from where the temperature lands.' };
+    }
+    return null;
+  }
+
+  /* Mowing. Two separate questions the data can answer: is the grass
+     actually growing, and will the ground take a mower without tearing.
+     Deeper soil moisture matters more than the top centimetre, which
+     dries out within hours of a shower. Cool-season turf, which is what
+     grows across the Great Lakes and most of the north. */
+  function mowCard(d, lat) {
+    // Cool-season turf north of roughly 36 degrees, warm-season south of
+    // it. They grow in different temperature bands entirely, so the same
+    // soil reading means opposite things in Michigan and Georgia.
+    var warmSeason = lat != null && lat < 36;
+    var lo = warmSeason ? 62 : 50, hi = warmSeason ? 100 : 88;
+    var fastLo = warmSeason ? 70 : 55, fastHi = warmSeason ? 95 : 82;
+    var turf = warmSeason ? 'warm-season grass' : 'cool-season grass';
+    var st = d.soilTemp;
+    if (st == null ? d.tMax < 50 : st < (warmSeason ? 50 : 40)) return null;
+    var wet = d.soilDeep != null ? d.soilDeep : d.soilMoist;
+    var soggy = (wet != null && wet >= 0.36) || d.rainSum >= 0.25 || d.rainYesterday >= 0.5;
+    var parched = wet != null && wet < 0.12;
+    var dormant = (st != null && (st < lo || st > hi)) || parched;
+    var rainComing = d.rainChance >= 60;
+    var growingFast = !dormant && st != null && st >= fastLo && st <= fastHi
+                      && (wet == null || (wet >= 0.18 && wet < 0.36));
+
+    var word, why;
+    if (soggy) {
+      word = 'Too Wet to Mow';
+      why = 'Ground is saturated' + (d.rainYesterday >= 0.5 ? ' after ' + d.rainYesterday.toFixed(2) + '\u2033 of rain' : '')
+          + '. Mowing now tears the turf and leaves ruts, and wet clippings clump and smother what is underneath.';
+    } else if (dormant) {
+      word = 'Grass Is Not Growing';
+      why = parched
+        ? 'Soil is dry enough that the grass has gone dormant to protect itself. Cutting it now just stresses it further.'
+        : (st != null && st > hi
+            ? 'Soil is too warm for ' + turf + ' to put on growth. It is coasting, not growing.'
+            : 'Soil sits near ' + Math.round(st) + DEG + ', below the point where ' + turf + ' grows. Nothing to cut.');
+    } else if (rainComing) {
+      word = 'Mow Before the Rain';
+      why = Math.round(d.rainChance) + '% chance of rain'
+          + (d.rainRun ? ', likeliest ' + hr(d.rainRun.a) + DASH + hr(d.rainRun.b + 1) : '')
+          + '. Ground is fine now, so the window is before it arrives rather than after.';
+    } else if (growingFast) {
+      word = 'Growing Fast, Mow Soon';
+      why = 'Soil near ' + Math.round(st) + DEG + ' with moisture in the sweet spot, so it is putting on real growth. '
+          + 'Ground is firm enough to cut today.';
+    } else {
+      word = 'Fine to Mow';
+      why = 'Ground is firm and nothing is falling. Growth is slow, so it can wait if you would rather.';
+    }
+    var score = soggy ? 72 : dormant ? 20 : rainComing ? 48 : growingFast ? 40 : 14;
+    return { bg: bgFrom('risk', score), bold: word,
+      tip: why + (d.soilDeep == null ? ' Soil moisture estimated from rainfall \u2014 no soil data for this location.' : '') };
+  }
+
+  /* Road salt does its worst damage not while it is freezing but once
+     it thaws: the reaction needs liquid water, so a warm day after a
+     salted stretch is when the undercarriage actually corrodes. Reuses
+     the salt detection from the shoe call. */
+  function rustCard(d) {
+    if (!(d.snow3 >= 0.2 && d.saltCold && d.tMax >= 40)) return null;
+    var washing = d.rainSum >= 0.3;
+    return { bg: bgFrom('risk', washing ? 42 : 66),
+      bold: washing ? 'Rain Is Rinsing the Salt' : 'Wash the Salt Off',
+      tip: 'Snow and salt in the last few days, and today reaches '
+         + Math.round(d.tMax) + DEG + '. '
+         + (washing
+            ? d.rainSum.toFixed(2) + '\u2033 of rain will take some of it off, though rain does not reach the undercarriage where it matters most.'
+            : 'Salt corrodes fastest once it thaws, because the reaction needs liquid water \u2014 a cold salted week does less damage than the first warm day after it. This is the day a wash with an undercarriage rinse is worth the money.') };
+  }
+
+  function alertCard(al, tz) {
+    var until = al.ends ? shortTime(al.ends, tz) : '';
+    return { alert: true, bold: al.event, det: until ? ' (until ' + until + ')' : '',
+             tip: al.headline || null };
+  }
+
+
+  /* ================= data =================
+     Every request goes straight from this browser to a public,
+     keyless endpoint. Nothing is proxied. */
+  function j(url, opts) {
+    return fetch(url, opts || {}).then(function (r) {
+      if (!r.ok) throw new Error('Service returned ' + r.status);
+      return r.json();
+    });
+  }
+
+  var FORECAST = 'https://api.open-meteo.com/v1/forecast';
+  function wxUrl(lat, lon, tz, past) {
+    return FORECAST + '?latitude=' + lat + '&longitude=' + lon
+      + '&timezone=' + encodeURIComponent(tz || 'auto')
+      + '&hourly=apparent_temperature,relative_humidity_2m,dew_point_2m,precipitation_probability,'
+      + 'precipitation,snowfall,pressure_msl,cloud_cover,wind_speed_10m,wind_gusts_10m,uv_index,'
+      + 'weather_code,soil_moisture_0_to_1cm,soil_moisture_3_to_9cm,soil_temperature_0cm'
+      + '&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,'
+      + 'apparent_temperature_min,precipitation_sum,snowfall_sum,precipitation_probability_max,'
+      + 'uv_index_max,shortwave_radiation_sum,sunrise,sunset'
+      + '&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch'
+      + '&past_days=' + past + '&forecast_days=7';
+  }
+
+  function loadHome(place) {
+    if (!place) return;
+    state.place = place;
+    var host = document.getElementById('homeBody');
+    host.classList.add('busy');
+
+    var jobs = [
+      j(wxUrl(place.lat, place.lon, place.tz, 3)),
+      j('https://air-quality-api.open-meteo.com/v1/air-quality?latitude=' + place.lat
+        + '&longitude=' + place.lon + '&timezone=' + encodeURIComponent(place.tz || 'auto')
+        + '&hourly=pm2_5,ozone,us_aqi&forecast_days=5&past_days=1').catch(function () { return null; }),
+      j('https://api.weather.gov/alerts/active?point=' + place.lat.toFixed(4) + ',' + place.lon.toFixed(4),
+        { headers: { 'Accept': 'application/geo+json' } })
+        .then(function (a) {
+          return (a.features || []).slice(0, 4).map(function (f) {
+            return { event: f.properties.event, headline: f.properties.headline || '',
+                     ends: f.properties.ends || f.properties.expires || '' };
+          });
+        }).catch(function () { return []; }),
+      j('https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json')
+        .then(function (rows) {
+          var max = 0;
+          for (var i = 1; i < rows.length; i++) {
+            var v = parseFloat(rows[i][1]); if (isFinite(v) && v > max) max = v;
+          }
+          return max ? { max: max } : null;
+        }).catch(function () { return null; })
+    ];
+
+    Promise.all(jobs).then(function (r) {
+      state.home = { wx: r[0], aq: r[1], alerts: r[2], kp: r[3], pollen: null, airGoogle: null };
+      state.tz = r[0].timezone || place.tz || 'America/Detroit';
+      store.place = place;
+      store.recents = [place].concat((store.recents || []).filter(function (x) {
+        return Math.abs(x.lat - place.lat) > 0.02 || Math.abs(x.lon - place.lon) > 0.02;
+      })).slice(0, 8);
+      state.recents = store.recents;
+      saveStore();
+      buildDays(); buildPlaces(); renderHome();
+      host.classList.remove('busy');
+      if (store.keys.google) loadGoogle(place);
+    }).catch(function (e) {
+      state.home = { error: (e && e.message) || 'Could not reach the weather service.' };
+      renderHome(); host.classList.remove('busy');
+    });
+  }
+
+  /* Optional, and billed to whoever owns the key. Without one the app
+     falls back to CAMS air quality and a modelled bloom calendar, and
+     each card says which it used. */
+  function loadGoogle(place) {
+    var k = store.keys.google; if (!k) return;
+    var now = new Date();
+    Promise.all([
+      j('https://pollen.googleapis.com/v1/forecast:lookup?key=' + encodeURIComponent(k)
+        + '&location.latitude=' + place.lat + '&location.longitude=' + place.lon
+        + '&days=5&languageCode=en&plantsDescription=false')
+        .then(function (p) {
+          return { days: (p.dailyInfo || []).map(function (dd) {
+            var dt2 = dd.date || {};
+            function p2(n) { return (n < 10 ? '0' : '') + n; }
+            return { date: dt2.year + '-' + p2(dt2.month) + '-' + p2(dt2.day),
+              types: (dd.pollenTypeInfo || []).map(function (t) {
+                return { name: t.displayName || t.code, index: t.indexInfo ? t.indexInfo.value : null,
+                         inSeason: !!t.inSeason }; }),
+              plants: (dd.plantInfo || []).filter(function (x) { return x.indexInfo && x.indexInfo.value > 0; })
+                .map(function (x) { return { name: x.displayName || x.code, index: x.indexInfo.value }; }) };
+          }) };
+        }).catch(function (e) { return { error: 'Pollen: ' + e.message }; }),
+      fetch('https://airquality.googleapis.com/v1/forecast:lookup?key=' + encodeURIComponent(k), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: { latitude: place.lat, longitude: place.lon },
+          period: { startTime: now.toISOString(),
+                    endTime: new Date(now.getTime() + 95 * 3600 * 1000).toISOString() },
+          universalAqi: false,
+          extraComputations: ['HEALTH_RECOMMENDATIONS', 'DOMINANT_POLLUTANT_CONCENTRATION', 'LOCAL_AQI'],
+          customLocalAqis: [{ regionCode: 'us', aqi: 'usa_epa' }],
+          languageCode: 'en', pageSize: 96 })
+      }).then(function (r) { return r.json(); }).then(function (jj) {
+        var byDay = {};
+        (jj.hourlyForecasts || []).forEach(function (h) {
+          if (!h.dateTime) return;
+          var day = new Intl.DateTimeFormat('en-CA', { timeZone: state.tz, year: 'numeric',
+            month: '2-digit', day: '2-digit' }).format(new Date(h.dateTime));
+          var epa = null;
+          (h.indexes || []).forEach(function (ix) { if (ix.code === 'usa_epa') epa = ix; });
+          if (!epa || epa.aqi == null) return;
+          if (!byDay[day] || epa.aqi > byDay[day].aqi) {
+            byDay[day] = { aqi: epa.aqi, dominant: epa.dominantPollutant || '',
+              lungAdvice: (h.healthRecommendations && h.healthRecommendations.lungDiseasePopulation) || '',
+              generalAdvice: (h.healthRecommendations && h.healthRecommendations.generalPopulation) || '' };
+          }
+        });
+        return Object.keys(byDay).length ? { days: byDay } : null;
+      }).catch(function (e) { return { error: 'Air quality: ' + e.message }; })
+    ]).then(function (g) {
+      if (!state.home || state.home.error) return;
+      state.home.pollen = g[0]; state.home.airGoogle = g[1];
+      renderHome();
+    });
+  }
+
+  /* ---- water ----------------------------------------------------
+     Two sources. NDBC buoys are real thermometers but only exist
+     where one is moored; the Marine API models sea surface
+     temperature for ocean coasts but does not cover the Great Lakes
+     or any inland water. The station list is fetched once and cached
+     for a day, so nearest-buoy works anywhere without a hardcoded
+     list of guesses. */
+  var STATIONS_KEY = 'morningbrief.stations.v1';
+  function stations() {
+    var cached = null;
+    try { cached = JSON.parse(localStorage.getItem(STATIONS_KEY)); } catch (e) {}
+    if (cached && cached.at && Date.now() - cached.at < 86400000) return Promise.resolve(cached.list);
+    return fetch('https://www.ndbc.noaa.gov/activestations.xml')
+      .then(function (r) { return r.text(); })
+      .then(function (txt) {
+        var list = [], re = /<station\s+([^>]*)\/?>/g, m;
+        while ((m = re.exec(txt))) {
+          var a = m[1];
+          function attr(n) { var x = new RegExp(n + '="([^"]*)"').exec(a); return x ? x[1] : null; }
+          if (attr('met') !== 'y') continue;
+          var lat = parseFloat(attr('lat')), lon = parseFloat(attr('lon'));
+          if (!isFinite(lat) || !isFinite(lon)) continue;
+          list.push({ id: attr('id'), lat: lat, lon: lon, name: attr('name') || attr('id') });
+        }
+        try { localStorage.setItem(STATIONS_KEY, JSON.stringify({ at: Date.now(), list: list })); } catch (e) {}
+        return list;
+      })
+      .catch(function () { return null; });   // blocked or offline: fall through to the model
+  }
+  function milesBetween(a, b, c, e) {
+    var R = 3958.8, t = Math.PI / 180;
+    var dLat = (c - a) * t, dLon = (e - b) * t;
+    var x = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+          + Math.cos(a * t) * Math.cos(c * t) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+  }
+  function nearestBuoy(lat, lon) {
+    return stations().then(function (list) {
+      if (!list || !list.length) return null;
+      var best = null;
+      list.forEach(function (s) {
+        var d2 = milesBetween(lat, lon, s.lat, s.lon);
+        if (d2 <= 60 && (!best || d2 < best.miles)) best = { st: s, miles: Math.round(d2) };
+      });
+      return best;
+    });
+  }
+  function buoyReading(b) {
+    return fetch('https://www.ndbc.noaa.gov/data/realtime2/' + b.st.id + '.txt')
+      .then(function (r) { if (!r.ok) throw 0; return r.text(); })
+      .then(function (txt) {
+        var lines = txt.split('\n');
+        var cols = lines[0].replace(/^#/, '').trim().split(/\s+/);
+        var iW = cols.indexOf('WTMP'), iV = cols.indexOf('WVHT');
+        var wC = null, vM = null, stamp = null;
+        for (var i = 2; i < lines.length && i < 60; i++) {
+          var f = lines[i].trim().split(/\s+/);
+          if (f.length < cols.length) continue;
+          if (stamp === null) stamp = Date.UTC(+f[0], +f[1] - 1, +f[2], +f[3], +f[4]);
+          if (wC === null && iW > -1 && f[iW] !== 'MM') wC = parseFloat(f[iW]);
+          if (vM === null && iV > -1 && f[iV] !== 'MM') vM = parseFloat(f[iV]);
+          if (wC !== null && vM !== null) break;
+        }
+        if (wC === null || (stamp && Date.now() - stamp > 86400000)) return null;
+        return { kind: 'buoy', available: true, station: b.st.name, miles: b.miles,
+                 waterF: Math.round(wC * 9 / 5 + 32),
+                 waveFt: vM === null ? null : Math.round(vM * 3.281 * 10) / 10 };
+      }).catch(function () { return null; });
+  }
+  function marineReading(lat, lon, tz) {
+    return j('https://marine-api.open-meteo.com/v1/marine?latitude=' + lat + '&longitude=' + lon
+      + '&timezone=' + encodeURIComponent(tz || 'auto')
+      + '&hourly=sea_surface_temperature,wave_height&temperature_unit=fahrenheit'
+      + '&length_unit=imperial&forecast_days=5')
+      .then(function (r) {
+        var H = r.hourly; if (!H || !H.time) return null;
+        var acc = {};
+        for (var i = 0; i < H.time.length; i++) {
+          var day = H.time[i].slice(0, 10);
+          var s = H.sea_surface_temperature ? H.sea_surface_temperature[i] : null;
+          var w = H.wave_height ? H.wave_height[i] : null;
+          if (s == null && w == null) continue;
+          if (!acc[day]) acc[day] = { sum: 0, n: 0, w: null };
+          if (s != null) { acc[day].sum += s; acc[day].n++; }
+          if (w != null && (acc[day].w == null || w > acc[day].w)) acc[day].w = w;
+        }
+        var days = {}, any = false;
+        Object.keys(acc).forEach(function (k2) {
+          if (!acc[k2].n) return; any = true;
+          days[k2] = { waterF: Math.round(acc[k2].sum / acc[k2].n),
+                       waveFt: acc[k2].w == null ? null : Math.round(acc[k2].w * 10) / 10 };
+        });
+        return any ? { kind: 'marine', days: days } : null;
+      }).catch(function () { return null; });
+  }
+
+  function loadShore(place) {
+    if (!place) return;
+    state.shoreSel = place; store.shore = place;
+    store.shores = [place].concat((store.shores || []).filter(function (x) {
+      return Math.abs(x.lat - place.lat) > 0.05 || Math.abs(x.lon - place.lon) > 0.05;
+    })).slice(0, 6);
+    state.shoreRecents = store.shores; saveStore();
+    var host = document.getElementById('shoreBody'); host.classList.add('busy');
+    buildBeaches();
+
+    Promise.all([
+      j(wxUrl(place.lat, place.lon, place.tz, 1)),
+      nearestBuoy(place.lat, place.lon).then(function (b) { return b ? buoyReading(b) : null; })
+    ]).then(function (r) {
+      var water = r[1];
+      var finish = function (w) {
+        state.shore = { wx: r[0], water: w, name: placeLabel(place), lat: place.lat };
+        renderShore(); host.classList.remove('busy');
+      };
+      if (water) finish(water);
+      else marineReading(place.lat, place.lon, r[0].timezone).then(finish);
+    }).catch(function (e) {
+      state.shore = { error: (e && e.message) || 'Could not reach the weather service.' };
+      renderShore(); host.classList.remove('busy');
+    });
+  }
+
+  function search(q) {
+    return j('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(q)
+      + '&count=8&language=en&format=json&countryCode=US')
+      .then(function (r) {
+        return (r.results || []).map(function (x) {
+          return { name: x.name, region: x.admin1 || '', country: x.country_code || '',
+                   lat: x.latitude, lon: x.longitude, tz: x.timezone || 'auto' };
+        });
+      }).catch(function () { return []; });
+  }
+
+  /* ================= render ================= */
+  function card(row) {
+    var el = document.createElement(row.tip ? 'button' : 'div');
+    el.className = 'card' + (row.tip ? '' : ' flat') + (row.plain ? ' plain' : '')
+                 + (row.alert ? ' alert' : '') + (row.note ? ' note' : '')
+                 + (row.ahead ? ' ahead' : '')
+                 + (row.timeline || row.alert || row.note ? ''
+                    : (String(row.bold || '').length > 24 ? ' sm wide2' : ' sm'));
+    if (row.bg) el.style.background = row.bg;
+
+    var line = document.createElement('div');
+    line.className = 'face';
+    var b = document.createElement('b'); b.textContent = row.bold; line.appendChild(b);
+    if (row.det) { var s2 = document.createElement('span'); s2.className = 'det'; s2.textContent = row.det; line.appendChild(s2); }
+    if (row.timeline && state.dayOffset === 0) {
+      var tick = document.createElement('div');
+      tick.className = 'now';
+      tick.style.left = (nowFraction() * 100).toFixed(2) + '%';
+      line.appendChild(tick);
+    }
+    el.appendChild(line);
+
+    if (row.tip) {
+      var t = document.createElement('p'); t.className = 'tip'; t.textContent = row.tip; t.style.display = 'none';
+      el.appendChild(t);
+      el.setAttribute('aria-expanded', 'false');
+      el.addEventListener('click', function () {
+        var open = t.style.display === 'none';
+        t.style.display = open ? 'block' : 'none';
+        el.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (el.className.indexOf('sm') > -1) {
+          el.className = open ? el.className + ' open' : el.className.replace(/ open/g, '');
+        }
+      });
+    }
+    return el;
+  }
+  function addCard(host, id, build) {
+    if (id && !on(id)) return;
+    try {
+      var row = build();
+      if (!row) return;
+      host.appendChild(card(row));
+    } catch (e) {
+      var el = document.createElement('div');
+      el.className = 'card flat plain';
+      el.textContent = 'This card failed: ' + ((e && e.message) || e);
+      host.appendChild(el);
+    }
+  }
+  function skeleton(host, tall, short) {
+    host.innerHTML = '';
+    for (var i = 0; i < tall; i++) {
+      var a = document.createElement('div'); a.className = 'card flat skel'; host.appendChild(a);
+    }
+    var g = document.createElement('div'); g.className = 'grid';
+    for (var jx = 0; jx < short; jx++) {
+      var b2 = document.createElement('div'); b2.className = 'card flat sm skel'; g.appendChild(b2);
+    }
+    host.appendChild(g);
+  }
+  function fail(host, msg) {
+    host.innerHTML = '';
+    var e = document.createElement('div'); e.className = 'card flat alert'; e.textContent = msg; host.appendChild(e);
+  }
+
+  function renderHome() {
+    var host = document.getElementById('homeBody'), p = state.home;
+    if (!state.place) { host.innerHTML = ''; return; }
+    if (!p) return skeleton(host, 5, 6);
+    if (p.error) return fail(host, p.error);
+    var d;
+    try { d = derive(p.wx, p.aq, state.tz, state.dayOffset); } catch (e) { return fail(host, e.message); }
+    var lat = state.place.lat, lon = state.place.lon;
+    var cal = calendarFor(lat, lon);
+    host.innerHTML = '';
+
+    (p.alerts || []).forEach(function (al) { host.appendChild(card(alertCard(al, state.tz))); });
+    var season = seasonCard(d.date, state.tz, lat);
+    if (season) host.appendChild(card(season));
+    var ahead = aheadCard(p, state.tz, state.dayOffset);
+    if (ahead) host.appendChild(card(ahead));
+
+    addCard(host, 'feels',    function () { return feelsCard(d); });
+    addCard(host, 'sweat',    function () { return sweatCard(d); });
+    addCard(host, 'sky',      function () { return skyCard(d); });
+    addCard(host, 'rain',     function () { return rainCard(d); });
+    addCard(host, 'daylight', function () { return daylightCard(d); });
+
+    var grid = document.createElement('div'); grid.className = 'grid';
+    addCard(grid, 'burn',      function () { return burnCard(d); });
+    addCard(grid, 'frostbite', function () { return frostbiteCard(d); });
+    addCard(grid, 'frost',     function () { return frostCard(d); });
+    addCard(grid, 'pipe',      function () { return pipeCard(d); });
+    addCard(grid, 'fire',      function () { return fireCard(d); });
+    addCard(grid, 'bug',       function () { return bugCard(d); });
+    addCard(grid, 'pavement',  function () { return pavementCard(d); });
+    addCard(grid, 'shoe',      function () { return shoeCard(d); });
+    addCard(grid, 'rust',      function () { return rustCard(d); });
+    addCard(grid, 'mow',       function () { return mowCard(d, lat); });
+    addCard(grid, 'wind',      function () { return windCard(d); });
+    addCard(grid, 'frizz',     function () { return frizzCard(d); });
+    addCard(grid, 'mold',      function () { return moldCard(d); });
+    addCard(grid, 'arthritis', function () { return arthritisCard(d); });
+    addCard(grid, 'allergy',   function () { return allergyCard(d, p.pollen, cal); });
+    addCard(grid, 'migraine',  function () { return migraineCard(d); });
+    addCard(grid, 'air',       function () { return airCard(d, p.airGoogle); });
+    addCard(grid, 'light',     function () { return lightCard(d); });
+    addCard(grid, 'aurora',    function () { return auroraCard(d, p.kp); });
+    addCard(grid, 'moon',      function () { return moonCard(d.date); });
+    host.appendChild(grid);
+  }
+
+  function renderShore() {
+    var sec = document.getElementById('shoreSection');
+    sec.style.display = on('shore') ? 'block' : 'none';
+    if (!on('shore')) return;
+    var host = document.getElementById('shoreBody');
+    if (!state.shoreSel) {
+      host.innerHTML = '';
+      var hint = document.createElement('div');
+      hint.className = 'card flat plain';
+      hint.textContent = 'Pick a coast or lake town to see water temperature and conditions.';
+      host.appendChild(hint);
+      return;
+    }
+    var p = state.shore;
+    if (!p) return skeleton(host, 5, 2);
+    if (p.error) return fail(host, p.error);
+    var d;
+    try { d = derive(p.wx, null, p.wx.timezone || state.tz, state.dayOffset); }
+    catch (e) { return fail(host, e.message); }
+    host.innerHTML = '';
+    addCard(host, 'feels',    function () { return feelsCard(d); });
+    addCard(host, 'sweat',    function () { return sweatCard(d); });
+    addCard(host, 'sky',      function () { return skyCard(d); });
+    addCard(host, 'rain',     function () { return rainCard(d); });
+    addCard(host, 'daylight', function () { return daylightCard(d); });
+    var g = document.createElement('div'); g.className = 'grid';
+    addCard(g, 'burn', function () { return burnCard(d); });
+    addCard(g, 'wind', function () { return windCard(d); });
+    addCard(g, 'bug',  function () { return bugCard(d); });
+    addCard(g, null,   function () { return waterCard(p.water, d.date); });
+    host.appendChild(g);
+
+    // Rip current and beach hazard products are regional. Rather than
+    // point everyone at a Great Lakes page, send them to the NWS
+    // forecast for their own coordinates.
+    var l = document.createElement('div'); l.className = 'linkcard';
+    var a = document.createElement('a');
+    a.href = 'https://forecast.weather.gov/MapClick.php?lat=' + state.shoreSel.lat.toFixed(4)
+           + '&lon=' + state.shoreSel.lon.toFixed(4);
+    a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = 'Local swim & surf forecast';
+    l.appendChild(a); host.appendChild(l);
+  }
+
+  /* ================= controls ================= */
+  var daySel = document.getElementById('daySel'), placeSel = document.getElementById('placeSel'),
+      beachSel = document.getElementById('beachSel'), searchBox = document.getElementById('searchBox'),
+      results = document.getElementById('results'), qIn = document.getElementById('q'),
+      shoreBox = document.getElementById('shoreBox'), shoreResults = document.getElementById('shoreResults'),
+      shoreQ = document.getElementById('shoreQ');
+
+  function buildDays() {
+    daySel.innerHTML = '';
+    for (var i = 0; i < 7; i++) {
+      var o = document.createElement('option');
+      o.value = String(i); o.textContent = labelFor(state.tz, i);
+      if (i === state.dayOffset) o.selected = true;
+      daySel.appendChild(o);
+    }
+  }
+  function buildPlaces() {
+    placeSel.innerHTML = '';
+    if (!state.place) {
+      var f = document.createElement('option'); f.value = '__search';
+      f.textContent = 'Choose your town'; placeSel.appendChild(f);
+      return;
+    }
+    var seen = {};
+    (state.recents || []).forEach(function (x) {
+      var k2 = x.lat.toFixed(2) + ',' + x.lon.toFixed(2); if (seen[k2]) return; seen[k2] = 1;
+      var o = document.createElement('option'); o.value = k2; o.textContent = placeLabel(x); o._place = x;
+      if (Math.abs(x.lat - state.place.lat) < 0.02 && Math.abs(x.lon - state.place.lon) < 0.02) o.selected = true;
+      placeSel.appendChild(o);
+    });
+    var s = document.createElement('option'); s.value = '__search'; s.textContent = 'Search another town';
+    placeSel.appendChild(s);
+  }
+  function buildBeaches() {
+    beachSel.innerHTML = '';
+    if (!state.shoreSel) {
+      var f = document.createElement('option'); f.value = '__shoresearch';
+      f.textContent = 'Choose a shore'; beachSel.appendChild(f); return;
+    }
+    (state.shoreRecents || []).forEach(function (x) {
+      var o = document.createElement('option');
+      o.value = x.lat.toFixed(2) + ',' + x.lon.toFixed(2);
+      o.textContent = placeLabel(x); o._place = x;
+      if (Math.abs(x.lat - state.shoreSel.lat) < 0.05 && Math.abs(x.lon - state.shoreSel.lon) < 0.05) o.selected = true;
+      beachSel.appendChild(o);
+    });
+    var s = document.createElement('option'); s.value = '__shoresearch';
+    s.textContent = 'Search another shore'; beachSel.appendChild(s);
+  }
+
+  daySel.addEventListener('change', function () {
+    state.dayOffset = parseInt(daySel.value, 10) || 0; renderHome(); renderShore();
+  });
+  placeSel.addEventListener('change', function () {
+    if (placeSel.value === '__search') {
+      searchBox.style.display = 'block'; results.innerHTML = ''; qIn.value = ''; qIn.focus(); return;
+    }
+    searchBox.style.display = 'none';
+    var o = placeSel.options[placeSel.selectedIndex];
+    if (o && o._place) loadHome(o._place);
+  });
+  beachSel.addEventListener('change', function () {
+    if (beachSel.value === '__shoresearch') {
+      shoreBox.style.display = 'block'; shoreResults.innerHTML = ''; shoreQ.value = ''; shoreQ.focus(); return;
+    }
+    shoreBox.style.display = 'none';
+    var o = beachSel.options[beachSel.selectedIndex];
+    if (o && o._place) loadShore(o._place);
+  });
+
+  function wireSearch(input, list, onPick) {
+    function go() {
+      var q = input.value.trim(); if (q.length < 2) return;
+      list.innerHTML = '<li style="padding:8px 4px">Searching</li>';
+      search(q).then(function (r) {
+        list.innerHTML = '';
+        if (!r.length) { list.innerHTML = '<li style="padding:8px 4px">Nothing found.</li>'; return; }
+        r.forEach(function (x) {
+          var li = document.createElement('li');
+          li.style.cssText = 'padding:9px 4px;border-top:1px solid #E4E4E4;cursor:pointer';
+          li.textContent = placeLabel(x);
+          li.addEventListener('click', function () { onPick(x); });
+          list.appendChild(li);
+        });
+      });
+    }
+    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+    input.addEventListener('search', go);
+  }
+  wireSearch(qIn, results, function (x) { searchBox.style.display = 'none'; loadHome(x); });
+  wireSearch(shoreQ, shoreResults, function (x) { shoreBox.style.display = 'none'; loadShore(x); });
+
+  /* ================= settings ================= */
+  var settingsPanel = document.getElementById('settingsPanel');
+  var aboutPanel = document.getElementById('aboutPanel');
+
+  function buildSettings() {
+    settingsPanel.innerHTML = '';
+    var h = document.createElement('h2'); h.textContent = 'What you see';
+    settingsPanel.appendChild(h);
+    var l = document.createElement('p'); l.className = 'lede';
+    l.textContent = 'Everything is on to start with. Turn off whatever does not apply to you \u2014 no lawn, no car, no basement, conditions you do not have. Saved in this browser only.';
+    settingsPanel.appendChild(l);
+
+    var groups = {};
+    CARDS.forEach(function (c) { (groups[c.group] = groups[c.group] || []).push(c); });
+    Object.keys(groups).forEach(function (g) {
+      var t = document.createElement('h3'); t.textContent = g; settingsPanel.appendChild(t);
+      groups[g].forEach(function (c) {
+        var row = document.createElement('label'); row.className = 'opt';
+        var box = document.createElement('input'); box.type = 'checkbox';
+        box.checked = on(c.id); box.disabled = !!c.always;
+        box.addEventListener('change', function () {
+          store.cards[c.id] = box.checked; saveStore(); renderHome(); renderShore();
+        });
+        var txt = document.createElement('span');
+        txt.textContent = c.name;
+        if (c.note) { var sm = document.createElement('small'); sm.textContent = c.note; txt.appendChild(sm); }
+        row.appendChild(box); row.appendChild(txt); settingsPanel.appendChild(row);
+      });
+    });
+
+    var kh = document.createElement('h3'); kh.textContent = 'Optional Google API key';
+    settingsPanel.appendChild(kh);
+    var kl = document.createElement('p'); kl.className = 'lede';
+    kl.textContent = 'Leave this blank and allergens come from a regional bloom calendar and air quality from Copernicus CAMS at about 45 km. Paste your own Google Maps Platform key \u2014 with the Pollen and Air Quality APIs enabled \u2014 and you get measured pollen and 500 m air quality instead. Billed to you, not to whoever hosts this. Each card says which source it used.';
+    settingsPanel.appendChild(kl);
+    var input = document.createElement('input'); input.type = 'text';
+    input.placeholder = 'Paste key, or leave blank';
+    input.value = store.keys.google || '';
+    input.addEventListener('change', function () {
+      store.keys.google = input.value.trim(); saveStore();
+      if (state.place) loadHome(state.place);
+    });
+    settingsPanel.appendChild(input);
+  }
+
+  function buildAbout() {
+    aboutPanel.innerHTML = '';
+    var h = document.createElement('h2'); h.textContent = 'Where the numbers come from';
+    aboutPanel.appendChild(h);
+    [['Forecast, soil and marine data', 'Open-Meteo, which blends NOAA HRRR and GFS with ECMWF. Free and keyless.'],
+     ['Air quality', 'Copernicus CAMS by default, at roughly 45 km. Google Air Quality at 500 m if you add a key.'],
+     ['Allergens', 'A regional bloom calendar \u2014 modelled, not counted \u2014 unless you add a Google key. Six US regions, and it is a rough guide even within them.'],
+     ['Alerts', 'National Weather Service, verbatim. US only.'],
+     ['Water temperature', 'NDBC buoys where one is moored within 60 miles, otherwise modelled sea surface temperature, which does not cover the Great Lakes or inland water.'],
+     ['Aurora', 'NOAA Space Weather Prediction Center planetary K index.'],
+     ['Moon and sun', 'Calculated in your browser, not fetched.'],
+     ['Everything else', 'Rules written by hand \u2014 migraine, arthritis, bugs, frizz, shoes, mowing and the rest are heuristics from commonly cited triggers, not validated indices.']
+    ].forEach(function (pair2) {
+      var t = document.createElement('h3'); t.textContent = pair2[0]; aboutPanel.appendChild(t);
+      var p = document.createElement('p'); p.className = 'lede'; p.textContent = pair2[1]; aboutPanel.appendChild(p);
+    });
+    var pv = document.createElement('h3'); pv.textContent = 'Privacy'; aboutPanel.appendChild(pv);
+    var pp = document.createElement('p'); pp.className = 'lede';
+    pp.textContent = 'There is no account and no server. Your settings and saved places live in this browser. Your coordinates go to the weather services above as part of each request, and nowhere else.';
+    aboutPanel.appendChild(pp);
+  }
+
+  function toggle(btn, panel, build) {
+    btn.addEventListener('click', function () {
+      var open = panel.style.display === 'none';
+      if (open) build();
+      panel.style.display = open ? 'block' : 'none';
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  }
+  toggle(document.getElementById('settingsBtn'), settingsPanel, buildSettings);
+  toggle(document.getElementById('aboutBtn'), aboutPanel, buildAbout);
+
+  document.getElementById('disclaimer').innerHTML =
+    '<b>This is not medical advice.</b> The health-related cards are rules of thumb built from '
+    + 'commonly cited weather triggers, not validated clinical tools, and no forecast can tell you '
+    + 'how you will feel. Do not use this app to make decisions about medication, treatment, or '
+    + 'whether to seek care. For weather that could hurt you, the National Weather Service is the '
+    + 'authority \u2014 not this page. Water conditions in particular change faster than any forecast: '
+    + 'check local flags and signage before you swim.';
+
+  /* ================= start ================= */
+  buildDays(); buildPlaces(); buildBeaches();
+  renderShore();
+  if (state.place) loadHome(state.place);
+  else if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      loadHome({ name: 'Your location', region: '', country: 'US',
+                 lat: pos.coords.latitude, lon: pos.coords.longitude, tz: 'auto' });
+    }, function () {
+      searchBox.style.display = 'block';
+    }, { timeout: 8000 });
+  } else { searchBox.style.display = 'block'; }
+  if (state.shoreSel && on('shore')) loadShore(state.shoreSel);
+})();
+</script>
+</body>
+</html>
