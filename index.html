@@ -11,7 +11,8 @@
 <meta property="og:type" content="website">
 <link rel="icon" href="data:,">
 <style>
-  :root{ --page:#FFF; --ink:#16232F; --mid:#5B6B7A; --line:#E4E4E4; --link:#1B57C8; }
+  :root{ --page:#FFF; --ink:#16232F; --mid:#5B6B7A; --line:#E4E4E4; --link:#1B57C8;
+         --rowh:74px; }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;background:var(--page);color:var(--ink);}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
@@ -33,9 +34,10 @@
   /* Sunrise to the left, sunset to the right, so the card reads the way
      the day runs. Wraps to two lines rather than crushing on a narrow
      phone. */
-  .face.split{display:flex;justify-content:space-between;align-items:baseline;
-              gap:10px;flex-wrap:wrap;text-align:left;}
-  .face.split b:last-child{text-align:right;margin-left:auto;}
+  .face.split{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .face.split .end{display:flex;flex-direction:column;line-height:1.2;}
+  .face.split .end.right{text-align:right;}
+  .face.split .end b{display:block;}
   .now{position:absolute;top:-13px;bottom:-13px;width:2px;margin-left:-1px;
        background:rgba(22,35,47,.30);box-shadow:0 0 0 1px rgba(255,255,255,.45);
        pointer-events:none;border-radius:1px;}
@@ -50,14 +52,13 @@
      across their width, so they trade length for a bigger field of
      colour. */
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:17px;}
-  .card.sm{aspect-ratio:3/1;display:flex;flex-direction:column;
+  .card.sm{min-height:var(--rowh);display:flex;flex-direction:column;
            align-items:center;justify-content:center;text-align:center;
            padding:10px 12px;font-size:14.5px;border-radius:14px;margin:0;width:auto;
            line-height:1.25;}
   /* Tapped open, a tile takes the full row so the detail has somewhere
      to go instead of straining the square. */
-  .card.sm.wide2{grid-column:span 2;aspect-ratio:6.2/1;}
-  .card.sm.open{aspect-ratio:auto;grid-column:span 2;justify-content:flex-start;
+  .card.sm.open{min-height:0;grid-column:span 2;justify-content:flex-start;
                 align-items:stretch;text-align:left;padding:13px 16px;}
   .card.sm .tip{text-align:left;}
   .card.sm.skel{height:auto;}
@@ -91,18 +92,21 @@
        them \u2014 backwards, since these are the ones whose gradients carry
        a whole day. They now divide the column evenly and both sides end
        on the same line. */
+    /* Both sides share one row height, so a card on the left lines up
+       with a tile on the right instead of each being sized by its own
+       rule. */
     .hourly{display:flex;flex-direction:column;gap:8px;}
-    .hourly > .card{margin-bottom:0;flex:1 1 0;min-height:84px;
+    .hourly > .card{margin-bottom:0;flex:0 0 auto;min-height:var(--rowh);
                     display:flex;flex-direction:column;justify-content:center;}
+    .card.sm{aspect-ratio:auto;min-height:var(--rowh);font-size:15px;}
     .grid{grid-template-columns:repeat(3,1fr);margin-top:0;}
     .card.sm{aspect-ratio:2.5/1;font-size:15px;}
-    .card.sm.wide2{grid-column:span 2;aspect-ratio:5.2/1;}
-    .card.sm.open{grid-column:span 3;}
+    .card.sm.open{grid-column:span 3;min-height:0;}
   }
   @media (min-width:1180px){
     .wrap{max-width:1240px;}
     .grid{grid-template-columns:repeat(4,1fr);}
-    .card.sm.open{grid-column:span 4;}
+    .card.sm.open{grid-column:span 4;min-height:0;}
   }
   @media (max-width:370px){ .card{font-size:16px;padding:12px 14px;} .hdr .l2{font-size:21px;}
     .card.sm{font-size:13px;padding:9px 10px;} .grid{gap:7px;} }
@@ -125,6 +129,15 @@
   .opt span small{display:block;font-size:12.5px;color:var(--mid);line-height:1.35;margin-top:1px;}
   .panel input[type=text]{font:inherit;width:100%;padding:7px 9px;border:1px solid var(--line);
                           border-radius:8px;background:#FFF;color:inherit;margin-top:4px;}
+  .tabs{display:flex;gap:5px;margin:0 0 14px;border-bottom:1px solid var(--line);padding-bottom:9px;}
+  .tab{background:none;border:1px solid transparent;border-radius:9px;padding:6px 12px;
+       font:inherit;font-size:14px;color:var(--mid);cursor:pointer;}
+  .tab:hover{background:#EFECE5;}
+  .tab.sel{background:#FFF;border-color:var(--line);color:var(--ink);font-weight:600;}
+  .steps{margin:4px 0 12px;padding-left:22px;font-size:13.5px;color:var(--mid);line-height:1.5;}
+  .steps li{margin-bottom:6px;}
+  .ord input[type=checkbox]{width:17px;height:17px;flex:0 0 auto;margin:0;}
+  .ord span small{display:block;font-size:12.5px;color:var(--mid);line-height:1.35;margin-top:1px;}
   .presets{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 12px;}
   .preset{background:#FFF;border:1px solid var(--line);border-radius:10px;padding:7px 10px;
           font:inherit;font-size:13.5px;cursor:pointer;display:flex;align-items:center;gap:8px;}
@@ -136,7 +149,7 @@
   .contrast.bad{border-left-color:#C4703F;}
   .reset{margin-top:10px;background:#FFF;border:1px solid var(--line);border-radius:9px;
          padding:7px 12px;font:inherit;font-size:14px;cursor:pointer;}
-  .ord{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:14.5px;
+  .ord{display:flex;align-items:center;gap:9px;padding:7px 0;font-size:14.5px;
        border-top:1px solid #E8E4DC;}
   .ord span{flex:1 1 auto;}
   .ord button{background:#FFF;border:1px solid var(--line);border-radius:7px;width:30px;height:28px;
@@ -325,9 +338,10 @@
     // Daylight card: deep at the edges, warm through each transition,
     // bright through the middle. Built from the same anchors, so it
     // stops being the one card that ignores the theme.
-    NIGHT = blend(COLD, [104,116,136], .55);
-    TWILIGHT = blend(WARM, [255,226,190], .35);
-    DAYLIT = lighten(GOOD, .42);
+    var t = store.theme || {};
+    NIGHT    = t.night ? hex2rgb(t.night) : blend(COLD, [104,116,136], .55);
+    TWILIGHT = t.dawn  ? hex2rgb(t.dawn)  : blend(WARM, [255,226,190], .35);
+    DAYLIT   = t.day   ? hex2rgb(t.day)   : lighten(GOOD, .42);
   }
 
   function colorAt(ramp, v) {
@@ -902,17 +916,21 @@
   function waterCard(water, dateStr) {
     if (!water) {
       return { bold: 'No Water Temperature', plain: true,
-        tip: 'Nothing covers this spot. Ocean models stop at the coast and there is no buoy nearby \u2014 the Great Lakes in particular are outside every sea surface model, which is why the Michigan beaches use buoys instead.' };
+        tip: 'No buoy or shoreline gauge within reach, and ocean models do not cover inland water. Try a nearby town directly on the shore.' };
     }
 
     var w, waveFt = null, provenance;
-    if (water.kind === 'buoy') {
+    if (water.kind === 'station') {
+      w = water.waterF;
+      provenance = 'Measured at ' + water.station + ', ' + water.miles
+                 + ' miles away, by NOAA Tides and Currents. A shoreline gauge rather than open water.';
+    } else if (water.kind === 'buoy') {
       if (!water.available) {
         return { bold: 'Water Temperature Unavailable', plain: true,
           tip: water.station + ' is not reporting. Buoys come out of the lake for the winter. Assume the water is cold.' };
       }
       w = water.waterF; waveFt = water.waveFt;
-      provenance = 'Measured at the ' + water.station + ', ' + water.miles
+      provenance = 'Measured at the ' + water.station + ' buoy, ' + water.miles
                  + ' miles out. Nearshore water can be far colder after an upwelling.';
     } else {
       var day = water.days && water.days[dateStr];
@@ -952,7 +970,7 @@
       }
     }
     return { timeline: true, bg: bg,
-      split: { left: 'Sunrise ' + clock(d.sunriseISO), right: 'Sunset ' + clock(d.sunsetISO) },
+      split: { left: ['Sunrise', clock(d.sunriseISO)], right: ['Sunset', clock(d.sunsetISO)] },
       tip: tip };
   }
 
@@ -1550,8 +1568,16 @@
         if (!worst || rr < worst.r) worst = { r: rr, ramp: k, at: i / 12 };
       }
     });
+    [['night', NIGHT], ['dawn', TWILIGHT], ['midday', DAYLIT]].forEach(function (pr) {
+      var rr = ratio(pr[1], INK);
+      if (!worst || rr < worst.r) worst = { r: rr, ramp: 'sunrise', at: 0.5, band: pr[0] };
+    });
     if (!worst) return null;
     if (worst.r >= 4.5) return { ok: true, text: 'Text stays readable across every card.' };
+    if (worst.ramp === 'sunrise') {
+      return { ok: false, text: 'Hard to read on the ' + worst.band + ' band of Sunrise and sunset \u2014 contrast '
+             + worst.r.toFixed(1) + ' to 1, below the 4.5 guideline. Try a lighter colour.' };
+    }
     var where = worst.at < 0.34 ? 'low end' : worst.at > 0.66 ? 'high end' : 'middle';
     return { ok: false, text: 'Hard to read at the ' + where + ' of ' + (RAMP_LABEL[worst.ramp] || worst.ramp)
            + ' \u2014 contrast ' + worst.r.toFixed(1) + ' to 1, below the 4.5 guideline. '
@@ -1563,18 +1589,22 @@
      so adding a card later does not strand it. */
   var DEFAULT_TILE_ORDER = ['burn','frostbite','frost','pipe','fire','bug','pavement','shoe',
     'rust','mow','wind','frizz','mold','arthritis','allergy','migraine','air','light','aurora','moon'];
-  function tileOrder() {
-    var saved = store.order || [];
-    var out = saved.filter(function (id) { return DEFAULT_TILE_ORDER.indexOf(id) > -1; });
-    DEFAULT_TILE_ORDER.forEach(function (id) { if (out.indexOf(id) < 0) out.push(id); });
+  var DEFAULT_HOURLY_ORDER = ['feels','sweat','sky','rain','daylight'];
+  function orderOf(which) {
+    var def = which === 'hourly' ? DEFAULT_HOURLY_ORDER : DEFAULT_TILE_ORDER;
+    var saved = (which === 'hourly' ? store.orderH : store.order) || [];
+    var out = saved.filter(function (id) { return def.indexOf(id) > -1; });
+    def.forEach(function (id) { if (out.indexOf(id) < 0) out.push(id); });
     return out;
   }
-  function moveTile(id, dir) {
-    var o = tileOrder(), i = o.indexOf(id), j = i + dir;
+  function tileOrder() { return orderOf('tiles'); }
+  function hourlyOrder() { return orderOf('hourly'); }
+  function moveCard(id, dir, which) {
+    var o = orderOf(which), i = o.indexOf(id), j = i + dir;
     if (i < 0 || j < 0 || j >= o.length) return;
     o.splice(j, 0, o.splice(i, 1)[0]);
-    store.order = o; saveStore();
-    buildSettings(); renderHome();
+    if (which === 'hourly') store.orderH = o; else store.order = o;
+    saveStore(); buildSettings(); renderHome(); renderShore();
   }
 
   /* ================= data =================
@@ -1723,7 +1753,6 @@
         while ((m = re.exec(txt))) {
           var a = m[1];
           function attr(n) { var x = new RegExp(n + '="([^"]*)"').exec(a); return x ? x[1] : null; }
-          if (attr('met') !== 'y') continue;
           var lat = parseFloat(attr('lat')), lon = parseFloat(attr('lon'));
           if (!isFinite(lat) || !isFinite(lon)) continue;
           list.push({ id: attr('id'), lat: lat, lon: lon, name: attr('name') || attr('id') });
@@ -1783,11 +1812,11 @@
         var acc = {};
         for (var i = 0; i < H.time.length; i++) {
           var day = H.time[i].slice(0, 10);
-          var s = H.sea_surface_temperature ? H.sea_surface_temperature[i] : null;
+          var sst = H.sea_surface_temperature ? H.sea_surface_temperature[i] : null;
           var w = H.wave_height ? H.wave_height[i] : null;
-          if (s == null && w == null) continue;
+          if (sst == null && w == null) continue;
           if (!acc[day]) acc[day] = { sum: 0, n: 0, w: null };
-          if (s != null) { acc[day].sum += s; acc[day].n++; }
+          if (sst != null) { acc[day].sum += sst; acc[day].n++; }
           if (w != null && (acc[day].w == null || w > acc[day].w)) acc[day].w = w;
         }
         var days = {}, any = false;
@@ -1800,6 +1829,58 @@
       }).catch(function () { return null; });
   }
 
+  /* NOAA CO-OPS. Covers the coastline AND the Great Lakes, which no
+     ocean model does, and its stations sit on piers and in harbours
+     rather than miles offshore \u2014 closer to where anyone actually gets
+     in. This is what keeps Lake Michigan working. */
+  var COOPS_KEY = 'morningbrief.coops.v1';
+  function coopsStations() {
+    var cached = null;
+    try { cached = JSON.parse(localStorage.getItem(COOPS_KEY)); } catch (e) {}
+    if (cached && cached.at && Date.now() - cached.at < 86400000) return Promise.resolve(cached.list);
+    return j('https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.json?type=watertemp')
+      .then(function (r) {
+        var list = (r.stations || []).map(function (st) {
+          return { id: st.id, name: st.name, lat: st.lat, lon: st.lng };
+        }).filter(function (st) { return st.id && isFinite(st.lat) && isFinite(st.lon); });
+        try { localStorage.setItem(COOPS_KEY, JSON.stringify({ at: Date.now(), list: list })); } catch (e) {}
+        return list;
+      }).catch(function () { return null; });
+  }
+  function coopsReading(lat, lon) {
+    return coopsStations().then(function (list) {
+      if (!list || !list.length) return null;
+      var best = null;
+      list.forEach(function (st) {
+        var d2 = milesBetween(lat, lon, st.lat, st.lon);
+        if (d2 <= 45 && (!best || d2 < best.miles)) best = { st: st, miles: Math.round(d2) };
+      });
+      if (!best) return null;
+      return j('https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest'
+        + '&station=' + encodeURIComponent(best.st.id)
+        + '&product=water_temperature&units=english&time_zone=lst_ldt'
+        + '&application=MorningBrief&format=json')
+        .then(function (r) {
+          var row = r && r.data && r.data[0];
+          var v = row ? parseFloat(row.v) : NaN;
+          if (!isFinite(v)) return null;
+          return { kind: 'station', available: true, waterF: Math.round(v),
+                   waveFt: null, station: best.st.name, miles: best.miles };
+        }).catch(function () { return null; });
+    }).catch(function () { return null; });
+  }
+
+  /* Tried in order: an offshore buoy, then a shoreline station, then a
+     model. Whichever answers first is what the card reports, and the
+     card names it. */
+  function waterFor(place, tz) {
+    return nearestBuoy(place.lat, place.lon)
+      .then(function (b) { return b ? buoyReading(b) : null; })
+      .catch(function () { return null; })
+      .then(function (w) { return w || coopsReading(place.lat, place.lon); })
+      .then(function (w) { return w || marineReading(place.lat, place.lon, tz); });
+  }
+
   function loadShore(place) {
     if (!place) return;
     state.shoreSel = place; store.shore = place;
@@ -1810,17 +1891,11 @@
     var host = document.getElementById('shoreBody'); host.classList.add('busy');
     buildBeaches();
 
-    Promise.all([
-      j(wxUrl(place.lat, place.lon, place.tz, 1)),
-      nearestBuoy(place.lat, place.lon).then(function (b) { return b ? buoyReading(b) : null; })
-    ]).then(function (r) {
-      var water = r[1];
-      var finish = function (w) {
-        state.shore = { wx: r[0], water: w, name: placeLabel(place), lat: place.lat };
+    j(wxUrl(place.lat, place.lon, place.tz, 1)).then(function (wx) {
+      return waterFor(place, wx.timezone).then(function (water) {
+        state.shore = { wx: wx, water: water, name: placeLabel(place), lat: place.lat };
         renderShore(); host.classList.remove('busy');
-      };
-      if (water) finish(water);
-      else marineReading(place.lat, place.lon, r[0].timezone).then(finish);
+      });
     }).catch(function (e) {
       state.shore = { error: (e && e.message) || 'Could not reach the weather service.' };
       renderShore(); host.classList.remove('busy');
@@ -1844,16 +1919,19 @@
     el.className = 'card' + (row.tip ? '' : ' flat') + (row.plain ? ' plain' : '')
                  + (row.alert ? ' alert' : '') + (row.note ? ' note' : '')
                  + (row.ahead ? ' ahead' : '')
-                 + (row.timeline || row.alert || row.note ? ''
-                    : (String(row.bold || '').length > 24 ? ' sm wide2' : ' sm'));
+                 + (row.timeline || row.alert || row.note ? '' : ' sm');
     if (row.bg) el.style.background = row.bg;
 
     var line = document.createElement('div');
     line.className = 'face' + (row.split ? ' split' : '');
     if (row.split) {
-      var lft = document.createElement('b'); lft.textContent = row.split.left;
-      var rgt = document.createElement('b'); rgt.textContent = row.split.right;
-      line.appendChild(lft); line.appendChild(rgt);
+      ['left', 'right'].forEach(function (side) {
+        var box = document.createElement('div'); box.className = 'end ' + side;
+        row.split[side].forEach(function (txt) {
+          var b3 = document.createElement('b'); b3.textContent = txt; box.appendChild(b3);
+        });
+        line.appendChild(box);
+      });
     } else {
       var b = document.createElement('b'); b.textContent = row.bold; line.appendChild(b);
       if (row.det) { var s2 = document.createElement('span'); s2.className = 'det'; s2.textContent = row.det; line.appendChild(s2); }
@@ -1929,12 +2007,15 @@
     var ahead = aheadCard(p, state.tz, state.dayOffset);
     if (ahead) host.appendChild(card(ahead));
 
+    var hourlyBuilders = {
+      feels:    function () { return feelsCard(d); },
+      sweat:    function () { return sweatCard(d); },
+      sky:      function () { return skyCard(d); },
+      rain:     function () { return rainCard(d); },
+      daylight: function () { return daylightCard(d); }
+    };
     var col = document.createElement('div'); col.className = 'hourly';
-    addCard(col, 'feels',    function () { return feelsCard(d); });
-    addCard(col, 'sweat',    function () { return sweatCard(d); });
-    addCard(col, 'sky',      function () { return skyCard(d); });
-    addCard(col, 'rain',     function () { return rainCard(d); });
-    addCard(col, 'daylight', function () { return daylightCard(d); });
+    hourlyOrder().forEach(function (id) { addCard(col, id, hourlyBuilders[id]); });
     host.appendChild(col);
 
     var grid = document.createElement('div'); grid.className = 'grid';
@@ -1984,12 +2065,15 @@
     try { d = derive(p.wx, null, p.wx.timezone || state.tz, state.dayOffset); }
     catch (e) { return fail(host, e.message); }
     host.innerHTML = '';
+    var sHourly = {
+      feels:    function () { return feelsCard(d); },
+      sweat:    function () { return sweatCard(d); },
+      sky:      function () { return skyCard(d); },
+      rain:     function () { return rainCard(d); },
+      daylight: function () { return daylightCard(d); }
+    };
     var scol = document.createElement('div'); scol.className = 'hourly';
-    addCard(scol, 'feels',    function () { return feelsCard(d); });
-    addCard(scol, 'sweat',    function () { return sweatCard(d); });
-    addCard(scol, 'sky',      function () { return skyCard(d); });
-    addCard(scol, 'rain',     function () { return rainCard(d); });
-    addCard(scol, 'daylight', function () { return daylightCard(d); });
+    hourlyOrder().forEach(function (id) { addCard(scol, id, sHourly[id]); });
     host.appendChild(scol);
     var g = document.createElement('div'); g.className = 'grid';
     addCard(g, 'burn', function () { return burnCard(d); });
@@ -2125,35 +2209,80 @@
   var settingsPanel = document.getElementById('settingsPanel');
   var aboutPanel = document.getElementById('aboutPanel');
 
+  var TABS = [['cards', 'Cards'], ['colour', 'Colour'], ['key', 'API key']];
+
   function buildSettings() {
     settingsPanel.innerHTML = '';
-    var h = document.createElement('h2'); h.textContent = 'What you see';
-    settingsPanel.appendChild(h);
-    var groups = {};
-    CARDS.forEach(function (c) { (groups[c.group] = groups[c.group] || []).push(c); });
-    Object.keys(groups).forEach(function (g) {
-      var t = document.createElement('h3'); t.textContent = g; settingsPanel.appendChild(t);
-      groups[g].forEach(function (c) {
-        var row = document.createElement('label'); row.className = 'opt';
+    var tab = store.tab || 'cards';
+
+    var bar = document.createElement('div'); bar.className = 'tabs';
+    TABS.forEach(function (t) {
+      var b = document.createElement('button');
+      b.className = 'tab' + (tab === t[0] ? ' sel' : '');
+      b.textContent = t[1];
+      b.addEventListener('click', function () { store.tab = t[0]; saveStore(); buildSettings(); });
+      bar.appendChild(b);
+    });
+    settingsPanel.appendChild(bar);
+
+    if (tab === 'cards') buildCardsTab();
+    else if (tab === 'colour') buildColourTab();
+    else buildKeyTab();
+  }
+
+  /* One list, not two: each row carries its own on/off and its own
+     position, so a card is never listed twice. */
+  function buildCardsTab() {
+    var groups = [['Weather', hourlyOrder(), 'hourly'],
+                  ['Tiles', tileOrder(), 'tiles']];
+    groups.forEach(function (g) {
+      var h = document.createElement('h3'); h.textContent = g[0];
+      settingsPanel.appendChild(h);
+      g[1].forEach(function (id, i, arr) {
+        var meta = null;
+        CARDS.forEach(function (c) { if (c.id === id) meta = c; });
+        if (!meta) return;
+        var row = document.createElement('div'); row.className = 'ord';
         var box = document.createElement('input'); box.type = 'checkbox';
-        box.checked = on(c.id); box.disabled = !!c.always;
+        box.checked = on(id); box.disabled = !!meta.always;
         box.addEventListener('change', function () {
-          store.cards[c.id] = box.checked; saveStore(); renderHome(); renderShore();
+          store.cards[id] = box.checked; saveStore(); renderHome(); renderShore();
         });
-        var txt = document.createElement('span');
-        txt.textContent = c.name;
-        if (c.note) { var sm = document.createElement('small'); sm.textContent = c.note; txt.appendChild(sm); }
-        row.appendChild(box); row.appendChild(txt); settingsPanel.appendChild(row);
+        var nm = document.createElement('span'); nm.textContent = meta.name;
+        if (meta.note) { var sm = document.createElement('small'); sm.textContent = meta.note; nm.appendChild(sm); }
+        var up = document.createElement('button'); up.textContent = '\u2191';
+        up.setAttribute('aria-label', 'Move ' + meta.name + ' up');
+        up.disabled = i === 0;
+        up.addEventListener('click', function () { moveCard(id, -1, g[2]); });
+        var dn = document.createElement('button'); dn.textContent = '\u2193';
+        dn.setAttribute('aria-label', 'Move ' + meta.name + ' down');
+        dn.disabled = i === arr.length - 1;
+        dn.addEventListener('click', function () { moveCard(id, 1, g[2]); });
+        row.appendChild(box); row.appendChild(nm); row.appendChild(up); row.appendChild(dn);
+        settingsPanel.appendChild(row);
       });
     });
 
-    // ---- appearance ----
-    var ah = document.createElement('h3'); ah.textContent = 'Colours'; settingsPanel.appendChild(ah);
+    var sh = document.createElement('h3'); sh.textContent = 'Sections';
+    settingsPanel.appendChild(sh);
+    var srow = document.createElement('label'); srow.className = 'opt';
+    var sbox = document.createElement('input'); sbox.type = 'checkbox'; sbox.checked = on('shore');
+    sbox.addEventListener('change', function () {
+      store.cards.shore = sbox.checked; saveStore(); renderShore();
+    });
+    var stx = document.createElement('span'); stx.textContent = 'Water section';
+    var ssm = document.createElement('small'); ssm.textContent = 'A coast or lake worth checking';
+    stx.appendChild(ssm);
+    srow.appendChild(sbox); srow.appendChild(stx); settingsPanel.appendChild(srow);
+  }
+
+  function buildColourTab() {
     var pr = document.createElement('div'); pr.className = 'presets';
     Object.keys(PRESETS).forEach(function (k) {
       var b = document.createElement('button');
-      b.className = 'preset' + ((store.theme && store.theme.preset || 'default') === k
-                                 && !(store.theme && store.theme.cold) ? ' sel' : '');
+      var t = store.theme || {};
+      var custom = t.cold || t.good || t.warm || t.danger || t.night || t.dawn || t.day;
+      b.className = 'preset' + ((t.preset || 'default') === k && !custom ? ' sel' : '');
       b.textContent = PRESETS[k].name;
       var sw = document.createElement('span'); sw.className = 'sw';
       ['cold','good','warm','danger'].forEach(function (a) {
@@ -2169,20 +2298,17 @@
     settingsPanel.appendChild(pr);
 
     var A = anchors();
-    [['cold', 'Cold and dry'], ['good', 'Fine'], ['warm', 'Warm'], ['danger', 'Dangerous']]
-      .forEach(function (pairA) {
-        var row = document.createElement('label'); row.className = 'opt';
-        var inp = document.createElement('input'); inp.type = 'color'; inp.value = A[pairA[0]];
-        inp.style.cssText = 'width:34px;height:26px;padding:0;border:1px solid #D6D0C4;border-radius:6px;background:none';
-        inp.addEventListener('input', function () {
-          store.theme = store.theme || {};
-          store.theme[pairA[0]] = inp.value;
-          saveStore(); buildRamps(); renderHome(); renderShore();
-          updateContrast();
-        });
-        var sp = document.createElement('span'); sp.textContent = pairA[1];
-        row.appendChild(inp); row.appendChild(sp); settingsPanel.appendChild(row);
-      });
+    swatchRow('cold', 'Cold and dry', A.cold);
+    swatchRow('good', 'Fine', A.good);
+    swatchRow('warm', 'Warm', A.warm);
+    swatchRow('danger', 'Dangerous', A.danger);
+
+    var dh = document.createElement('h3'); dh.textContent = 'Sunrise and sunset';
+    settingsPanel.appendChild(dh);
+    var TH = store.theme || {};
+    swatchRow('night', 'Night', TH.night || rgb2hex(NIGHT));
+    swatchRow('dawn', 'Dawn and dusk', TH.dawn || rgb2hex(TWILIGHT));
+    swatchRow('day', 'Midday', TH.day || rgb2hex(DAYLIT));
 
     var warn = document.createElement('p'); warn.className = 'lede contrast'; warn.id = 'contrastNote';
     settingsPanel.appendChild(warn);
@@ -2195,30 +2321,43 @@
     });
     settingsPanel.appendChild(reset);
     updateContrast();
+  }
 
-    // ---- order ----
-    var oh = document.createElement('h3'); oh.textContent = 'Tile order'; settingsPanel.appendChild(oh);
-    tileOrder().forEach(function (id, i, arr) {
-      var meta = null;
-      CARDS.forEach(function (c) { if (c.id === id) meta = c; });
-      if (!meta || !on(id)) return;
-      var row = document.createElement('div'); row.className = 'ord';
-      var nm = document.createElement('span'); nm.textContent = meta.name; row.appendChild(nm);
-      var up = document.createElement('button'); up.textContent = '\u2191'; up.title = 'Move up';
-      up.disabled = i === 0;
-      up.addEventListener('click', function () { moveTile(id, -1); });
-      var dn = document.createElement('button'); dn.textContent = '\u2193'; dn.title = 'Move down';
-      dn.disabled = i === arr.length - 1;
-      dn.addEventListener('click', function () { moveTile(id, 1); });
-      row.appendChild(up); row.appendChild(dn);
-      settingsPanel.appendChild(row);
+  function swatchRow(key, label, value) {
+    var row = document.createElement('label'); row.className = 'opt';
+    var inp = document.createElement('input'); inp.type = 'color'; inp.value = value;
+    inp.style.cssText = 'width:34px;height:26px;padding:0;border:1px solid #D6D0C4;border-radius:6px;background:none';
+    inp.addEventListener('input', function () {
+      store.theme = store.theme || {};
+      store.theme[key] = inp.value;
+      saveStore(); buildRamps(); renderHome(); renderShore(); updateContrast();
     });
+    var sp = document.createElement('span'); sp.textContent = label;
+    row.appendChild(inp); row.appendChild(sp); settingsPanel.appendChild(row);
+  }
 
-    var kh = document.createElement('h3'); kh.textContent = 'Optional Google API key';
-    settingsPanel.appendChild(kh);
-    var kl = document.createElement('p'); kl.className = 'lede';
-    kl.textContent = 'Blank uses a bloom calendar and CAMS air quality. A key adds measured pollen and 500 m air quality, billed to you.';
-    settingsPanel.appendChild(kl);
+  function buildKeyTab() {
+    var lede = document.createElement('p'); lede.className = 'lede';
+    lede.textContent = 'Optional. Without a key, allergens come from a regional bloom calendar and air quality from Copernicus CAMS at about 45 km. A key replaces both with measured pollen naming the plants in season, and air quality on a 500 m grid.';
+    settingsPanel.appendChild(lede);
+
+    var steps = [
+      'Go to console.cloud.google.com and create a project.',
+      'In APIs & Services, enable both the Pollen API and the Air Quality API.',
+      'Turn on billing for the project. Both are paid-tier products, so a card is required even though you are unlikely to be charged.',
+      'Under Credentials, create an API key.',
+      'Restrict the key to those two APIs so it cannot be used for anything else.',
+      'Under Google Maps Platform, then Quotas, set a daily cap of about 100 on each so a mistake cannot run up a bill.',
+      'Paste the key below.'
+    ];
+    var ol = document.createElement('ol'); ol.className = 'steps';
+    steps.forEach(function (t) { var li = document.createElement('li'); li.textContent = t; ol.appendChild(li); });
+    settingsPanel.appendChild(ol);
+
+    var cost = document.createElement('p'); cost.className = 'lede';
+    cost.textContent = 'Each API allows 5,000 free calls a month. This app uses a handful a day, cached for 30 minutes, so a personal bill should be zero. The key is stored in this browser only and is billed to whoever created it.';
+    settingsPanel.appendChild(cost);
+
     var input = document.createElement('input'); input.type = 'text';
     input.placeholder = 'Paste key, or leave blank';
     input.value = store.keys.google || '';
