@@ -918,6 +918,11 @@
       w = water.waterF;
       provenance = 'Measured at ' + water.station + ', ' + water.miles
                  + ' miles away, by NOAA Tides and Currents. A shoreline gauge rather than open water.';
+      // On a big lake or a long coast, twenty miles of shore can differ
+      // by ten degrees or more after an upwelling.
+      if (water.miles > 20) {
+        provenance += ' That is far enough up the shore that your own beach could be several degrees different.';
+      }
     } else if (water.kind === 'buoy') {
       if (!water.available) {
         return { bold: 'Water Temperature Unavailable', plain: true,
@@ -1736,6 +1741,10 @@
      for a day, so nearest-buoy works anywhere without a hardcoded
      list of guesses. */
   var STATIONS_KEY = 'morningbrief.stations.v1';
+  /* NDBC does not send CORS headers, so a browser request to it fails.
+     The attempt is kept because it is the better source when it works
+     \u2014 offshore, with wave height \u2014 but a failure is remembered for a
+     day so every page load is not spent waiting on a blocked host. */
   function stations() {
     var cached = null;
     try { cached = JSON.parse(localStorage.getItem(STATIONS_KEY)); } catch (e) {}
@@ -1754,7 +1763,10 @@
         try { localStorage.setItem(STATIONS_KEY, JSON.stringify({ at: Date.now(), list: list })); } catch (e) {}
         return list;
       })
-      .catch(function () { return null; });   // blocked or offline: fall through to the model
+      .catch(function () {
+        try { localStorage.setItem(STATIONS_KEY, JSON.stringify({ at: Date.now(), list: [] })); } catch (e) {}
+        return null;
+      });
   }
   function milesBetween(a, b, c, e) {
     var R = 3958.8, t = Math.PI / 180;
