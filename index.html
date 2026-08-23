@@ -30,6 +30,12 @@
   select:focus-visible{outline:2px solid var(--link);outline-offset:3px;}
 
   .face{position:relative;}
+  /* Sunrise to the left, sunset to the right, so the card reads the way
+     the day runs. Wraps to two lines rather than crushing on a narrow
+     phone. */
+  .face.split{display:flex;justify-content:space-between;align-items:baseline;
+              gap:10px;flex-wrap:wrap;text-align:left;}
+  .face.split b:last-child{text-align:right;margin-left:auto;}
   .now{position:absolute;top:-13px;bottom:-13px;width:2px;margin-left:-1px;
        background:rgba(22,35,47,.30);box-shadow:0 0 0 1px rgba(255,255,255,.45);
        pointer-events:none;border-radius:1px;}
@@ -78,9 +84,16 @@
   @media (min-width:760px){
     .wrap{max-width:1080px;}
     #homeBody, #shoreBody{display:grid;grid-template-columns:minmax(300px,0.95fr) 1.25fr;
-                          gap:12px;align-items:start;}
+                          gap:12px;align-items:stretch;}
     #homeBody > .alert, #homeBody > .note{grid-column:1 / -1;}
-    .hourly > .card:last-child{margin-bottom:0;}
+    /* The tiles get their height from aspect-ratio, so without a rule of
+       their own the hourly cards ended up shorter than the tiles beside
+       them \u2014 backwards, since these are the ones whose gradients carry
+       a whole day. They now divide the column evenly and both sides end
+       on the same line. */
+    .hourly{display:flex;flex-direction:column;gap:8px;}
+    .hourly > .card{margin-bottom:0;flex:1 1 0;min-height:84px;
+                    display:flex;flex-direction:column;justify-content:center;}
     .grid{grid-template-columns:repeat(3,1fr);margin-top:0;}
     .card.sm{aspect-ratio:2.5/1;font-size:15px;}
     .card.sm.wide2{grid-column:span 2;aspect-ratio:5.2/1;}
@@ -281,6 +294,7 @@
   function lighten(c, t) { return blend(c, [255, 255, 255], t); }
 
   var RAMP = {};
+  var NIGHT, TWILIGHT, DAYLIT;
   function buildRamps() {
     var A = anchors();
     var COLD = hex2rgb(A.cold), GOOD = hex2rgb(A.good),
@@ -308,6 +322,12 @@
     };
     SUN = GOOD; GREY = [196,200,204]; STORM = [163,169,176];
     SNOW = [246,248,249]; DUSK = blend(COLD, [150,158,170], .5);
+    // Daylight card: deep at the edges, warm through each transition,
+    // bright through the middle. Built from the same anchors, so it
+    // stops being the one card that ignores the theme.
+    NIGHT = blend(COLD, [104,116,136], .55);
+    TWILIGHT = blend(WARM, [255,226,190], .35);
+    DAYLIT = lighten(GOOD, .42);
   }
 
   function colorAt(ramp, v) {
@@ -913,7 +933,6 @@
 
   /* The card is the day: slate at the edges, warm gold through the
      middle, with the colour turning at the actual sunrise and sunset. */
-  var NIGHT = [168,177,193], TWILIGHT = [233,190,150], DAYLIT = [248,238,190];
   function daylightCard(d) {
     var srF = frac(d.sunriseISO), ssF = frac(d.sunsetISO);
     var mins = span(d.sunriseISO, d.sunsetISO);
@@ -933,7 +952,8 @@
       }
     }
     return { timeline: true, bg: bg,
-      bold: 'Sunrise ' + clock(d.sunriseISO) + ' \u00B7 Sunset ' + clock(d.sunsetISO), tip: tip };
+      split: { left: 'Sunrise ' + clock(d.sunriseISO), right: 'Sunset ' + clock(d.sunsetISO) },
+      tip: tip };
   }
 
   /* Moon phase is arithmetic, not an API call: the synodic month is
@@ -1829,9 +1849,15 @@
     if (row.bg) el.style.background = row.bg;
 
     var line = document.createElement('div');
-    line.className = 'face';
-    var b = document.createElement('b'); b.textContent = row.bold; line.appendChild(b);
-    if (row.det) { var s2 = document.createElement('span'); s2.className = 'det'; s2.textContent = row.det; line.appendChild(s2); }
+    line.className = 'face' + (row.split ? ' split' : '');
+    if (row.split) {
+      var lft = document.createElement('b'); lft.textContent = row.split.left;
+      var rgt = document.createElement('b'); rgt.textContent = row.split.right;
+      line.appendChild(lft); line.appendChild(rgt);
+    } else {
+      var b = document.createElement('b'); b.textContent = row.bold; line.appendChild(b);
+      if (row.det) { var s2 = document.createElement('span'); s2.className = 'det'; s2.textContent = row.det; line.appendChild(s2); }
+    }
     if (row.timeline && state.dayOffset === 0) {
       var tick = document.createElement('div');
       tick.className = 'now';
@@ -2103,10 +2129,6 @@
     settingsPanel.innerHTML = '';
     var h = document.createElement('h2'); h.textContent = 'What you see';
     settingsPanel.appendChild(h);
-    var l = document.createElement('p'); l.className = 'lede';
-    l.textContent = 'Everything is on to start with. Turn off whatever does not apply to you \u2014 no lawn, no car, no basement, conditions you do not have. Saved in this browser only.';
-    settingsPanel.appendChild(l);
-
     var groups = {};
     CARDS.forEach(function (c) { (groups[c.group] = groups[c.group] || []).push(c); });
     Object.keys(groups).forEach(function (g) {
@@ -2127,10 +2149,6 @@
 
     // ---- appearance ----
     var ah = document.createElement('h3'); ah.textContent = 'Colours'; settingsPanel.appendChild(ah);
-    var al = document.createElement('p'); al.className = 'lede';
-    al.textContent = 'Blue always means cold or dry, green and yellow mean fine, and orange through purple means increasingly not fine. You are picking the four anchor colours; every card is built from them, so the grammar holds whatever you choose.';
-    settingsPanel.appendChild(al);
-
     var pr = document.createElement('div'); pr.className = 'presets';
     Object.keys(PRESETS).forEach(function (k) {
       var b = document.createElement('button');
@@ -2180,9 +2198,6 @@
 
     // ---- order ----
     var oh = document.createElement('h3'); oh.textContent = 'Tile order'; settingsPanel.appendChild(oh);
-    var ol = document.createElement('p'); ol.className = 'lede';
-    ol.textContent = 'Arrows rather than dragging, because dragging is miserable on a phone. Tiles that do not apply today stay hidden wherever you put them.';
-    settingsPanel.appendChild(ol);
     tileOrder().forEach(function (id, i, arr) {
       var meta = null;
       CARDS.forEach(function (c) { if (c.id === id) meta = c; });
@@ -2202,7 +2217,7 @@
     var kh = document.createElement('h3'); kh.textContent = 'Optional Google API key';
     settingsPanel.appendChild(kh);
     var kl = document.createElement('p'); kl.className = 'lede';
-    kl.textContent = 'Leave this blank and allergens come from a regional bloom calendar and air quality from Copernicus CAMS at about 45 km. Paste your own Google Maps Platform key \u2014 with the Pollen and Air Quality APIs enabled \u2014 and you get measured pollen and 500 m air quality instead. Billed to you, not to whoever hosts this. Each card says which source it used.';
+    kl.textContent = 'Blank uses a bloom calendar and CAMS air quality. A key adds measured pollen and 500 m air quality, billed to you.';
     settingsPanel.appendChild(kl);
     var input = document.createElement('input'); input.type = 'text';
     input.placeholder = 'Paste key, or leave blank';
