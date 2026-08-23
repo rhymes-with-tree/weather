@@ -1,4 +1,4 @@
-# Visual Weather Health
+# Weather & Health Data, Visualized
 
 A weather page for the things weather actually does to you — sunburn, pollen,
 joints, migraines, bugs, mud, frost on the windshield, and whether the water is
