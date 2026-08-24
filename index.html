@@ -31,6 +31,15 @@
   select:focus-visible{outline:2px solid var(--link);outline-offset:3px;}
 
   .face{position:relative;}
+  /* A tappable card says so: a small chevron that rotates when open.
+     Only appears on cards that actually have something behind them, so
+     it never promises a tap that does nothing. */
+  .more{position:absolute;right:0;top:50%;transform:translateY(-50%);
+        width:15px;height:15px;opacity:.42;pointer-events:none;}
+  .more svg{display:block;width:100%;height:100%;}
+  .card.open .more{transform:translateY(-50%) rotate(180deg);opacity:.55;}
+  .card.sm .more{right:-4px;}
+  .card.open .more{top:11px;transform:rotate(180deg);}
   /* Sunrise to the left, sunset to the right, so the card reads the way
      the day runs. Wraps to two lines rather than crushing on a narrow
      phone. */
@@ -93,7 +102,7 @@
     .wrap{max-width:1080px;}
     #homeBody, #shoreBody{display:grid;grid-template-columns:minmax(300px,0.95fr) 1.25fr;
                           gap:12px;align-items:start;}
-    #homeBody > .alert, #homeBody > .note{grid-column:1 / -1;}
+    #homeBody > .alert, #homeBody > .note, #homeBody > .todo{grid-column:1 / -1;}
     /* Both sides share one row height, so a card on the left lines up
        with a tile on the right instead of each being sized by its own
        rule. */
@@ -129,6 +138,9 @@
        border-top:1px solid #E8E4DC;cursor:pointer;}
   .opt:first-of-type{border-top:none;}
   .opt input{margin:3px 0 0;width:17px;height:17px;flex:0 0 auto;}
+  .opt.skin{align-items:center;}
+  .tone{width:26px;height:26px;border-radius:50%;flex:0 0 auto;
+        border:1px solid rgba(0,0,0,.18);display:block;}
   .opt span small{display:block;font-size:12.5px;color:var(--mid);line-height:1.35;margin-top:1px;}
   .panel input[type=text]{font:inherit;width:100%;padding:7px 9px;border:1px solid var(--line);
                           border-radius:8px;background:#FFF;color:inherit;margin-top:4px;}
@@ -158,6 +170,14 @@
   .ord button{background:#FFF;border:1px solid var(--line);border-radius:7px;width:30px;height:28px;
               font:inherit;font-size:15px;line-height:1;cursor:pointer;color:var(--ink);}
   .ord button:disabled{opacity:.32;cursor:default;}
+  .card.todo{background:#F3F0E8;border:1px solid var(--line);display:block;
+             padding:14px 18px;min-height:0;margin-bottom:12px;}
+  .todohead{font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;
+            color:var(--mid);margin-bottom:7px;}
+  .card.todo ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:7px 9px;}
+  .card.todo li{font-size:15.5px;font-weight:600;background:#FFF;border:1px solid var(--line);
+                border-radius:999px;padding:5px 13px;}
+  .tiphint{font-size:13px;color:var(--mid);text-align:center;margin:0 0 10px;}
   .disc{font-size:12px;color:#7C8996;line-height:1.55;margin:16px 4px 0;
         border-top:1px solid var(--line);padding-top:12px;}
   .disc b{color:var(--mid);}
@@ -184,6 +204,7 @@
   <div id="settingsPanel" class="panel" style="display:none"></div>
   <div id="aboutPanel" class="panel" style="display:none"></div>
 
+  <p class="tiphint" id="tipHint">Tap any card for the numbers behind it.</p>
   <div id="homeBody"></div>
 
   <div id="shoreSection">
@@ -236,7 +257,6 @@
     { id: 'burn',      name: 'Sunburn',           group: 'Body' },
     { id: 'frostbite', name: 'Frostbite',         group: 'Body', note: 'Only below freezing' },
     { id: 'air',       name: 'Air quality',       group: 'Body' },
-    { id: 'asthma',    name: 'Asthma advice',     group: 'Body', note: 'Adds inhaler guidance to the air quality tap' },
     { id: 'allergy',   name: 'Allergens',         group: 'Body' },
     { id: 'migraine',  name: 'Migraine',          group: 'Body', note: 'Barometric pressure and temperature swings' },
     { id: 'arthritis', name: 'Arthritis',         group: 'Body', note: 'Weather links here are widely reported and weakly evidenced' },
@@ -253,9 +273,35 @@
     { id: 'pipe',      name: 'Pipe freeze',       group: 'If you have', note: 'A house with exposed plumbing' },
     { id: 'mold',      name: 'Basement damp',     group: 'If you have', note: 'A basement or crawl space' },
     { id: 'mow',       name: 'Mowing',            group: 'If you have', note: 'A lawn you cut yourself' },
-    { id: 'shore',     name: 'Water section',     group: 'If you have', note: 'A coast or lake worth checking' }
+    { id: 'shore',     name: 'Water section',     group: 'If you have', note: 'A coast or lake worth checking' },
+    { id: 'todo',      name: 'To-do list',        group: 'Weather', note: 'A digest of what the other cards say to do' }
   ];
   function on(id) { return store.cards[id] !== false; }
+
+  /* Fitzpatrick scale. It classifies how skin RESPONDS to sun rather
+     than what colour it is, which is why each option is written as a
+     burn-and-tan behaviour. MED is the minimal erythemal dose in J/m2
+     \u2014 the exposure that produces a just-visible burn. Time to burn is
+     MED divided by erythemal irradiance, and a UV index of 1 is
+     25 mW/m2, so minutes = MED / (UV * 1.5). */
+  var SKIN = [
+    { id: 1, med: 150,  tone: '#F7DFD0', label: 'Always burns, never tans' },
+    { id: 2, med: 250,  tone: '#F0C9A8', label: 'Usually burns, tans a little' },
+    { id: 3, med: 350,  tone: '#DDA97C', label: 'Sometimes burns, tans gradually' },
+    { id: 4, med: 450,  tone: '#B97C4F', label: 'Rarely burns, tans easily' },
+    { id: 5, med: 600,  tone: '#8A5A34', label: 'Very rarely burns, tans deeply' },
+    { id: 6, med: 1000, tone: '#543A22', label: 'Never burns' }
+  ];
+  /* The EPA index is built around two audiences: everyone, and people
+     whose lungs or heart make them react sooner. Which one you are
+     changes both the wording and where the thresholds bite. */
+  function sensitive() { return !!store.sensitive; }
+
+  function skin() {
+    var id = store.skin || 2;
+    for (var i = 0; i < SKIN.length; i++) if (SKIN[i].id === id) return SKIN[i];
+    return SKIN[1];
+  }
 
   var state = { place: store.place || null, tz: 'America/Detroit', dayOffset: 0,
                 home: null, shore: null, shoreSel: store.shore || null,
@@ -640,6 +686,8 @@
     var lo = tempWord(d.feelsMin), hi = tempWord(d.feelsMax);
     return { timeline: true, bg: bgDay(d, function (r) { return colorAt('feels', r.feels == null ? 60 : r.feels); }),
       bold: pair(lo, hi),
+      todo: d.feelsMax < 20 ? 'BUNDLE UP' : d.feelsMax < 40 ? 'Proper coat'
+          : d.feelsMax > 92 ? 'Water, and stay in the shade' : null,
       tip: 'Feels like ' + Math.round(d.feelsMin) + DEG + ' overnight, ' + Math.round(d.feelsMax) + DEG
          + (d.feelsPeakHour != null ? ' around ' + hr(d.feelsPeakHour) : ' at its peak') + '.'
          + ' Actual air temperature runs ' + Math.round(d.tMin) + DEG + ' to ' + Math.round(d.tMax) + DEG + '.' };
@@ -664,26 +712,25 @@
   }
 
   function burnCard(d) {
-    var uv = d.uvNoon;
+    var uv = d.uvNoon, sk = skin();
     if (uv < 2) return { bg: bgFrom('burn', uv), bold: 'No Sunburn Risk',
       tip: 'UV only reaches ' + uv.toFixed(1) + ' at solar noon. Nothing to protect against.' };
-    var mins = Math.max(6, Math.round(150 / uv));
-    return { bg: bgFrom('burn', uv), bold: 'Fair Skin Burns in ' + mins + ' min',
-      tip: 'UV ' + uv.toFixed(1) + ' at solar noon, ' + hr(d.solarNoon)
-         + '. Unprotected, and roughly doubling for each step darker your skin is. '
-         + (uv >= 8 ? 'Sunscreen before you leave, plus a hat, and shade in the middle of the day. Sunburn can provoke new plaques.'
-          : uv >= 6 ? 'Sunscreen before ' + burnStart(d) + ', and again after you swim or sweat.'
-          : 'Sunscreen past half an hour outside. This is also the useful range for short, deliberate sun on affected skin.') };
-  }
-
-  /* The hour UV first crosses 3 is when protection starts to matter,
-     which beats a flat "before noon". */
-  function burnStart(d) {
-    for (var h = 4; h <= 14; h++) {
-      var r = d.hours[h];
-      if (r && r.uv >= 3) return hr(h);
+    var mins = Math.max(5, Math.round(sk.med / (uv * 1.5)));
+    var face = mins >= 90 ? Math.round(mins / 60 * 10) / 10 + ' hr to Sunburn' : mins + ' min to Sunburn';
+    var tip = 'UV ' + uv.toFixed(1) + ' at solar noon, ' + hr(d.solarNoon)
+            + '. Unprotected, for skin that ' + sk.label.toLowerCase() + '. ';
+    tip += uv >= 8
+      ? 'Sunscreen before you leave, plus a hat, and shade in the middle of the day. Sunburn can provoke new plaques.'
+      : uv >= 6 ? 'Sunscreen before ' + burnStart(d) + ', and again after you swim or sweat.'
+      : 'Sunscreen past half an hour outside. This is also the useful range for short, deliberate sun on affected skin.';
+    // Longer to burn is not the same as safe: pigment slows erythema but
+    // does not stop UV damage, and skin cancer in darker skin is more
+    // often found late.
+    if (sk.id >= 4) {
+      tip += ' A longer window is not the same as no risk \u2014 UV still ages and damages skin that rarely burns.';
     }
-    return hr(d.solarNoon);
+    return { bg: bgFrom('burn', uv), bold: face, tip: tip,
+             todo: uv >= 6 ? 'Sunscreen and a hat' : uv >= 3 ? 'Sunscreen' : null };
   }
 
   function skyWord(cloud, codes) {
@@ -727,6 +774,7 @@
       : ' Clear evening and only a ' + lit + '% moon \u2014 a good night for stargazing.';
 
     return { timeline: true, bg: bgDay(d, skyColor), bold: pair(wAM, wPM),
+      todo: (evCloud != null && evCloud < 30 && lit < 60) ? 'Go stargazing' : null,
       tip: Math.round(d.cloudDay) + '% average cloud cover through daylight.'
          + (wAM !== wPM ? ' ' + wAM + ' in the morning, ' + wPM.toLowerCase() + ' by afternoon.' : '')
          + stars };
@@ -734,7 +782,7 @@
 
   function rainCard(d) {
     var v = Math.round(d.rainChance);
-    var w = v < 15 ? 'Dry' : v < 40 ? 'Slight Chance of Rain' : v < 65 ? 'Maybe Rain'
+    var w = v < 15 ? 'Nothing Falling from the Sky' : v < 40 ? 'Slight Chance of Rain' : v < 65 ? 'Maybe Rain'
           : v < 85 ? 'Likely Rain' : 'Rain';
     var tip = v + '% chance at its highest. ';
     if (v >= 15) {
@@ -744,51 +792,62 @@
       tip += v >= 60 ? 'Take the umbrella.' : 'Worth an umbrella or rain jacket, but it should not run your day.';
       if (d.rainSum >= 0.05) tip += ' About ' + d.rainSum.toFixed(2) + '\u2033 expected in total.';
     } else { tip += 'Nothing to plan around.'; }
-    return { timeline: true, bg: bgDay(d, function (r) { return colorAt('rain', r.pop); }), bold: w, tip: tip };
+    return { timeline: true, bg: bgDay(d, function (r) { return colorAt('rain', r.pop); }), bold: w, tip: tip,
+             todo: v >= 60 ? 'Umbrella' : v >= 25 ? 'Jacket in the car' : null };
   }
 
   function airCard(d, gAir) {
-    var a = null, src = 'cams', lung = '', dom = '';
+    var a = null, src = 'cams', advice = '', dom = '';
+    var sens = sensitive();
     if (gAir && gAir.days && gAir.days[d.date]) {
       var g = gAir.days[d.date]; a = g.aqi; src = 'google';
-      lung = g.lungAdvice || g.generalAdvice || ''; dom = g.dominant || '';
+      advice = sens ? (g.lungAdvice || g.generalAdvice || '') : (g.generalAdvice || '');
+      dom = g.dominant || '';
     } else if (gAir && gAir.error && d.aqiMax == null) {
       return { plain: true, bold: 'Air Quality Unavailable', tip: gAir.error };
     } else { a = d.aqiMax; }
     if (a == null) return { plain: true, bold: 'Air Quality Unavailable' };
 
-    // Face carries the standard EPA category; what to do about it
-    // lives in the expansion.
-    var w = a <= 50 ? 'Good Air Quality' : a <= 100 ? 'Moderate Air Quality'
-          : a <= 150 ? 'Unhealthy for Sensitive Groups' : a <= 200 ? 'Unhealthy Air Quality'
-          : a <= 300 ? 'Very Unhealthy Air Quality' : 'Hazardous Air Quality';
+    var w, own, todo = null;
+    if (a <= 50) {
+      w = 'Good Air Quality';
+      own = 'Nothing in the air arguing against outdoor time.';
+    } else if (a <= 100) {
+      w = 'Moderate Air Quality';
+      own = sens
+        ? 'Moderate is where sensitive lungs start to notice. Keep the rescue inhaler on you and warm up slowly outdoors.'
+        : 'Fine for most people. Unusually sensitive lungs might notice on a long effort.';
+      if (sens) todo = 'Inhaler in your pocket';
+    } else if (a <= 150) {
+      w = sens ? 'Unhealthy for You' : 'Unhealthy for Sensitive Groups';
+      own = sens
+        ? 'This band is named for you. Pre-medicate before anything outdoors and keep exertion indoors if you can.'
+        : 'Still acceptable for most people, though a long hard effort outdoors is worth shortening.';
+      todo = sens ? 'Pre-medicate, and mask if you are out long' : null;
+    } else if (a <= 200) {
+      w = 'Unhealthy Air Quality';
+      own = 'Unhealthy for everyone now, not just sensitive groups. Windows shut, and skip outdoor exercise.';
+      todo = 'Stay inside if you can';
+    } else {
+      w = a <= 300 ? 'Very Unhealthy Air Quality' : 'Hazardous Air Quality';
+      own = 'Stay indoors. Windows shut, air filter on if you have one.';
+      todo = 'Stay inside, windows shut';
+    }
+
     var tip = 'US AQI peaks at ' + Math.round(a) + (dom ? ', mostly ' + dom.toUpperCase() : '') + '. ';
-    tip += lung || (a <= 50 ? 'Nothing in the air arguing against outdoor time.'
-         : a <= 100 ? 'Keep the rescue inhaler on you, and warm up slowly if you are exercising outside.'
-         : a <= 150 ? 'Pre-medicate before anything outdoors, and keep exertion indoors if you can. Consider masking.'
-         : 'Windows shut, and skip outdoor exercise entirely.');
+    tip += advice || own;
     var extras = [];
     if (d.tMin < 45 && d.rhMean < 55) extras.push('cold dry air');
     if (d.windMax > 25) extras.push('high wind');
     if (d.ozoneMax != null && d.ozoneMax >= 120) extras.push('high ozone');
     if (extras.length) tip += ' ' + (a <= 50 ? 'Air is clean, but ' : 'Also, ') + listJoin(extras) + ' can set things off on its own.';
-    // Fine particulate leading the mix at these levels is usually smoke.
     if (dom && dom.toLowerCase().indexOf('pm25') > -1 && a > 75) {
       tip += ' Fine particulate is the dominant pollutant at this level, which usually means smoke rather than traffic.';
     }
-    // Neither source is a thermometer on your street. Google fuses
-    // ground stations, satellite and dispersion models onto a 500 m
-    // grid; CAMS is a global model on a ~45 km grid. Say which, not
-    // "measured".
     tip += src === 'google' ? ' Google Air Quality, 500 m grid.' : ' Copernicus CAMS, ~45 km grid.';
-    return { bg: bgFrom('aqi', a), bold: w, tip: tip };
+    return { bg: bgFrom('aqi', a), bold: w, tip: tip, todo: todo };
   }
 
-  /* Bloom calendars by region. The old single calendar was tuned to the
-     Great Lakes and is simply wrong elsewhere: Texas cedar peaks in
-     January, the Southeast starts trees in February and never really
-     stops with mould, and the desert Southwest barely has a dormant
-     season. These are still models, not counts \u2014 the card says so. */
   var CALENDARS = {
     great_lakes: { name: 'Great Lakes and Northeast',
       m: {1:[],2:['cedar','elm'],3:['maple','elm','alder'],4:['oak','birch','poplar'],
@@ -850,6 +909,7 @@
                         .slice(0, 2).map(function (p) { return cap(p.name.toLowerCase()); });
         var sc = Math.round((idx / 5) * 100);
         return { bg: bgFrom('risk', sc),
+          todo: sc >= 35 ? 'Antihistamine before you go out' : null,
           bold: plants.length ? level(sc) + ' Allergies' : 'No Pollen in Season',
           tip: (plants.length ? listJoin(plants) + '. ' : '')
              + 'Pollen index ' + idx + ' out of 5, from the Google Pollen API. ' + advice(sc) };
@@ -869,6 +929,7 @@
     var sc2 = Math.round(Math.max(0, Math.min(1, s2)) * 100);
     return { bg: bgFrom('risk', sc2),
       bold: level(sc2) + ' Allergies',
+      todo: sc2 >= 35 ? 'Antihistamine before you go out' : null,
       tip: listJoin(names.map(cap)) + '. Scored ' + sc2 + ' out of 100, from a bloom calendar for the '
          + cal.name + ' rather than any pollen data. ' + advice(sc2) };
   }
@@ -890,6 +951,7 @@
     var r = migraineScore(d), s = r.s, why = r.why;
     return { bg: bgFrom('risk', s),
       bold: 'Migraine ' + (s >= 45 ? 'Likely' : s >= 24 ? 'Possible' : 'Unlikely'),
+      todo: s >= 45 ? 'Keep meds within reach, drink early' : null,
       tip: cap(topOf(why) || 'pressure steady, no sharp swings') + '. '
          + (s >= 45 ? 'Front-load water, hold your sleep and meal times, sunglasses outdoors, abortive meds within reach.'
           : s >= 24 ? 'Hydrate early and do not skip meals.' : 'Atmospherically quiet.') };
@@ -911,6 +973,7 @@
     var r = arthritisScore(d), s = r.s, why = r.why;
     return { bg: bgFrom('risk', s),
       bold: 'Arthritis Flare ' + (s >= 45 ? 'Likely' : s >= 24 ? 'Possible' : 'Unlikely'),
+      todo: s >= 45 ? 'Warm up slowly, save the heavy jobs' : null,
       tip: cap(topOf(why) || 'settled, warm and dry') + '. '
          + (s >= 45 ? 'Heat on the worst joints before you move them, a longer warm-up, and push the physical parts of the day later rather than first thing.'
           : s >= 24 ? 'Extra warm-up time, and keep moving \u2014 sitting still is what tightens up.'
@@ -955,7 +1018,8 @@
              : w < 74 ? 'Bracing Water' : 'Pleasant Water';
     var tip = w + DEG + (waveFt != null ? ', waves ' + waveFt + ' ft' : '') + '. ';
     if (w < 65) tip = 'Cold enough for cold-water shock \u2014 get in slowly, never jump. ' + tip;
-    return { bg: bgAt('water', w, 6), bold: word, tip: tip + provenance };
+    return { bg: bgAt('water', w, 6), bold: word, tip: tip + provenance,
+             todo: w >= 70 ? 'Go for a swim' : null };
   }
 
   /* The card is the day: slate at the edges, warm gold through the
@@ -1101,7 +1165,7 @@
     if (d.tMin < 42) { s -= 20; why.push('a cold night knocks them back'); }
     s = Math.max(0, Math.min(100, s));
     var word = s >= 65 ? 'Bugs Are Brutal' : s >= 40 ? 'Bring Bug Spray' : s >= 20 ? 'A Few Bugs' : 'Bug-Free';
-    return { bg: bgFrom('risk', s), bold: word,
+    return { bg: bgFrom('risk', s), bold: word, todo: s >= 40 ? 'Bug spray' : null,
       tip: (why.length ? cap(listJoin(why)) + '. ' : '')
          + (s >= 40 ? 'Worst at dawn and dusk. Repellent on exposed skin, and long sleeves after sunset. '
                     : 'You can probably skip the repellent. ')
@@ -1133,7 +1197,8 @@
     if (wc <= 15 && d.windMax >= 12) {
       tip += ' Cold this sharp with wind on top of it tightens blood vessels and puts more load on the heart, so heavy work outdoors \u2014 shovelling especially \u2014 costs more than it looks. Warm up inside first and take it in short stretches.';
     }
-    return { bg: bgAt('feels', wc, 9), bold: word, tip: tip };
+    return { bg: bgAt('feels', wc, 9), bold: word, tip: tip,
+             todo: wc <= -18 ? 'Cover every bit of skin' : 'Hat and gloves' };
   }
 
   /* Frizz is a dew point story, and it fails at both ends: damp air
@@ -1192,6 +1257,7 @@
     var hard = surface <= 28;
     return { bg: bgAt('feels', surface, 8),
       bold: hard ? 'Scrape the Windshield' : 'Light Frost Likely',
+      todo: hard ? 'Ten extra minutes to scrape' : 'Quick scrape',
       tip: 'Air bottoms out at ' + Math.round(d.tMin) + DEG
          + (drop ? ', and a ' + (clearCalm ? 'clear, calm' : 'partly clear') + ' night lets glass radiate to about '
                    + Math.round(surface) + DEG : '')
@@ -1207,6 +1273,7 @@
     var severe = d.coldRun >= 10 || d.feelsMin <= -5;
     return { bg: bgAt('feels', d.feelsMin, 8),
       bold: severe ? 'Drip the Faucets' : 'Pipe Freeze Watch',
+      todo: severe ? 'Drip the faucets tonight' : null,
       tip: Math.round(d.coldRun) + ' straight hours at or below 20' + DEG
          + ', bottoming out near ' + Math.round(d.feelsMin) + DEG + '. '
          + (severe
@@ -1223,6 +1290,7 @@
     var bad = dp >= 68;
     return { bg: bgFrom('risk', bad ? 78 : 48),
       bold: bad ? 'Keep the Basement Shut' : 'Basement Damp Risk',
+      todo: bad ? 'Dehumidifier on, basement shut' : null,
       tip: 'Outdoor dew point reaches ' + Math.round(dp) + DEG
          + ', above the surface temperature of a typical basement or crawl space. '
          + (bad
@@ -1247,12 +1315,13 @@
     if (!hot && !cold) return null;
 
     if (cold) {
-      return { bg: bgAt('feels', d.feelsMin, 8), bold: 'Hard on Paws',
+      return { bg: bgAt('feels', d.feelsMin, 8), bold: 'Hard on Paws', todo: 'Short walk, rinse paws after',
         tip: 'Wind chill near ' + Math.round(d.feelsMin) + DEG
            + '. Ice and road salt split pads at this range. Keep walks short, and rinse paws afterwards.' };
     }
     return { bg: bgFrom('risk', Math.min(100, (surface - 110) * 3)),
       bold: surface >= 140 ? 'Pavement Burns Paws' : 'Hot Pavement',
+      todo: 'Walk the dog early or after sunset',
       tip: 'Air reaches ' + Math.round(d.tMax) + DEG + ', and asphalt in '
          + (midCloud < 30 ? 'full sun' : 'this much sun') + ' runs roughly '
          + Math.round(surface) + DEG + '. '
@@ -1273,6 +1342,7 @@
             : gust > 30 ? 'Too much for recreational sailing, and a kite will not survive it.'
             : 'Flyable, but the gusts will fight you.';
     return { bg: bgFrom('risk', Math.min(100, gust * 2.2)), bold: word,
+      todo: (gust >= 8 && gust <= 22 && factor < 1.9) ? 'Fly a kite' : null,
       tip: 'Averaging ' + Math.round(mean) + ' mph with gusts to ' + Math.round(gust)
          + ' mph \u2014 ' + steady + '. ' + use };
   }
@@ -1296,7 +1366,8 @@
     if (d.greyStreak >= 3) {
       tip += ' That is ' + d.greyStreak + ' overcast days running; if you use a lamp, this is the week for it.';
     }
-    return { bg: bgFrom('sky', Math.min(100, d.cloudDay)), bold: word, tip: tip };
+    return { bg: bgFrom('sky', Math.min(100, d.cloudDay)), bold: word, tip: tip,
+             todo: best != null && d.cloudDay < 55 ? 'Get outside around ' + hr(best) : null };
   }
 
   /* Aurora needs three things at once: a disturbed magnetosphere, a
@@ -1315,6 +1386,7 @@
     var word = strong && cloud < 40 ? 'Aurora Possible Tonight'
              : strong ? 'Aurora Active, Sky Cloudy' : 'Aurora Watch';
     return { bg: bgFrom('risk', Math.min(100, kp.max * 11)), bold: word,
+      todo: (strong && cloud < 40) ? 'Drive north and look up' : null,
       tip: 'Planetary K index forecast to reach ' + kp.max.toFixed(1)
          + '. Aurora usually needs Kp 7 or better to be seen this far south. '
          + 'Evening cloud around ' + Math.round(cloud) + '%, moon ' + lit + '% lit. '
@@ -1383,6 +1455,7 @@
     var score = word === 'Any Shoes You Like' ? 8 : word === 'Waterproof Shoes' ? 32
               : word === 'Traction, Not Style' ? 82 : 58;
     return { bg: bgFrom('risk', score), bold: word,
+      todo: dirty ? word : null,
       tip: why + (d.soilMoist == null ? ' Ground wetness estimated from rainfall \u2014 no soil data for this location.' : '') };
   }
 
@@ -1511,6 +1584,8 @@
     }
     var score = soggy ? 72 : dormant ? 20 : rainComing ? 48 : growingFast ? 40 : 14;
     return { bg: bgFrom('risk', score), bold: word,
+      todo: rainComing ? 'Mow before the rain' : growingFast ? 'Mow the lawn' : null,
+      todo: dirty ? word : null,
       tip: why + (d.soilDeep == null ? ' Soil moisture estimated from rainfall \u2014 no soil data for this location.' : '') };
   }
 
@@ -1523,6 +1598,7 @@
     var washing = d.rainSum >= 0.3;
     return { bg: bgFrom('risk', washing ? 42 : 66),
       bold: washing ? 'Rain Is Rinsing the Salt' : 'Wash the Salt Off',
+      todo: washing ? null : 'Wash the car, undercarriage too',
       tip: 'Snow and salt in the last few days, and today reaches '
          + Math.round(d.tMax) + DEG + '. '
          + (washing
@@ -1952,6 +2028,14 @@
       var b = document.createElement('b'); b.textContent = row.bold; line.appendChild(b);
       if (row.det) { var s2 = document.createElement('span'); s2.className = 'det'; s2.textContent = row.det; line.appendChild(s2); }
     }
+    if (row.tip) {
+      var chev = document.createElement('span');
+      chev.className = 'more';
+      chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true">'
+        + '<path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" '
+        + 'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      line.appendChild(chev);
+    }
     if (row.timeline && state.dayOffset === 0) {
       var tick = document.createElement('div');
       tick.className = 'now';
@@ -1969,15 +2053,22 @@
         t.style.display = open ? 'block' : 'none';
         el.setAttribute('aria-expanded', open ? 'true' : 'false');
         el.className = open ? el.className + ' open' : el.className.replace(/ open/g, '');
+        if (open && !store.tapped) {
+          store.tapped = true; saveStore();
+          var hint = document.getElementById('tipHint');
+          if (hint) hint.style.display = 'none';
+        }
       });
     }
     return el;
   }
+  var todos = [];
   function addCard(host, id, build) {
     if (id && !on(id)) return;
     try {
       var row = build();
       if (!row) return;
+      if (row.todo) todos.push(row.todo);
       host.appendChild(card(row));
     } catch (e) {
       var el = document.createElement('div');
@@ -1986,6 +2077,26 @@
       host.appendChild(el);
     }
   }
+  /* A digest of what the other cards told you to do. Built from their
+     own output rather than a second set of rules, so it can never
+     disagree with the card it came from. */
+  function todoCard() {
+    if (!todos.length) return null;
+    var el = document.createElement('div');
+    el.className = 'card todo';
+    var h = document.createElement('div'); h.className = 'todohead';
+    h.textContent = 'Before you go out';
+    el.appendChild(h);
+    var ul = document.createElement('ul');
+    var seen = {};
+    todos.forEach(function (t) {
+      if (seen[t]) return; seen[t] = 1;
+      var li = document.createElement('li'); li.textContent = t; ul.appendChild(li);
+    });
+    el.appendChild(ul);
+    return el;
+  }
+
   function skeleton(host, tall, short) {
     host.innerHTML = '';
     var c = document.createElement('div'); c.className = 'hourly';
@@ -2014,6 +2125,7 @@
     var lat = state.place.lat, lon = state.place.lon;
     var cal = calendarFor(lat, lon);
     host.innerHTML = '';
+    todos = [];
 
     (p.alerts || []).forEach(function (al) { host.appendChild(card(alertCard(al, state.tz))); });
     var season = seasonCard(d.date, state.tz, lat);
@@ -2056,6 +2168,10 @@
       moon:      function () { return moonCard(d.date); }
     };
     tileOrder().forEach(function (id) { addCard(grid, id, builders[id]); });
+    if (on('todo')) {
+      var td = todoCard();
+      if (td) host.insertBefore(td, host.firstChild);
+    }
     host.appendChild(grid);
   }
 
@@ -2247,6 +2363,36 @@
   /* One list, not two: each row carries its own on/off and its own
      position, so a card is never listed twice. */
   function buildCardsTab() {
+    var sh0 = document.createElement('h3'); sh0.textContent = 'You';
+    settingsPanel.appendChild(sh0);
+    var note = document.createElement('p'); note.className = 'lede';
+    note.textContent = 'Sets how long the sunburn card gives you. Pick by how your skin behaves in the sun, not by colour.';
+    settingsPanel.appendChild(note);
+    SKIN.forEach(function (sk) {
+      var row = document.createElement('label'); row.className = 'opt skin';
+      var r = document.createElement('input'); r.type = 'radio'; r.name = 'skin';
+      r.checked = (store.skin || 2) === sk.id;
+      r.addEventListener('change', function () {
+        store.skin = sk.id; saveStore(); renderHome(); renderShore();
+      });
+      var sw = document.createElement('i'); sw.className = 'tone'; sw.style.background = sk.tone;
+      var sp = document.createElement('span'); sp.textContent = sk.label;
+      row.appendChild(r); row.appendChild(sw); row.appendChild(sp);
+      settingsPanel.appendChild(row);
+    });
+
+    var srow0 = document.createElement('label'); srow0.className = 'opt';
+    var sbox0 = document.createElement('input'); sbox0.type = 'checkbox'; sbox0.checked = sensitive();
+    sbox0.addEventListener('change', function () {
+      store.sensitive = sbox0.checked; saveStore(); renderHome(); renderShore();
+    });
+    var stx0 = document.createElement('span');
+    stx0.textContent = 'Air quality affects me sooner than most';
+    var ssm0 = document.createElement('small');
+    ssm0.textContent = 'Asthma, COPD, heart conditions, pregnancy, or you are older or very young';
+    stx0.appendChild(ssm0);
+    srow0.appendChild(sbox0); srow0.appendChild(stx0); settingsPanel.appendChild(srow0);
+
     var groups = [['Weather', hourlyOrder(), 'hourly'],
                   ['Tiles', tileOrder(), 'tiles']];
     groups.forEach(function (g) {
@@ -2434,6 +2580,7 @@
 
   /* ================= start ================= */
   buildRamps();
+  if (store.tapped) document.getElementById('tipHint').style.display = 'none';
   buildDays(); buildPlaces(); buildBeaches();
   renderShore();
   if (state.place) loadHome(state.place);
