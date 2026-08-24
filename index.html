@@ -274,7 +274,8 @@
     { id: 'mold',      name: 'Basement damp',     group: 'If you have', note: 'A basement or crawl space' },
     { id: 'mow',       name: 'Mowing',            group: 'If you have', note: 'A lawn you cut yourself' },
     { id: 'shore',     name: 'Water section',     group: 'If you have', note: 'A coast or lake worth checking' },
-    { id: 'todo',      name: 'To-do list',        group: 'Weather', note: 'A digest of what the other cards say to do' }
+    { id: 'todo',      name: 'To-do list',        group: 'Sections', note: 'A digest of what the other cards say to do' },
+    { id: 'ahead',     name: 'Later this week',   group: 'Sections', note: 'Flags a day worth planning around' }
   ];
   function on(id) { return store.cards[id] !== false; }
 
@@ -731,6 +732,16 @@
     }
     return { bg: bgFrom('burn', uv), bold: face, tip: tip,
              todo: uv >= 6 ? 'Sunscreen and a hat' : uv >= 3 ? 'Sunscreen' : null };
+  }
+
+  /* The hour UV first crosses 3 is when protection starts to matter,
+     which beats a flat "before noon". */
+  function burnStart(d) {
+    for (var h = 4; h <= 14; h++) {
+      var r = d.hours[h];
+      if (r && r.uv >= 3) return hr(h);
+    }
+    return hr(d.solarNoon);
   }
 
   function skyWord(cloud, codes) {
@@ -1585,7 +1596,6 @@
     var score = soggy ? 72 : dormant ? 20 : rainComing ? 48 : growingFast ? 40 : 14;
     return { bg: bgFrom('risk', score), bold: word,
       todo: rainComing ? 'Mow before the rain' : growingFast ? 'Mow the lawn' : null,
-      todo: dirty ? word : null,
       tip: why + (d.soilDeep == null ? ' Soil moisture estimated from rainfall \u2014 no soil data for this location.' : '') };
   }
 
@@ -2130,8 +2140,8 @@
     (p.alerts || []).forEach(function (al) { host.appendChild(card(alertCard(al, state.tz))); });
     var season = seasonCard(d.date, state.tz, lat);
     if (season) host.appendChild(card(season));
-    var ahead = aheadCard(p, state.tz, state.dayOffset);
-    if (ahead) host.appendChild(card(ahead));
+    var ahead = on('ahead') ? aheadCard(p, state.tz, state.dayOffset) : null;
+    if (ahead) host.appendChild(ahead);
 
     var hourlyBuilders = {
       feels:    function () { return feelsCard(d); },
@@ -2425,15 +2435,19 @@
 
     var sh = document.createElement('h3'); sh.textContent = 'Sections';
     settingsPanel.appendChild(sh);
-    var srow = document.createElement('label'); srow.className = 'opt';
-    var sbox = document.createElement('input'); sbox.type = 'checkbox'; sbox.checked = on('shore');
-    sbox.addEventListener('change', function () {
-      store.cards.shore = sbox.checked; saveStore(); renderShore();
+    [['todo', 'To-do list', 'A digest of what the other cards say to do'],
+     ['ahead', 'Later this week', 'Flags a day worth planning around'],
+     ['shore', 'Water section', 'A coast or lake worth checking']].forEach(function (sec) {
+      var srow = document.createElement('label'); srow.className = 'opt';
+      var sbox = document.createElement('input'); sbox.type = 'checkbox'; sbox.checked = on(sec[0]);
+      sbox.addEventListener('change', function () {
+        store.cards[sec[0]] = sbox.checked; saveStore(); renderHome(); renderShore();
+      });
+      var stx = document.createElement('span'); stx.textContent = sec[1];
+      var ssm = document.createElement('small'); ssm.textContent = sec[2];
+      stx.appendChild(ssm);
+      srow.appendChild(sbox); srow.appendChild(stx); settingsPanel.appendChild(srow);
     });
-    var stx = document.createElement('span'); stx.textContent = 'Water section';
-    var ssm = document.createElement('small'); ssm.textContent = 'A coast or lake worth checking';
-    stx.appendChild(ssm);
-    srow.appendChild(sbox); srow.appendChild(stx); settingsPanel.appendChild(srow);
   }
 
   function buildColourTab() {
