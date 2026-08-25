@@ -2465,9 +2465,13 @@
       moon:      function () { return moonCard(d.date, state.tz, lat, lon); }
     };
     tileOrder().forEach(function (id) { addCard(grid, id, builders[id]); });
+    // The grid goes in here, before the to-do block. Filling it earlier
+    // is not the same as placing it \u2014 that is what put the pills above
+    // the tiles on a phone.
+    host.appendChild(grid);
+    // Pill-only cards are built now, after the tiles they never join.
     PILL_ONLY.forEach(function (id) { collectOnly(id, builders[id]); });
-    // Today first, then the week, then the year. The to-do list is the
-    // answer to what the cards above it say, so it follows them.
+    // Today first, then the week, then the year.
     if (on('todo')) {
       var td = todoCard();
       if (td) { td.className += ' todoblock'; host.appendChild(td); }
@@ -2476,7 +2480,6 @@
     if (ahead) host.appendChild(ahead);
     var season = seasonCard(d.date, state.tz, lat);
     if (season) host.appendChild(card(season));
-    host.appendChild(grid);
   }
 
 
