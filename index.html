@@ -149,15 +149,16 @@
        border-top:1px solid #E8E4DC;cursor:pointer;}
   .opt:first-of-type{border-top:none;}
   .opt input{margin:3px 0 0;width:17px;height:17px;flex:0 0 auto;}
-  .opt.skin{align-items:center;}
-  .tone{width:26px;height:26px;border-radius:50%;flex:0 0 auto;
-        border:1px solid rgba(0,0,0,.18);display:block;}
+  .opt.sub{padding-left:26px;border-top:1px solid #EFECE4;}
+  .opt.sub span{font-size:14.5px;}
+  .ord + .opt.sub{border-top:1px solid #EFECE4;}
   .opt span small{display:block;font-size:12.5px;color:var(--mid);line-height:1.35;margin-top:1px;}
   .panel input[type=text]{font:inherit;width:100%;padding:7px 9px;border:1px solid var(--line);
                           border-radius:8px;background:#FFF;color:inherit;margin-top:4px;}
-  .tabs{display:flex;gap:5px;margin:0 0 14px;border-bottom:1px solid var(--line);padding-bottom:9px;}
-  .tab{background:none;border:1px solid transparent;border-radius:9px;padding:6px 12px;
-       font:inherit;font-size:14px;color:var(--mid);cursor:pointer;}
+  .tabs{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 14px;
+        border-bottom:1px solid var(--line);padding-bottom:9px;}
+  .tab{background:none;border:1px solid transparent;border-radius:9px;padding:5px 10px;
+       font:inherit;font-size:13.5px;color:var(--mid);cursor:pointer;white-space:nowrap;}
   .tab:hover{background:#EFECE5;}
   .tab.sel{background:#FFF;border-color:var(--line);color:var(--ink);font-weight:600;}
   .steps{margin:4px 0 12px;padding-left:22px;font-size:13.5px;color:var(--mid);line-height:1.5;}
@@ -251,33 +252,41 @@
   /* Which cards exist, what each assumes about you, and which section
      of the settings panel it sits in. Everything defaults to on. */
   var CARDS = [
-    { id: 'feels',     name: 'Feels Like',        group: 'Weather',  always: true, note: 'Temperature and humidity together' },
-    { id: 'sky',       name: 'Sky',               group: 'Weather', note: 'Cloud and what is falling' },
-    { id: 'daylight',  name: 'Sunrise and sunset',group: 'Weather' },
-    { id: 'wind',      name: 'Wind',              group: 'Weather', note: 'Kite and sailing notes in the tap' },
-    { id: 'burn',      name: 'Sunburn',           group: 'Body' },
-    { id: 'frostbite', name: 'Frostbite',         group: 'Body', note: 'Only below freezing' },
-    { id: 'air',       name: 'Air quality',       group: 'Body' },
-    { id: 'virus',     name: 'Viruses about',     group: 'Body', note: 'COVID, flu and RSV in your state\u2019s wastewater' },
-    { id: 'allergy',   name: 'Allergens',         group: 'Body' },
-    { id: 'migraine',  name: 'Migraine',          group: 'Body', note: 'Barometric pressure and temperature swings' },
-    { id: 'arthritis', name: 'Arthritis',         group: 'Body', note: 'Weather links here are widely reported and weakly evidenced' },
-    { id: 'frizz',     name: 'Hair frizz',        group: 'Body' },
-    { id: 'bug',       name: 'Bug spray',         group: 'Outdoors' },
-    { id: 'shoe',      name: 'Which shoes',       group: 'Outdoors' },
-    { id: 'fire',      name: 'Fire weather',      group: 'Outdoors', note: 'Only when conditions approach a Red Flag' },
-    { id: 'light',     name: 'Daylight exposure', group: 'Outdoors', note: 'When to go get some light' },
-    { id: 'aurora',    name: 'Aurora',            group: 'Outdoors', note: 'Only during a geomagnetic storm' },
-    { id: 'moon',      name: 'Moon phase',        group: 'Outdoors' },
-    { id: 'pavement',  name: 'Pavement and paws', group: 'If you have', note: 'A dog' },
-    { id: 'frost',     name: 'Windshield frost',  group: 'If you have', note: 'A car' },
-    { id: 'rust',      name: 'Road salt and rust',group: 'If you have', note: 'A car' },
-    { id: 'pipe',      name: 'Pipe freeze',       group: 'If you have', note: 'A house with exposed plumbing' },
-    { id: 'mold',      name: 'Basement damp',     group: 'If you have', note: 'A basement or crawl space' },
-    { id: 'mow',       name: 'Mowing',            group: 'If you have', note: 'A lawn you cut yourself' },
-    { id: 'water',     name: 'Water temperature', group: 'If you have', note: 'Shows when a gauge or buoy is near' },
-    { id: 'todo',      name: 'To-do list',        group: 'Sections', note: 'A digest of what the other cards say to do' }
+    // across the day
+    { id: 'feels',     name: 'Feels Like',        note: 'Temperature and humidity together', always: true },
+    { id: 'sky',       name: 'Sky',               note: 'Cloud and what is falling' },
+    { id: 'daylight',  name: 'Sunrise and sunset' },
+    { id: 'moon',      name: 'Moon phase' },
+    // tiles
+    { id: 'air',       name: 'Air quality' },
+    { id: 'allergy',   name: 'Allergens' },
+    { id: 'virus',     name: 'Viruses about',     note: 'COVID, flu and RSV in your state\u2019s wastewater' },
+    { id: 'burn',      name: 'Sunburn' },
+    { id: 'water',     name: 'Water temperature', note: 'Shows when a gauge or buoy is near' },
+    { id: 'pavement',  name: 'Pavement and paws', note: 'A dog' },
+    { id: 'wind',      name: 'Wind',              note: 'Kite and sailing notes in the tap' },
+    { id: 'aurora',    name: 'Aurora',            note: 'Only during a geomagnetic storm' },
+    // to-do list only
+    { id: 'arthritis', name: 'Arthritis',         note: 'Some people\u2019s arthritis flares with the weather' },
+    { id: 'mold',      name: 'Basement',          note: 'If you have one, should you air it out?' },
+    { id: 'bug',       name: 'Bug Spray' },
+    { id: 'light',     name: 'Daylight Exposure', note: 'When to get some morning light' },
+    { id: 'fire',      name: 'Fire Weather',      note: 'Conditions are approaching Red Flag' },
+    { id: 'frostbite', name: 'Frostbite' },
+    { id: 'frizz',     name: 'Hair Frizz' },
+    { id: 'migraine',  name: 'Migraine' },
+    { id: 'mow',       name: 'Mow the Lawn',      note: 'Will the rain and mud cooperate?' },
+    { id: 'pipe',      name: 'Pipes Freeze',      note: 'Houses with exposed plumbing' },
+    { id: 'rust',      name: 'Road Salt/Rust',    note: 'When to wash your car to avoid rust' },
+    { id: 'shoe',      name: 'Shoes',             note: 'The best way to step outside' },
+    { id: 'frost',     name: 'Windshield Frost',  note: 'How long will you need to scrape the windshield?' },
+    { id: 'todo',      name: 'To-do list' }
   ];
+  function cardMeta(id) {
+    for (var i = 0; i < CARDS.length; i++) if (CARDS[i].id === id) return CARDS[i];
+    return { id: id, name: id };
+  }
+
   function on(id) { return store.cards[id] !== false; }
 
   /* Fitzpatrick scale. It classifies how skin RESPONDS to sun rather
@@ -2746,11 +2755,13 @@
   var settingsPanel = document.getElementById('settingsPanel');
   var aboutPanel = document.getElementById('aboutPanel');
 
-  var TABS = [['cards', 'Cards'], ['colour', 'Colour'], ['key', 'API key']];
+  var TABS = [['cards', 'Cards'], ['tiles', 'Tiles'], ['todo', 'To-Do List'],
+              ['order', 'Page Order'], ['colour', 'Color'], ['key', 'API Key']];
 
   function buildSettings() {
     settingsPanel.innerHTML = '';
     var tab = store.tab || 'cards';
+    if (!TABS.some(function (t) { return t[0] === tab; })) tab = 'cards';
 
     var bar = document.createElement('div'); bar.className = 'tabs';
     TABS.forEach(function (t) {
@@ -2762,76 +2773,94 @@
     });
     settingsPanel.appendChild(bar);
 
-    if (tab === 'cards') buildCardsTab();
+    if (tab === 'cards') listWithArrows(hourlyOrder(), 'hourly', 'Across the day');
+    else if (tab === 'tiles') listWithArrows(tileOrder(), 'tiles', 'Tiles');
+    else if (tab === 'todo') buildTodoTab();
+    else if (tab === 'order') buildOrderTab();
     else if (tab === 'colour') buildColourTab();
     else buildKeyTab();
   }
 
-  /* One list, not two: each row carries its own on/off and its own
-     position, so a card is never listed twice. */
-  function buildCardsTab() {
-    var sh0 = document.createElement('h3'); sh0.textContent = 'You';
-    settingsPanel.appendChild(sh0);
-    var note = document.createElement('p'); note.className = 'lede';
-    note.textContent = 'Sets how long the sunburn card gives you. Pick by how your skin behaves in the sun, not by colour.';
-    settingsPanel.appendChild(note);
-    SKIN.forEach(function (sk) {
-      var row = document.createElement('label'); row.className = 'opt skin';
-      var r = document.createElement('input'); r.type = 'radio'; r.name = 'skin';
-      r.checked = (store.skin || 2) === sk.id;
-      r.addEventListener('change', function () {
-        store.skin = sk.id; saveStore(); renderHome();
+  /* A row: checkbox, name, and the two arrows. Sub-controls that only
+     make sense for one card hang underneath it rather than sitting in a
+     settings screen of their own. */
+  function cardRow(id, i, arr, which) {
+    var meta = cardMeta(id);
+    var row = document.createElement('div'); row.className = 'ord';
+    var box = document.createElement('input'); box.type = 'checkbox';
+    box.checked = on(id); box.disabled = !!meta.always;
+    box.addEventListener('change', function () {
+      store.cards[id] = box.checked; saveStore(); buildSettings(); renderHome();
+    });
+    var nm = document.createElement('span'); nm.textContent = meta.name;
+    if (meta.note) { var sm = document.createElement('small'); sm.textContent = meta.note; nm.appendChild(sm); }
+    var up = document.createElement('button'); up.textContent = '\u2191';
+    up.setAttribute('aria-label', 'Move ' + meta.name + ' up'); up.disabled = i === 0;
+    up.addEventListener('click', function () { moveCard(id, -1, which); });
+    var dn = document.createElement('button'); dn.textContent = '\u2193';
+    dn.setAttribute('aria-label', 'Move ' + meta.name + ' down'); dn.disabled = i === arr.length - 1;
+    dn.addEventListener('click', function () { moveCard(id, 1, which); });
+    row.appendChild(box); row.appendChild(nm); row.appendChild(up); row.appendChild(dn);
+    settingsPanel.appendChild(row);
+    if (on(id)) subControls(id);
+  }
+
+  function listWithArrows(ids, which, heading) {
+    var h = document.createElement('h3'); h.textContent = heading;
+    settingsPanel.appendChild(h);
+    ids.forEach(function (id, i, arr) { cardRow(id, i, arr, which); });
+  }
+
+  function subControls(id) {
+    if (id === 'air') {
+      var row = document.createElement('label'); row.className = 'opt sub';
+      var box = document.createElement('input'); box.type = 'checkbox'; box.checked = sensitive();
+      box.addEventListener('change', function () {
+        store.sensitive = box.checked; saveStore(); renderHome();
       });
-      var sw = document.createElement('i'); sw.className = 'tone'; sw.style.background = sk.tone;
-      var sp = document.createElement('span'); sp.textContent = sk.label;
-      row.appendChild(r); row.appendChild(sw); row.appendChild(sp);
-      settingsPanel.appendChild(row);
-    });
-
-    var srow0 = document.createElement('label'); srow0.className = 'opt';
-    var sbox0 = document.createElement('input'); sbox0.type = 'checkbox'; sbox0.checked = sensitive();
-    sbox0.addEventListener('change', function () {
-      store.sensitive = sbox0.checked; saveStore(); renderHome();
-    });
-    var stx0 = document.createElement('span');
-    stx0.textContent = 'Air quality affects me sooner than most';
-    var ssm0 = document.createElement('small');
-    ssm0.textContent = 'Asthma, COPD, heart conditions, pregnancy, or you are older or very young';
-    stx0.appendChild(ssm0);
-    srow0.appendChild(sbox0); srow0.appendChild(stx0); settingsPanel.appendChild(srow0);
-
-    var groups = [['Across the day', hourlyOrder(), 'hourly'],
-                  ['Tiles', tileOrder(), 'tiles']];
-    groups.forEach(function (g) {
-      var h = document.createElement('h3'); h.textContent = g[0];
-      settingsPanel.appendChild(h);
-      g[1].forEach(function (id, i, arr) {
-        var meta = null;
-        CARDS.forEach(function (c) { if (c.id === id) meta = c; });
-        if (!meta) return;
-        var row = document.createElement('div'); row.className = 'ord';
-        var box = document.createElement('input'); box.type = 'checkbox';
-        box.checked = on(id); box.disabled = !!meta.always;
-        box.addEventListener('change', function () {
-          store.cards[id] = box.checked; saveStore(); renderHome();
+      var tx = document.createElement('span');
+      tx.textContent = 'Air quality affects me sooner than most';
+      var sm = document.createElement('small');
+      sm.textContent = 'Asthma, COPD, heart conditions, pregnancy, or you are older or very young';
+      tx.appendChild(sm);
+      row.appendChild(box); row.appendChild(tx); settingsPanel.appendChild(row);
+    }
+    if (id === 'burn') {
+      SKIN.forEach(function (sk) {
+        var row = document.createElement('label'); row.className = 'opt sub';
+        var r = document.createElement('input'); r.type = 'radio'; r.name = 'skin';
+        r.checked = (store.skin || 2) === sk.id;
+        r.addEventListener('change', function () {
+          store.skin = sk.id; saveStore(); renderHome();
         });
-        var nm = document.createElement('span'); nm.textContent = meta.name;
-        if (meta.note) { var sm = document.createElement('small'); sm.textContent = meta.note; nm.appendChild(sm); }
-        var up = document.createElement('button'); up.textContent = '\u2191';
-        up.setAttribute('aria-label', 'Move ' + meta.name + ' up');
-        up.disabled = i === 0;
-        up.addEventListener('click', function () { moveCard(id, -1, g[2]); });
-        var dn = document.createElement('button'); dn.textContent = '\u2193';
-        dn.setAttribute('aria-label', 'Move ' + meta.name + ' down');
-        dn.disabled = i === arr.length - 1;
-        dn.addEventListener('click', function () { moveCard(id, 1, g[2]); });
-        row.appendChild(box); row.appendChild(nm); row.appendChild(up); row.appendChild(dn);
-        settingsPanel.appendChild(row);
+        var sp = document.createElement('span'); sp.textContent = sk.label;
+        row.appendChild(r); row.appendChild(sp); settingsPanel.appendChild(row);
       });
-    });
+    }
+  }
 
-    var lh = document.createElement('h3'); lh.textContent = 'Order on the page';
-    settingsPanel.appendChild(lh);
+  /* Alphabetical, and no arrows: order in the to-do list comes from how
+     urgent a thing is, not from a list you drag. */
+  function buildTodoTab() {
+    var h = document.createElement('h3'); h.textContent = 'To-do list';
+    settingsPanel.appendChild(h);
+    PILL_ONLY.map(cardMeta).sort(function (a, b) {
+      return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
+    }).forEach(function (meta) {
+      var row = document.createElement('label'); row.className = 'opt';
+      var box = document.createElement('input'); box.type = 'checkbox'; box.checked = on(meta.id);
+      box.addEventListener('change', function () {
+        store.cards[meta.id] = box.checked; saveStore(); renderHome();
+      });
+      var nm = document.createElement('span'); nm.textContent = meta.name;
+      if (meta.note) { var sm = document.createElement('small'); sm.textContent = meta.note; nm.appendChild(sm); }
+      row.appendChild(box); row.appendChild(nm); settingsPanel.appendChild(row);
+    });
+  }
+
+  function buildOrderTab() {
+    var h = document.createElement('h3'); h.textContent = 'Order on the page';
+    settingsPanel.appendChild(h);
     function orderRow(label, checked, onToggle, onUp, onDown, first, last, indent) {
       var row = document.createElement('div'); row.className = 'ord' + (indent ? ' sub' : '');
       var box = document.createElement('input'); box.type = 'checkbox'; box.checked = checked;
@@ -2851,30 +2880,15 @@
         function (v) { store.cards['block-' + b] = v; saveStore(); renderHome(); },
         function () { moveBlock(b, -1); }, function () { moveBlock(b, 1); },
         i === 0, i === arr.length - 1, false);
+      if (b === 'todo' && on('block-todo')) {
+        sectionOrder().forEach(function (sec, si, sarr) {
+          orderRow(sectionName(sec), on('sec-' + sec),
+            function (v) { store.cards['sec-' + sec] = v; saveStore(); renderHome(); },
+            function () { moveSection(sec, -1); }, function () { moveSection(sec, 1); },
+            si === 0, si === sarr.length - 1, true);
+        });
+      }
     });
-    sectionOrder().forEach(function (sec, i, arr) {
-      orderRow(sectionName(sec), on('sec-' + sec),
-        function (v) { store.cards['sec-' + sec] = v; saveStore(); renderHome(); },
-        function () { moveSection(sec, -1); }, function () { moveSection(sec, 1); },
-        i === 0, i === arr.length - 1, true);
-    });
-
-    var ph = document.createElement('h3'); ph.textContent = 'To-do list only';
-    settingsPanel.appendChild(ph);
-    PILL_ONLY.forEach(function (id) {
-      var meta = null;
-      CARDS.forEach(function (c) { if (c.id === id) meta = c; });
-      if (!meta) return;
-      var row = document.createElement('label'); row.className = 'opt';
-      var box = document.createElement('input'); box.type = 'checkbox'; box.checked = on(id);
-      box.addEventListener('change', function () {
-        store.cards[id] = box.checked; saveStore(); renderHome();
-      });
-      var nm = document.createElement('span'); nm.textContent = meta.name;
-      if (meta.note) { var sm = document.createElement('small'); sm.textContent = meta.note; nm.appendChild(sm); }
-      row.appendChild(box); row.appendChild(nm); settingsPanel.appendChild(row);
-    });
-
   }
 
   function buildColourTab() {
@@ -2927,7 +2941,7 @@
   function swatchRow(key, label, value) {
     var row = document.createElement('label'); row.className = 'opt';
     var inp = document.createElement('input'); inp.type = 'color'; inp.value = value;
-    inp.style.cssText = 'width:34px;height:26px;padding:0;border:1px solid #D6D0C4;border-radius:6px;background:none';
+    inp.style.cssText = 'width:38px;height:26px;padding:0;border:1px solid #D6D0C4;border-radius:5px;background:none;flex:0 0 auto';
     inp.addEventListener('input', function () {
       store.theme = store.theme || {};
       store.theme[key] = inp.value;
