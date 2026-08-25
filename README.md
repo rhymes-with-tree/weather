@@ -1,4 +1,4 @@
-# Weather & Health Data, Visualized
+# Morning Brief
 
 A weather page for the things weather actually does to you — sunburn, pollen,
 joints, migraines, bugs, mud, frost on the windshield, and whether the water is
@@ -7,7 +7,7 @@ safe to get into.
 One static HTML file. No server, no build step, no account, no tracking.
 Open it and it works.
 
-**Live:** 	rhymes-with-tree.github.io/weather/
+**Live:** https://rhymes-with-tree.github.io/weather/
 
 ---
 
@@ -35,7 +35,9 @@ basement, no dog, conditions you don't have. Everything is on to start with.
 | [Open-Meteo](https://open-meteo.com) | Forecast, air quality, marine, geocoding | Data CC BY 4.0 |
 | [Copernicus CAMS](https://atmosphere.copernicus.eu) via Open-Meteo | Air quality when no Google key is set | Copernicus licence |
 | [NOAA / National Weather Service](https://www.weather.gov) | Active alerts | US public domain |
-| [NOAA NDBC](https://www.ndbc.noaa.gov) | Buoy water temperature and wave height | US public domain |
+| [CDC NWSS](https://www.cdc.gov/wastewater) | COVID, influenza A and RSV in state wastewater | US public domain |
+| [NOAA CO-OPS](https://tidesandcurrents.noaa.gov) | Water temperature, coast and Great Lakes | US public domain |
+| [NOAA NDBC](https://www.ndbc.noaa.gov) | Buoy water temperature and waves, where reachable | US public domain |
 | [NOAA SWPC](https://www.swpc.noaa.gov) | Planetary K index, for aurora | US public domain |
 | [Google Maps Platform](https://developers.google.com/maps) | Pollen and air quality, **only** if a user adds their own key | Google terms |
 
@@ -67,6 +69,11 @@ weather services listed above as part of each request, and nowhere else.
 
 - **US only.** Units are imperial throughout, NWS alerts are US-only, the air
   quality index is US EPA, and the bloom calendars cover six US regions.
+- **Viral activity is state-level, not local.** It is genuinely measured rather
+  than modelled, but it describes a whole state's wastewater and says nothing
+  about your own risk. WastewaterSCAN feeds the same system and reports at
+  sewershed level, but publishes under a non-commercial licence that asks users
+  to make contact first, so this uses the CDC copy.
 - **Most health cards are heuristics**, not validated instruments. Migraine,
   arthritis, bugs, frizz, shoes and mowing are rules written by hand from
   commonly cited triggers. The arthritis link in particular is widely reported
@@ -74,10 +81,11 @@ weather services listed above as part of each request, and nowhere else.
 - **Allergens without a Google key are modelled, not counted.** A regional
   bloom calendar adjusted for wind, humidity and rain. Cross-check a station
   count before trusting it.
-- **Water temperature** comes from a buoy within 60 miles where one exists,
-  otherwise a modelled sea surface temperature that covers open ocean but not
-  the Great Lakes or inland water. Nearshore water can be far colder than
-  either.
+- **Water temperature** tries an NDBC buoy first, then a NOAA CO-OPS shoreline
+  gauge, then a modelled sea surface temperature. NDBC does not send CORS
+  headers, so in a browser it is normally the CO-OPS gauge that answers. The
+  card names its source and how far away it is; on a big lake, twenty miles of
+  shore can differ by ten degrees after an upwelling.
 - Thresholds are constants at the top of each card function and are meant to be
   tuned against your own record.
 
