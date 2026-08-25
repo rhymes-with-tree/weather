@@ -12,15 +12,15 @@
 <link rel="icon" href="data:,">
 <style>
   :root{ --page:#FFF; --ink:#16232F; --mid:#5B6B7A; --line:#E4E4E4; --link:#1B57C8;
-         --rowh:78px; --gap:8px; }
+         --rowh:62px; --gap:7px; }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;background:var(--page);color:var(--ink);}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
-       line-height:1.3;-webkit-font-smoothing:antialiased;padding:14px 12px 26px;}
+       line-height:1.3;-webkit-font-smoothing:antialiased;padding:10px 11px 22px;}
   .wrap{max-width:440px;margin:0 auto;}
 
-  .hdr{background:#FFF;border:1px solid var(--line);border-radius:18px;
-       padding:14px 18px 16px;text-align:center;margin:0 0 9px;}
+  .hdr{background:#FFF;border:1px solid var(--line);border-radius:16px;
+       padding:11px 16px 12px;text-align:center;margin:0 0 8px;}
   .hdr.section{margin-top:22px;}
   .hdr .l1{font-size:19px;color:var(--mid);margin-bottom:5px;}
   .hdr .l2{font-size:24px;font-weight:700;letter-spacing:-.015em;}
@@ -52,7 +52,7 @@
   .now{position:absolute;top:-13px;bottom:-13px;width:2px;margin-left:-1px;
        background:rgba(22,35,47,.30);box-shadow:0 0 0 1px rgba(255,255,255,.45);
        pointer-events:none;border-radius:1px;}
-  .card{border-radius:15px;padding:13px 18px;margin:0 0 var(--gap);width:100%;
+  .card{border-radius:14px;padding:9px 16px;margin:0 0 var(--gap);width:100%;
         min-height:var(--rowh);display:flex;flex-direction:column;justify-content:center;
         border:none;font:inherit;color:var(--ink);text-align:center;
         font-size:17.5px;display:block;cursor:pointer;}
@@ -71,8 +71,8 @@
         grid-auto-rows:minmax(var(--rowh),auto);align-content:start;}
   .card.sm{min-height:var(--rowh);display:flex;flex-direction:column;
            align-items:center;justify-content:center;text-align:center;
-           padding:10px 12px;font-size:14.5px;border-radius:14px;margin:0;width:auto;
-           line-height:1.25;}
+           padding:8px 11px;font-size:14px;border-radius:12px;margin:0;width:auto;
+           line-height:1.22;}
   /* Tapped open, a tile takes the full row so the detail has somewhere
      to go instead of straining the square. */
   .card.open{min-height:0;height:auto;justify-content:flex-start;align-items:stretch;
@@ -102,14 +102,17 @@
      width their gradients need. */
   @media (min-width:760px){
     .wrap{max-width:1080px;}
+    :root{--rowh:74px;--gap:8px;}
+    .card{padding:12px 18px;}
+    .card.sm{padding:10px 12px;font-size:15px;}
     /* Left column is the day: four full-width cards, then the tiles
        under them. Right column is the to-do list, which is the longest
        single element and now has somewhere to be. Anything that
        announces itself spans both. */
     #homeBody{display:grid;grid-template-columns:1.15fr 0.85fr;
-              gap:14px;align-items:start;grid-auto-flow:row dense;}
+              gap:14px;align-items:start;}
     #homeBody > .hourly, #homeBody > .grid{grid-column:1;}
-    #homeBody > .todoblock{grid-column:2;grid-row:1 / span 3;margin:0;}
+    #homeBody > .todoblock{grid-column:2;grid-row:1 / span 4;margin:0;}
     #homeBody > .alert, #homeBody > .note, #homeBody > .aheadcard{grid-column:1 / -1;}
     /* Both sides share one row height, so a card on the left lines up
        with a tile on the right instead of each being sized by its own
@@ -177,14 +180,14 @@
               font:inherit;font-size:15px;line-height:1;cursor:pointer;color:var(--ink);}
   .ord button:disabled{opacity:.32;cursor:default;}
   .card.todo{background:#F3F0E8;border:1px solid var(--line);display:block;
-             padding:15px 18px 16px;min-height:0;margin-bottom:12px;}
+             padding:12px 15px 13px;min-height:0;margin-bottom:10px;}
   .todohead{font-size:12px;letter-spacing:.08em;text-transform:uppercase;
             color:var(--mid);margin-bottom:7px;}
   .card.todo ul + .todohead{margin-top:15px;padding-top:13px;
                             border-top:1px solid rgba(22,35,47,.10);}
   .card.todo ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:7px 9px;}
-  .card.todo li{font-size:15.5px;font-weight:600;background:#FFF;border:1px solid var(--line);
-                border-radius:999px;padding:5px 13px;}
+  .card.todo li{font-size:14.5px;font-weight:600;background:#FFF;border:1px solid var(--line);
+                border-radius:999px;padding:4px 11px;}
   .card.aheadcard{background:#EDF1F6;border-color:#D3DEEA;text-align:left;cursor:pointer;}
   .card.aheadcard li{background:#FFF;border-color:#D3DEEA;}
   .card.todo .tip{text-align:left;}
@@ -412,6 +415,10 @@
   function bgRange(r, lo, hi) { return grad(colorAt(r, lo), colorAt(r, hi)); }
   function bgFrom(r, v)       { return grad(colorAt(r, RAMP[r][0][0]), colorAt(r, v)); }
   function bgAt(r, v, sp)     { return grad(colorAt(r, v - sp), colorAt(r, v + sp)); }
+  /* A tile shows one number, so its width is not an axis and a gradient
+     across it means nothing. Day cards keep their gradients because
+     there the width really is time. */
+  function bgFlat(r, v)       { return colorAt(r, v); }
 
   /* Midnight to midnight, sampled every hour. The middle of the card
      is the middle of the day, so the shape of the day is the picture:
@@ -733,7 +740,7 @@
 
   function burnCard(d) {
     var uv = d.uvNoon, sk = skin();
-    if (uv < 2) return { bg: bgFrom('burn', uv), bold: 'No Sunburn Risk',
+    if (uv < 2) return { bg: bgFlat('burn', uv), bold: 'No Sunburn Risk',
       tip: 'UV only reaches ' + uv.toFixed(1) + ' at solar noon. Nothing to protect against.' };
     var mins = Math.max(5, Math.round(sk.med / (uv * 1.5)));
     var face = mins >= 90 ? Math.round(mins / 60 * 10) / 10 + ' hr to Sunburn' : mins + ' min to Sunburn';
@@ -749,7 +756,7 @@
     if (sk.id >= 4) {
       tip += ' A longer window is not the same as no risk \u2014 UV still ages and damages skin that rarely burns.';
     }
-    return { bg: bgFrom('burn', uv), bold: face, tip: tip,
+    return { bg: bgFlat('burn', uv), bold: face, tip: tip,
              // Without a tile, the minutes only survive if the pill
              // carries them \u2014 and they are the reason the skin setting
              // exists at all.
@@ -935,7 +942,7 @@
       if (a > 200) out.push({ text: 'Stay inside, air purifier on if you have one', when: 'day', rank: 2, blocksOutdoor: true });
     }
 
-    return { bg: bgFrom('aqi', a), bold: word, tip: tip, todos: out };
+    return { bg: bgFlat('aqi', a), bold: word, tip: tip, todos: out };
   }
 
   var CALENDARS = {
@@ -998,7 +1005,7 @@
         var plants = (day.plants || []).sort(function (a, b) { return b.index - a.index; })
                         .slice(0, 2).map(function (p) { return cap(p.name.toLowerCase()); });
         var sc = Math.round((idx / 5) * 100);
-        return { bg: bgFrom('risk', sc),
+        return { bg: bgFlat('risk', sc),
           todo: sc >= 35 ? 'Antihistamine before you leave' : null, todoWhen: 'out', todoRank: 35,
           bold: plants.length ? level(sc) + ' Allergies' : 'No Pollen in Season',
           tip: (plants.length ? listJoin(plants) + '. ' : '')
@@ -1009,7 +1016,7 @@
 
     cal = cal || CALENDARS.great_lakes;
     var m = parseInt(d.date.slice(5, 7), 10), names = cal.m[m];
-    if (!names.length) return { bg: bgFrom('risk', 4), bold: 'Pollen Quiet',
+    if (!names.length) return { bg: bgFlat('risk', 4), bold: 'Pollen Quiet',
       tip: 'Little is in bloom this time of year.' };
     var s2 = cal.s[m];
     if (d.rhMean < 55 && d.tMax > 55) s2 += .12;
@@ -1017,7 +1024,7 @@
     if (d.rainSum >= .15) s2 -= .32; else if (d.rainYesterday >= .15) s2 -= .08;
     if (d.rhMean > 85) s2 -= .12;
     var sc2 = Math.round(Math.max(0, Math.min(1, s2)) * 100);
-    return { bg: bgFrom('risk', sc2),
+    return { bg: bgFlat('risk', sc2),
       bold: level(sc2) + ' Allergies',
       todo: sc2 >= 35 ? 'Antihistamine before you leave' : null, todoWhen: 'out', todoRank: 35,
       tip: listJoin(names.map(cap)) + '. Scored ' + sc2 + ' out of 100, from a bloom calendar for the '
@@ -1039,7 +1046,7 @@
 
   function migraineCard(d) {
     var r = migraineScore(d), s = r.s, why = r.why;
-    return { bg: bgFrom('risk', s),
+    return { bg: bgFlat('risk', s),
       bold: 'Migraine ' + (s >= 45 ? 'Likely' : s >= 24 ? 'Possible' : 'Unlikely'),
       todo: s >= 45 ? 'High risk for migraine \u2014 keep rescue meds within reach'
           : s >= 24 ? 'Some migraine risk \u2014 hydrate early, do not skip meals' : null,
@@ -1063,7 +1070,7 @@
 
   function arthritisCard(d) {
     var r = arthritisScore(d), s = r.s, why = r.why;
-    return { bg: bgFrom('risk', s),
+    return { bg: bgFlat('risk', s),
       bold: 'Arthritis Flare ' + (s >= 45 ? 'Likely' : s >= 24 ? 'Possible' : 'Unlikely'),
       todo: s >= 45 ? 'High risk for arthritis flare \u2014 meds, splints, whatever helps you'
           : s >= 24 ? 'Some joint stiffness likely \u2014 give yourself a longer warm-up' : null,
@@ -1109,7 +1116,7 @@
              : w < 74 ? 'Bracing Water' : 'Pleasant Water';
     var tip = w + DEG + (waveFt != null ? ', waves ' + waveFt + ' ft' : '') + '. ';
     if (w < 65) tip = 'Cold enough for cold-water shock \u2014 get in slowly, never jump. ' + tip;
-    return { bg: bgAt('water', w, 6), bold: word, tip: tip + provenance,
+    return { bg: bgFlat('water', w), bold: word, tip: tip + provenance,
              todo: w >= 70 ? 'Go for a swim' : null, todoWhen: 'out', todoRank: 95, todoOutdoor: true };
   }
 
@@ -1349,7 +1356,7 @@
     if (d.tMin < 42) { s -= 20; why.push('a cold night knocks them back'); }
     s = Math.max(0, Math.min(100, s));
     var word = s >= 65 ? 'Bugs Are Brutal' : s >= 40 ? 'Bring Bug Spray' : s >= 20 ? 'A Few Bugs' : 'Bug-Free';
-    return { bg: bgFrom('risk', s), bold: word, todo: s >= 40 ? 'Bug spray' : null, todoWhen: 'out', todoRank: 40,
+    return { bg: bgFlat('risk', s), bold: word, todo: s >= 40 ? 'Bug spray' : null, todoWhen: 'out', todoRank: 40,
       tip: (why.length ? cap(listJoin(why)) + '. ' : '')
          + (s >= 40 ? 'Worst at dawn and dusk. Repellent on exposed skin, and long sleeves after sunset. '
                     : 'You can probably skip the repellent. ')
@@ -1483,7 +1490,7 @@
     var dp = d.dewMax;
     if (dp < 58 || d.tMax < 55) return null;
     var bad = dp >= 68;
-    return { bg: bgFrom('risk', bad ? 78 : 48),
+    return { bg: bgFlat('risk', bad ? 78 : 48),
       bold: bad ? 'Keep the Basement Shut' : 'Basement Damp Risk',
       todo: bad ? 'Dehumidifier on, and keep the basement shut' : null,
       todoWhen: 'day', todoRank: 60,
@@ -1511,12 +1518,12 @@
     if (!hot && !cold) return null;
 
     if (cold) {
-      return { bg: bgAt('feels', d.feelsMin, 8), bold: 'Pavement Is Freezing',
+      return { bg: bgFlat('feels', d.feelsMin), bold: 'Pavement Is Freezing',
         todo: 'Short walk, and rinse the salt off their paws after', todoWhen: 'day', todoRank: 55,
         tip: 'Wind chill near ' + Math.round(d.feelsMin) + DEG
            + '. Ice and road salt split pads at this range. Keep walks short, and rinse paws afterwards.' };
     }
-    return { bg: bgFrom('risk', Math.min(100, (surface - 110) * 3)),
+    return { bg: bgFlat('risk', Math.min(100, (surface - 110) * 3)),
       bold: surface >= 140 ? 'Pavement Burns Paws' : 'Hot Pavement',
       todo: 'Walk the dog early or after sunset', todoWhen: 'day', todoRank: 55,
       tip: 'Air reaches ' + Math.round(d.tMax) + DEG + ', and asphalt in '
@@ -1538,7 +1545,7 @@
             : (gust >= 8 && gust <= 22 && factor < 1.9) ? 'Good steady air for a kite or a small sail.'
             : gust > 30 ? 'Too much for recreational sailing, and a kite will not survive it.'
             : 'Flyable, but the gusts will fight you.';
-    return { bg: bgFrom('risk', Math.min(100, gust * 2.2)), bold: word,
+    return { bg: bgFlat('risk', Math.min(100, gust * 2.2)), bold: word,
       todo: (gust >= 8 && gust <= 22 && factor < 1.9) ? 'Fly a kite' : null,
       todoWhen: 'out', todoRank: 90, todoOutdoor: true,
       tip: 'Averaging ' + Math.round(mean) + ' mph with gusts to ' + Math.round(gust)
@@ -1584,7 +1591,7 @@
     if (d.greyStreak >= 3) {
       tip += ' That is ' + d.greyStreak + ' overcast days running; if you use a lamp, this is the week for it.';
     }
-    return { bg: bgFrom('sky', Math.min(100, d.cloudDay)), bold: word, tip: tip,
+    return { bg: bgFlat('sky', Math.min(100, d.cloudDay)), bold: word, tip: tip,
              todo: todo, todoWhen: 'day', todoRank: 40, todoOutdoor: true };
   }
 
@@ -1603,7 +1610,7 @@
     var strong = kp.max >= 7;
     var word = strong && cloud < 40 ? 'Aurora Possible Tonight'
              : strong ? 'Aurora Active, Sky Cloudy' : 'Aurora Watch';
-    return { bg: bgFrom('risk', Math.min(100, kp.max * 11)), bold: word,
+    return { bg: bgFlat('risk', Math.min(100, kp.max * 11)), bold: word,
       todo: (strong && cloud < 40) ? 'Drive north and look up \u2014 aurora possible' : null,
       todoWhen: 'night', todoRank: 85, todoOutdoor: true,
       tip: 'Planetary K index forecast to reach ' + kp.max.toFixed(1)
@@ -1673,7 +1680,7 @@
     if (dirty) why += ' Expect to be cleaning these afterwards, so pick a pair you do not mind that with.';
     var score = word === 'Any Shoes You Like' ? 8 : word === 'Waterproof Shoes' ? 32
               : word === 'Traction, Not Style' ? 82 : 58;
-    return { bg: bgFrom('risk', score), bold: word,
+    return { bg: bgFlat('risk', score), bold: word,
       todo: icy || freezeThaw ? 'Might be slippery \u2014 footwear with good traction'
           : (snowing || slush) ? 'Snow underfoot \u2014 something waterproof'
           : salty ? 'Road salt about \u2014 not the good leather'
@@ -1840,7 +1847,7 @@
       why = 'Ground is firm and nothing is falling. Growth is slow, so it can wait if you would rather.';
     }
     var score = soggy ? 72 : dormant ? 20 : rainComing ? 48 : growingFast ? 40 : 14;
-    return { bg: bgFrom('risk', score), bold: word,
+    return { bg: bgFlat('risk', score), bold: word,
       todo: rainComing ? 'Mow before the rain arrives' : growingFast ? 'Mow the lawn' : null,
       todoWhen: 'day', todoRank: 65, todoOutdoor: true,
       tip: why + (d.soilDeep == null ? ' Soil moisture estimated from rainfall \u2014 no soil data for this location.' : '') };
@@ -1853,7 +1860,7 @@
   function rustCard(d) {
     if (!(d.snow3 >= 0.2 && d.saltCold && d.tMax >= 40)) return null;
     var washing = d.rainSum >= 0.3;
-    return { bg: bgFrom('risk', washing ? 42 : 66),
+    return { bg: bgFlat('risk', washing ? 42 : 66),
       bold: washing ? 'Rain Is Rinsing the Salt' : 'Wash the Salt Off',
       todo: washing ? null : 'Wash the salt off the car, undercarriage too, to prevent rust',
       todoWhen: 'day', todoRank: 70, todoOutdoor: true,
@@ -1938,6 +1945,25 @@
      sunrise card and the cloud is already on the sky card, so the tile
      was restating both. Its pill \u2014 when to go get some light \u2014 is the
      part that was not said anywhere else, so that stays. */
+  /* The whole blocks move too, not just the cards inside them. Alerts
+     are pinned to the top \u2014 an urgent warning under a to-do list would
+     be daft \u2014 and the solstice note stays last. */
+  var DEFAULT_BLOCKS = ['cards', 'tiles', 'todo', 'ahead'];
+  var BLOCK_NAME = { cards: 'Across the day', tiles: 'Tiles',
+                     todo: 'To-do list', ahead: 'Later this week' };
+  function blockOrder() {
+    var saved = store.blocks || [];
+    var out = saved.filter(function (b) { return DEFAULT_BLOCKS.indexOf(b) > -1; });
+    DEFAULT_BLOCKS.forEach(function (b) { if (out.indexOf(b) < 0) out.push(b); });
+    return out;
+  }
+  function moveBlock(id, dir) {
+    var o = blockOrder(), i = o.indexOf(id), j = i + dir;
+    if (i < 0 || j < 0 || j >= o.length) return;
+    o.splice(j, 0, o.splice(i, 1)[0]);
+    store.blocks = o; saveStore(); buildSettings(); renderHome();
+  }
+
   var DEFAULT_TILE_ORDER = ['air', 'allergy', 'burn', 'water', 'pavement', 'wind', 'aurora'];
   var PILL_ONLY = ['frostbite','migraine','arthritis','frizz','bug',
                    'shoe','frost','pipe','rust','mow','mold','fire','light'];
@@ -2437,7 +2463,6 @@
     };
     var col = document.createElement('div'); col.className = 'hourly';
     hourlyOrder().forEach(function (id) { addCard(col, id, hourlyBuilders[id]); });
-    host.appendChild(col);
 
     var grid = document.createElement('div'); grid.className = 'grid';
     var builders = {
@@ -2465,19 +2490,23 @@
       moon:      function () { return moonCard(d.date, state.tz, lat, lon); }
     };
     tileOrder().forEach(function (id) { addCard(grid, id, builders[id]); });
-    // The grid goes in here, before the to-do block. Filling it earlier
-    // is not the same as placing it \u2014 that is what put the pills above
-    // the tiles on a phone.
-    host.appendChild(grid);
-    // Pill-only cards are built now, after the tiles they never join.
+    // Pill-only cards are built now, so the to-do list is complete
+    // before anything is placed.
     PILL_ONLY.forEach(function (id) { collectOnly(id, builders[id]); });
-    // Today first, then the week, then the year.
+
+    var todoEl = null;
     if (on('todo')) {
-      var td = todoCard();
-      if (td) { td.className += ' todoblock'; host.appendChild(td); }
+      todoEl = todoCard();
+      if (todoEl) todoEl.className += ' todoblock';
     }
-    var ahead = on('ahead') ? aheadCard(p, state.tz, state.dayOffset) : null;
-    if (ahead) host.appendChild(ahead);
+    var aheadEl = on('ahead') ? aheadCard(p, state.tz, state.dayOffset) : null;
+
+    var blocks = { cards: col, tiles: grid, todo: todoEl, ahead: aheadEl };
+    blockOrder().forEach(function (b) {
+      var el = blocks[b];
+      if (el && (b !== 'tiles' || el.children.length)) host.appendChild(el);
+    });
+
     var season = seasonCard(d.date, state.tz, lat);
     if (season) host.appendChild(card(season));
   }
@@ -2643,6 +2672,23 @@
         row.appendChild(box); row.appendChild(nm); row.appendChild(up); row.appendChild(dn);
         settingsPanel.appendChild(row);
       });
+    });
+
+    var lh = document.createElement('h3'); lh.textContent = 'Order on the page';
+    settingsPanel.appendChild(lh);
+    blockOrder().forEach(function (b, i, arr) {
+      var row = document.createElement('div'); row.className = 'ord';
+      var nm = document.createElement('span'); nm.textContent = BLOCK_NAME[b];
+      var up = document.createElement('button'); up.textContent = '\u2191';
+      up.setAttribute('aria-label', 'Move ' + BLOCK_NAME[b] + ' up');
+      up.disabled = i === 0;
+      up.addEventListener('click', function () { moveBlock(b, -1); });
+      var dn = document.createElement('button'); dn.textContent = '\u2193';
+      dn.setAttribute('aria-label', 'Move ' + BLOCK_NAME[b] + ' down');
+      dn.disabled = i === arr.length - 1;
+      dn.addEventListener('click', function () { moveBlock(b, 1); });
+      row.appendChild(nm); row.appendChild(up); row.appendChild(dn);
+      settingsPanel.appendChild(row);
     });
 
     var ph = document.createElement('h3'); ph.textContent = 'To-do list only';
