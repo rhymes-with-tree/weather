@@ -393,9 +393,15 @@
     // bright through the middle. Built from the same anchors, so it
     // stops being the one card that ignores the theme.
     var t = store.theme || {};
-    NIGHT    = t.night ? hex2rgb(t.night) : blend(COLD, [104,116,136], .55);
-    TWILIGHT = t.dawn  ? hex2rgb(t.dawn)  : blend(WARM, [255,226,190], .35);
-    DAYLIT   = t.day   ? hex2rgb(t.day)   : lighten(GOOD, .42);
+    // One night colour, shared by the sunrise card and the moon card, so
+    // the two stay matched even when it is overridden.
+    // Dark enough to read as night, light enough that the times printed
+    // on top of it still clear 4.5:1 against the ink.
+    NIGHT    = t.night ? hex2rgb(t.night) : blend(COLD, [96, 104, 122], .5);
+    TWILIGHT = t.dawn  ? hex2rgb(t.dawn)  : blend(WARM, [255, 226, 190], .35);
+    // Midday is sunlight, not foliage \u2014 mostly a warm yellow, with only a
+    // trace of the good-end anchor so it still shifts with the theme.
+    DAYLIT   = t.day   ? hex2rgb(t.day)   : blend(GOOD, [255, 226, 120], .78);
   }
 
   function colorAt(ramp, v) {
@@ -1250,7 +1256,7 @@
 
     // The card is the night: dark where the moon is down, brightening
     // with how much of it is lit where it is up.
-    var DARK = blend(hex2rgb(anchors().cold), [96, 104, 122], 0.6);
+    var DARK = NIGHT;   // the same night the sunrise card ends on
     var lambda = illum / 100;
     var bg = 'linear-gradient(90deg,' + Array.from({ length: 24 }, function (_, h) {
       var isUp = t.up.length ? t.up[h] : false;
