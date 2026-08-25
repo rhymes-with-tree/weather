@@ -47,6 +47,7 @@
   .face.split .end{display:flex;flex-direction:column;line-height:1.2;}
   .face.split .end.right{text-align:right;}
   .face.split .end b{display:block;}
+  .caption{font-size:13.5px;opacity:.72;text-align:center;margin-top:5px;}
   .now{position:absolute;top:-13px;bottom:-13px;width:2px;margin-left:-1px;
        background:rgba(22,35,47,.30);box-shadow:0 0 0 1px rgba(255,255,255,.45);
        pointer-events:none;border-radius:1px;}
@@ -253,10 +254,8 @@
   /* Which cards exist, what each assumes about you, and which section
      of the settings panel it sits in. Everything defaults to on. */
   var CARDS = [
-    { id: 'feels',     name: 'Feels Like',        group: 'Weather',  always: true },
-    { id: 'sweat',     name: 'Humidity',          group: 'Weather' },
-    { id: 'sky',       name: 'Sun and cloud',     group: 'Weather' },
-    { id: 'rain',      name: 'Precipitation',     group: 'Weather' },
+    { id: 'feels',     name: 'Feels Like',        group: 'Weather',  always: true, note: 'Temperature and humidity together' },
+    { id: 'sky',       name: 'Sky',               group: 'Weather', note: 'Cloud and what is falling' },
     { id: 'daylight',  name: 'Sunrise and sunset',group: 'Weather' },
     { id: 'wind',      name: 'Wind',              group: 'Weather', note: 'Kite and sailing notes in the tap' },
     { id: 'burn',      name: 'Sunburn',           group: 'Body' },
@@ -697,10 +696,32 @@
   }
   function pair(lo, hi) { return lo === hi ? lo : lo + ' to ' + hi; }
 
+  /* Apparent temperature is already a function of humidity, so the
+     Feels Like gradient was half a humidity gradient anyway. The two
+     cards sat within 0.06 of each other on the colour ramp all year.
+     Humidity now appears in the words, where it does its own work, and
+     only when it is doing any. */
   function feelsCard(d) {
     var lo = tempWord(d.feelsMin), hi = tempWord(d.feelsMax);
+    var span = pair(lo, hi);
+    var dp = d.dewMax, hum = null;
+    if (dp < 15) hum = 'Bone Dry';
+    else if (dp < 30) hum = 'Very Dry';
+    else if (dp >= 75) hum = 'Miserable Humidity';
+    else if (dp >= 70) hum = 'Oppressive';
+    else if (dp >= 65) hum = 'Muggy';
+    else if (dp >= 60 && d.feelsMax > 72) hum = 'Humid';
+    var face = hum ? (lo === hi ? span + ' and ' + hum : span + ', ' + hum) : span;
+
+    var skin = null;
+    if (dp < 15) skin = 'Static-shock air. Skin cracks and chaps at this dew point.';
+    else if (dp < 30) skin = 'Dry enough to pull moisture out of skin.';
+    else if (dp >= 75) skin = 'Your body cannot cool itself efficiently at this dew point. Treat outdoor exertion as a real risk.';
+    else if (dp >= 70) skin = 'Sweat will not evaporate well. Shade, loose clothing, and more water than feels necessary.';
+    else if (dp >= 65) skin = 'Sticky. Expect to feel it during anything strenuous.';
+
     return { timeline: true, bg: bgDay(d, function (r) { return colorAt('feels', r.feels == null ? 60 : r.feels); }),
-      bold: pair(lo, hi),
+      bold: face,
       todo: d.feelsMax < 20 ? 'BUNDLE UP' : d.feelsMax < 40 ? 'A proper coat, not a jacket'
           : d.feelsMax > 92 ? 'Water, and stay in the shade' : null,
       todoWhen: 'out', todoRank: 10,
@@ -709,25 +730,9 @@
             when: 'night', rank: 20 } : null,
       tip: 'Feels like ' + Math.round(d.feelsMin) + DEG + ' overnight, ' + Math.round(d.feelsMax) + DEG
          + (d.feelsPeakHour != null ? ' around ' + hr(d.feelsPeakHour) : ' at its peak') + '.'
-         + ' Actual air temperature runs ' + Math.round(d.tMin) + DEG + ' to ' + Math.round(d.tMax) + DEG + '.' };
-  }
-
-  /* Only the adjectives that are ambiguous on their own get a noun. */
-  function sweatWord(dp) {
-    return dp < 15 ? 'Bone Dry' : dp < 30 ? 'Very Dry' : dp < 45 ? 'Dry'
-         : dp < 55 ? 'Comfortably Dry' : dp < 60 ? 'Comfortable Humidity' : dp < 65 ? 'Humid'
-         : dp < 70 ? 'Muggy' : dp < 75 ? 'Oppressive Humidity' : 'Miserable Humidity';
-  }
-  function sweatCard(d) {
-    var dp = d.dewMax, extra = null;
-    if (dp < 15) extra = 'Static-shock air. Skin cracks and chaps at this dew point \u2014 heavy moisturizer, humidifier on, short warm showers rather than hot.';
-    else if (dp < 30) extra = 'Dry enough to pull moisture out of skin. Moisturize while you are still damp from the shower.';
-    else if (dp >= 70 && dp < 75) extra = 'Sweat will not evaporate well. Shade, loose clothing, and more water than feels necessary.';
-    else if (dp >= 75) extra = 'Your body cannot cool itself efficiently at this dew point. Treat outdoor exertion as a real risk.';
-    else if (dp >= 65) extra = 'Sticky. Expect to feel it during anything strenuous.';
-    return { timeline: true, bg: bgDay(d, function (r) { return colorAt('sweat', r.dew == null ? 50 : r.dew); }),
-      bold: sweatWord(dp),
-      tip: 'Dew point peaks near ' + Math.round(dp) + DEG + '.' + (extra ? ' ' + extra : '') };
+         + ' Air temperature runs ' + Math.round(d.tMin) + DEG + ' to ' + Math.round(d.tMax) + DEG
+         + ', dew point peaks near ' + Math.round(dp) + DEG + '.'
+         + (skin ? ' ' + skin : '') };
   }
 
   function burnCard(d) {
@@ -763,57 +768,16 @@
     return hr(d.solarNoon);
   }
 
+  /* Cloud only. The old version let a weather code override the cloud
+     state, which meant that whenever anything was falling this card and
+     the precipitation card said the same word. Fog stays an override,
+     because fog is about seeing rather than about what is falling. */
   function skyWord(cloud, codes) {
-    for (var i = 0; i < codes.length; i++) {
-      var c = codes[i];
-      if (SNOW_CODES.indexOf(c) > -1) return 'Snow';
-      if (STORM_CODES.indexOf(c) > -1) return 'Thunderstorms';
-    }
-    for (var j = 0; j < codes.length; j++) {
-      var k = codes[j];
-      if ([61,63,65,80,81,82].indexOf(k) > -1) return 'Rain';
-      if ([51,53,55,56,57,66,67].indexOf(k) > -1) return 'Drizzle';
-      if ([45,48].indexOf(k) > -1) return 'Fog';
-    }
+    for (var i = 0; i < codes.length; i++) if ([45, 48].indexOf(codes[i]) > -1) return 'Fog';
     return cloud < 15 ? 'Sunny' : cloud < 35 ? 'Mostly Sunny' : cloud < 65 ? 'Partly Cloudy'
          : cloud < 85 ? 'Mostly Cloudy' : 'Cloudy';
   }
-  function skyCard(d) {
-    var mid = (d.sunrise + d.sunset) / 2;
-    var am = [], amC = [], pm = [], pmC = [];
-    for (var h = d.sunrise; h <= d.sunset; h++) {
-      var r = d.hours[h]; if (!r) continue;
-      if (h < mid) { am.push(r.cloud == null ? 50 : r.cloud); amC.push(r.code); }
-      else { pm.push(r.cloud == null ? 50 : r.cloud); pmC.push(r.code); }
-    }
-    var wAM = skyWord(avg(am), amC), wPM = skyWord(avg(pm), pmC);
 
-    // Evening clarity plus how bright the moon is decides whether it
-    // is worth going out to look up.
-    var ev = [];
-    for (var e = d.sunset + 1; e <= d.sunset + 4; e++) {
-      var er = d.hours[e % 24];
-      if (er) ev.push(er.cloud == null ? 50 : er.cloud);
-    }
-    var evCloud = ev.length ? avg(ev) : null;
-    var lit = Math.round(((1 - Math.cos(2 * Math.PI * (moonAge(d.date) / LUNATION))) / 2) * 100);
-    var stars = evCloud == null ? ''
-      : evCloud >= 60 ? ' Evening sky stays cloudy, so not a stargazing night.'
-      : evCloud >= 30 ? ' Evening sky is broken cloud \u2014 patchy stargazing at best.'
-      : lit >= 60 ? ' Clear evening, but a ' + lit + '% moon will wash out the faint stars.'
-      : ' Clear evening and only a ' + lit + '% moon \u2014 a good night for stargazing.';
-
-    return { timeline: true, bg: bgDay(d, skyColor), bold: pair(wAM, wPM),
-      todo: (evCloud != null && evCloud < 30 && lit < 60) ? 'Go stargazing' : null,
-      todoWhen: 'night', todoRank: 90, todoOutdoor: true,
-      tip: Math.round(d.cloudDay) + '% average cloud cover through daylight.'
-         + (wAM !== wPM ? ' ' + wAM + ' in the morning, ' + wPM.toLowerCase() + ' by afternoon.' : '')
-         + stars };
-  }
-
-  /* WMO codes distinguish drizzle from showers from steady rain from
-     snow from freezing rain from thunderstorms with hail. Using only a
-     percentage threw all of that away. */
   var WX = {
     hail:    [96, 99],
     thunder: [95],
@@ -828,79 +792,95 @@
     codes.forEach(function (c) {
       Object.keys(WX).forEach(function (k) { if (WX[k].indexOf(c) > -1) counts[k] = (counts[k] || 0) + 1; });
     });
-    // Ordered by how much it changes what you do, not by how common.
     var order = ['hail', 'thunder', 'freezing', 'snow', 'showers', 'rain', 'drizzle'];
     for (var i = 0; i < order.length; i++) if (counts[order[i]]) return order[i];
     return null;
   }
 
-  function rainCard(d) {
+  /* One card for the sky: what it looks like, and what is coming out of
+     it. The gradient carries both \u2014 cloud sets the base colour, and each
+     hour is pulled toward the wet end by that hour's chance of rain, so
+     a grey morning clearing into a wet afternoon reads across the card. */
+  function skyCard(d) {
+    var mid = (d.sunrise + d.sunset) / 2;
+    var am = [], amC = [], pm = [], pmC = [];
+    for (var h = d.sunrise; h <= d.sunset; h++) {
+      var r = d.hours[h]; if (!r) continue;
+      if (h < mid) { am.push(r.cloud == null ? 50 : r.cloud); amC.push(r.code); }
+      else { pm.push(r.cloud == null ? 50 : r.cloud); pmC.push(r.code); }
+    }
+    var wAM = skyWord(avg(am), amC), wPM = skyWord(avg(pm), pmC);
+    var sky = pair(wAM, wPM);
+
     var v = Math.round(d.rainChance);
     var kind = precipKind(d.codesDay || []);
-    if (v < 15 || !kind) {
-      return { timeline: true, bg: bgDay(d, function (r) { return colorAt('rain', r.pop); }),
-        bold: 'Nothing Falling from the Sky',
-        tip: v + '% chance at its highest. Nothing to plan around.' };
+    var noun = kind ? { hail: 'thunderstorms with hail', thunder: 'thunderstorms', freezing: 'freezing rain',
+                        snow: 'snow', showers: 'showers', rain: 'rain', drizzle: 'drizzle' }[kind] : null;
+    var wet = null;
+    if (kind && v >= 15) {
+      wet = v < 40 ? 'slight chance of ' + noun
+          : v < 65 ? 'chance of ' + noun
+          : v < 85 ? noun + ' likely'
+          : noun;
+      wet = wet.charAt(0).toUpperCase() + wet.slice(1);
+    }
+    var face = wet ? sky + ', ' + wet : sky;
+
+    var WETC = [92, 122, 176];
+    var bg = bgDay(d, function (r) {
+      var base = skyColor(r).match(/\d+/g).map(Number);
+      var p = Math.min(1, (r.pop || 0) / 100) * 0.65;
+      return css(blend(base, WETC, p));
+    });
+
+    var tip = Math.round(d.cloudDay) + '% average cloud cover through daylight.'
+            + (wAM !== wPM ? ' ' + wAM + ' in the morning, ' + wPM.toLowerCase() + ' by afternoon.' : '');
+    if (kind) {
+      tip += ' ' + v + '% chance at its highest';
+      tip += d.rainRun ? ', likeliest ' + hr(d.rainRun.a) + DASH + hr(d.rainRun.b + 1)
+                       + ', though it can turn up outside that stretch.' : ', scattered with no clear window.';
+      if (d.snowToday >= 0.2) tip += ' ' + Math.round(d.snowToday * 10) / 10 + '\u2033 of snow expected.';
+      else if (d.rainSum >= 0.05) tip += ' About ' + d.rainSum.toFixed(2) + '\u2033 in total.';
     }
 
-    var noun = { hail: 'thunderstorms with hail', thunder: 'thunderstorms', freezing: 'freezing rain',
-                 snow: 'snow', showers: 'showers', rain: 'rain', drizzle: 'drizzle' }[kind];
-    var word = v < 40 ? 'Slight Chance of ' + cap(noun)
-             : v < 65 ? 'Chance of ' + cap(noun)
-             : v < 85 ? cap(noun) + ' Likely'
-             : cap(noun);
-
-    var tip = v + '% chance at its highest. ';
-    if (d.rainRun) tip += 'Likeliest ' + hr(d.rainRun.a) + DASH + hr(d.rainRun.b + 1)
-                        + ', though it can turn up outside that stretch. ';
-    else tip += 'Scattered, with no clear window. ';
-    if (d.snowToday >= 0.2) tip += Math.round(d.snowToday * 10) / 10 + '\u2033 of snow expected. ';
-    else if (d.rainSum >= 0.05) tip += 'About ' + d.rainSum.toFixed(2) + '\u2033 in total. ';
+    var ev = [];
+    for (var e = d.sunset + 1; e <= d.sunset + 4; e++) {
+      var er = d.hours[e % 24];
+      if (er) ev.push(er.cloud == null ? 50 : er.cloud);
+    }
+    var evCloud = ev.length ? avg(ev) : null;
+    var lit = Math.round(((1 - Math.cos(2 * Math.PI * (moonAge(d.date) / LUNATION))) / 2) * 100);
+    if (evCloud != null) {
+      tip += evCloud >= 60 ? ' Evening sky stays cloudy, so not a stargazing night.'
+           : evCloud >= 30 ? ' Evening sky is broken cloud \u2014 patchy stargazing at best.'
+           : lit >= 60 ? ' Clear evening, but a ' + lit + '% moon will wash out the faint stars.'
+           : ' Clear evening and only a ' + lit + '% moon \u2014 a good night for stargazing.';
+    }
 
     var gear = null, when = 'out', rank = 30;
-    if (kind === 'hail') {
-      tip += 'Hail damages cars and hurts. Park under cover if you can, and do not wait it out in the open.';
-      gear = 'Park under cover if you can'; rank = 5; when = 'day';
-    } else if (kind === 'thunder') {
-      tip += 'Get indoors when you hear thunder \u2014 a building or a car, not a shelter or a tree.';
-      gear = 'Have somewhere to get indoors when you hear thunder'; rank = 5; when = 'day';
-    } else if (kind === 'freezing') {
-      tip += 'Freezing rain glazes every surface. Walking and driving both get genuinely dangerous.';
-      gear = 'Ice on the roads \u2014 allow more time'; rank = 5; when = 'day';
-    } else if (kind === 'snow') {
-      gear = null;   // the shoe pill already covers what to put on your feet
-    } else if (v >= 60) {
-      gear = 'Expect to use your rain gear'; rank = 20;
-    } else {
-      gear = 'Bring rain gear'; rank = 25;
-    }
+    if (kind === 'hail') { gear = 'Park under cover if you can'; rank = 5; when = 'day';
+      tip += ' Hail damages cars and hurts. Do not wait it out in the open.'; }
+    else if (kind === 'thunder') { gear = 'Have somewhere to get indoors when you hear thunder'; rank = 5; when = 'day'; }
+    else if (kind === 'freezing') { gear = 'Ice on the roads \u2014 allow more time'; rank = 5; when = 'day';
+      tip += ' Freezing rain glazes every surface.'; }
+    else if (kind === 'snow') { gear = null; }
+    else if (kind && v >= 60) { gear = 'Expect to use your rain gear'; rank = 20; }
+    else if (kind && v >= 15) { gear = 'Bring rain gear'; rank = 25; }
 
-    /* The dangerous band is not the coldest one. Wet clothing loses most
-       of its insulation, so rain in the 30s and 40s pulls heat out of
-       you faster than dry cold does \u2014 and people dress for the number,
-       not for being wet. */
-    var wetCold = kind !== 'snow' && d.tMax >= 33 && d.tMax <= 52
-               && (v >= 50 || d.rainSum >= 0.05);
+    var wetCold = kind && kind !== 'snow' && d.tMax >= 33 && d.tMax <= 52 && (v >= 50 || d.rainSum >= 0.05);
     if (wetCold) {
       tip += ' Wet and ' + Math.round(d.tMax) + DEG + ' takes heat out of you faster than dry and much colder,'
-           + ' because soaked clothing stops insulating. This is the band where people get into trouble'
+           + ' because soaked clothing stops insulating'
            + (d.windMax > 12 ? ', and the wind makes it worse' : '') + '.';
-      gear = 'Rain gear that keeps you dry, not just warm'; rank = 8;
+      gear = 'Rain gear that keeps you dry, not just warm'; rank = 8; when = 'out';
     }
 
-    return { timeline: true, bg: bgDay(d, function (r) { return colorAt('rain', r.pop); }),
-      bold: word, tip: tip, todo: gear, todoWhen: when, todoRank: rank };
+    return { timeline: true, bg: bg, bold: face, tip: tip,
+      todo: gear, todoWhen: when, todoRank: rank,
+      todo2: (evCloud != null && evCloud < 30 && lit < 60)
+        ? { text: 'Go stargazing', when: 'night', rank: 90, outdoor: true } : null };
   }
 
-  /* Air quality is not one instruction. The baseline for sensitive lungs
-     never goes away; worse air adds to it rather than replacing it. And
-     shutting the windows starts when the air is bad, not when it is
-     catastrophic \u2014 otherwise there is no point shutting them at all. */
-  /* Both halves. The tile says what is out there \u2014 the EPA category,
-     which is a condition like a pollen count. The pills say what to do,
-     and they accumulate rather than replace: the baseline for sensitive
-     lungs never goes away, worse air adds to it. Shutting the windows
-     starts when the air is bad, not when it is catastrophic. */
   function airCard(d, gAir) {
     var a = null, src = 'cams', advice = '', dom = '';
     var sens = sensitive();
@@ -1169,43 +1149,136 @@
     var age = ((noonLocal - KNOWN_NEW) / 86400000) % LUNATION;
     return age < 0 ? age + LUNATION : age;
   }
-  function moonCard(dateStr) {
+  /* Moonrise and moonset are not in the forecast data, so they are
+     computed: a low-precision lunar position (Montenbruck and Pfleger),
+     converted to altitude for your latitude, then solved for the
+     horizon crossings. Checked against the obvious physical test \u2014 a
+     full moon rises at sunset and sets at sunrise, a new moon does the
+     reverse. Good to a couple of minutes, which is far finer than
+     anyone needs. */
+  function fracPart(x) { return x - Math.floor(x); }
+  function moonEq(T) {
+    var L0 = fracPart(0.606433 + 1336.855225 * T);
+    var l  = 2 * Math.PI * fracPart(0.374897 + 1325.552410 * T);
+    var ls = 2 * Math.PI * fracPart(0.993133 +   99.997361 * T);
+    var D  = 2 * Math.PI * fracPart(0.827361 + 1236.853086 * T);
+    var F  = 2 * Math.PI * fracPart(0.259086 + 1342.227825 * T);
+    var dL = 22640 * Math.sin(l) - 4586 * Math.sin(l - 2 * D) + 2370 * Math.sin(2 * D)
+           + 769 * Math.sin(2 * l) - 668 * Math.sin(ls) - 412 * Math.sin(2 * F)
+           - 212 * Math.sin(2 * l - 2 * D) - 206 * Math.sin(l + ls - 2 * D)
+           + 192 * Math.sin(l + 2 * D) - 165 * Math.sin(ls - 2 * D) - 125 * Math.sin(D)
+           - 110 * Math.sin(l + ls) + 148 * Math.sin(l - ls) - 55 * Math.sin(2 * F - 2 * D);
+    var S = F + (dL + 412 * Math.sin(2 * F) + 541 * Math.sin(ls)) / 206264.8;
+    var hh = F - 2 * D;
+    var N = -526 * Math.sin(hh) + 44 * Math.sin(l + hh) - 31 * Math.sin(-l + hh)
+          - 23 * Math.sin(ls + hh) + 11 * Math.sin(-ls + hh) - 25 * Math.sin(-2 * l + F)
+          + 21 * Math.sin(-l + F);
+    var lam = 2 * Math.PI * fracPart(L0 + dL / 1296000);
+    var bet = (18520 * Math.sin(S) + N) / 206264.8;
+    var cb = Math.cos(bet), x = cb * Math.cos(lam), v = cb * Math.sin(lam), w = Math.sin(bet);
+    var eps = 23.43929111 * Math.PI / 180;
+    var yv = Math.cos(eps) * v - Math.sin(eps) * w, zv = Math.sin(eps) * v + Math.cos(eps) * w;
+    var rho = Math.sqrt(1 - zv * zv);
+    return { dec: (180 / Math.PI) * Math.atan(zv / rho), ra: (24 / Math.PI) * Math.atan(yv / (x + rho)) };
+  }
+  function lmst(mjd, lon) {
+    var mjd0 = Math.floor(mjd), ut = (mjd - mjd0) * 24, t = (mjd0 - 51544.5) / 36525;
+    var g = 6.697374558 + 1.0027379093 * ut + (8640184.812866 + (0.093104 - 6.2e-6 * t) * t) * t / 3600;
+    return 24 * fracPart((g + lon / 15) / 24);
+  }
+  function mjdOf(y, m, d, hoursUT) {
+    if (m <= 2) { y -= 1; m += 12; }
+    var a = Math.floor(y / 100), b = 2 - a + Math.floor(a / 4);
+    return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + b
+         - 1524.5 - 2400000.5 + hoursUT / 24;
+  }
+  function moonAlt(y, m, d, hourLocal, tzOff, lat, lon) {
+    var mjd = mjdOf(y, m, d, hourLocal - tzOff);
+    var T = (mjd - 51544.5) / 36525, pos = moonEq(T);
+    var tau = 15 * (lmst(mjd, lon) - pos.ra), R = Math.PI / 180;
+    return Math.sin(lat * R) * Math.sin(pos.dec * R)
+         + Math.cos(lat * R) * Math.cos(pos.dec * R) * Math.cos(tau * R);
+  }
+  function tzOffsetHours(dateStr, tz) {
+    try {
+      var d = new Date(dateStr + 'T12:00:00Z');
+      var s2 = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hour12: false }).format(d);
+      var local = parseInt(s2, 10); if (local === 24) local = 0;
+      var diff = local - 12;
+      if (diff > 12) diff -= 24; if (diff < -12) diff += 24;
+      return diff;
+    } catch (e) { return 0; }
+  }
+  function moonTimes(dateStr, tz, lat, lon) {
+    var y = +dateStr.slice(0, 4), m = +dateStr.slice(5, 7), d = +dateStr.slice(8, 10);
+    var tzOff = tzOffsetHours(dateStr, tz);
+    var h0 = Math.sin(0.125 * Math.PI / 180);   // parallax less refraction
+    var rise = null, set = null, up = [];
+    var y0 = moonAlt(y, m, d, 0, tzOff, lat, lon) - h0;
+    up.push(y0 > 0);
+    for (var hour = 1; hour <= 24; hour++) {
+      var y1 = moonAlt(y, m, d, hour, tzOff, lat, lon) - h0;
+      var ym = moonAlt(y, m, d, hour - 0.5, tzOff, lat, lon) - h0;
+      if (hour < 24) up.push(y1 > 0);
+      var a = 2 * y1 - 4 * ym + 2 * y0, b = 4 * ym - y1 - 3 * y0, c = y0;
+      var dis = b * b - 4 * a * c;
+      if (dis >= 0 && a !== 0) {
+        var dx = Math.sqrt(dis);
+        [(-b + dx) / (2 * a), (-b - dx) / (2 * a)].forEach(function (r) {
+          if (r >= 0 && r <= 1) {
+            var t = hour - 1 + r;
+            if (y0 < 0) { if (rise === null) rise = t; }
+            else if (set === null) set = t;
+          }
+        });
+      }
+      y0 = y1;
+    }
+    return { rise: rise, set: set, up: up, tzOff: tzOff };
+  }
+
+  function moonCard(dateStr, tz, lat, lon) {
     var age = moonAge(dateStr);
     var f = age / LUNATION;
     var illum = Math.round(((1 - Math.cos(2 * Math.PI * f)) / 2) * 100);
-    // Bands are one day either side of the four principal phases
-    // (new 0, first quarter 7.38, full 14.765, last quarter 22.15).
-    // Eyeballed thresholds put a 99%-lit moon in the gibbous band.
     var name = age < 1.0 ? 'New Moon' : age < 6.38 ? 'Waxing Crescent' : age < 8.38 ? 'First Quarter'
              : age < 13.765 ? 'Waxing Gibbous' : age < 15.765 ? 'Full Moon' : age < 21.15 ? 'Waning Gibbous'
              : age < 23.15 ? 'Last Quarter' : age < 28.53 ? 'Waning Crescent' : 'New Moon';
-    var waxing = f < 0.5;
 
-    // The gradient is the moon itself: the lit limb sits on the side
-    // that is actually lit, and the terminator falls where it falls.
-    var DARK = 'rgb(176,184,198)', LIT = 'rgb(246,248,251)';
-    var edge = illum, soft = 9;
-    var bg = waxing
-      ? 'linear-gradient(90deg,' + DARK + ' 0%,' + DARK + ' ' + Math.max(0, 100 - edge - soft) + '%,'
-        + LIT + ' ' + Math.min(100, 100 - edge + soft) + '%,' + LIT + ' 100%)'
-      : 'linear-gradient(90deg,' + LIT + ' 0%,' + LIT + ' ' + Math.max(0, edge - soft) + '%,'
-        + DARK + ' ' + Math.min(100, edge + soft) + '%,' + DARK + ' 100%)';
+    var t = (lat == null) ? { rise: null, set: null, up: [] }
+                          : moonTimes(dateStr, tz || 'UTC', lat, lon);
+
+    // The card is the night: dark where the moon is down, brightening
+    // with how much of it is lit where it is up.
+    var DARK = blend(hex2rgb(anchors().cold), [96, 104, 122], 0.6);
+    var lambda = illum / 100;
+    var bg = 'linear-gradient(90deg,' + Array.from({ length: 24 }, function (_, h) {
+      var isUp = t.up.length ? t.up[h] : false;
+      var c = isUp ? blend(DARK, [248, 249, 251], 0.25 + 0.7 * lambda) : DARK;
+      return css(c) + ' ' + ((h / 23) * 100).toFixed(1) + '%';
+    }).join(',') + ')';
+
+    var left, right;
+    if (lat == null) {
+      // No location yet, so rise and set cannot be worked out at all.
+      left = [name, illum + '% lit']; right = ['', ''];
+    } else {
+      left  = t.rise != null ? ['Moonrise', hr(t.rise)] : ['Moon', 'already up'];
+      right = t.set  != null ? ['Moonset', hr(t.set)]   : ['Moonset', 'after midnight'];
+      if (t.rise == null && t.set == null) { left = ['Moon', 'up all day']; right = ['', '']; }
+    }
 
     var toFull = ((14.765 - age) % LUNATION + LUNATION) % LUNATION;
-    var toNew = ((LUNATION - age) % LUNATION + LUNATION) % LUNATION;
+    var toNew  = ((LUNATION - age) % LUNATION + LUNATION) % LUNATION;
     var next = toFull < toNew
       ? 'Full moon in ' + Math.round(toFull) + ' day' + (Math.round(toFull) === 1 ? '' : 's') + '.'
       : 'New moon in ' + Math.round(toNew) + ' day' + (Math.round(toNew) === 1 ? '' : 's') + '.';
-    var seen = age < 1.4 ? 'Up with the sun all day, so effectively invisible.'
-             : age < 6.4 ? 'Low in the west just after sunset, then gone.'
-             : age < 8.4 ? 'Rises around midday, sets around midnight — best in the evening.'
-             : age < 13.8 ? 'Up most of the night, setting in the small hours.'
-             : age < 15.8 ? 'Rises at sunset and sets at sunrise — up all night.'
-             : age < 21.1 ? 'Rises mid-evening and stays up past dawn.'
-             : age < 23.1 ? 'Rises around midnight, sets around midday — best before dawn.'
-             : 'Low in the east just before sunrise.';
-    return { bg: bg, bold: name,
-      tip: illum + '% illuminated, ' + Math.round(age) + ' days into the cycle. ' + seen + ' ' + next };
+
+    return { timeline: true, bg: bg,
+      split: { left: left, right: right },
+      caption: lat == null ? null : name + ' \u00B7 ' + illum + '% lit',
+      tip: illum + '% illuminated, ' + Math.round(age) + ' days into the cycle. ' + next
+         + ' Rise and set are calculated for your latitude, not fetched.' };
   }
 
   /* Solar longitude passes 0, 90, 180 and 270 degrees at the equinoxes
@@ -1856,10 +1929,10 @@
      produced an instruction is in PILL_ONLY instead \u2014 still built, still
      switchable, but it contributes a line to the to-do list rather than
      taking a slot in the grid. */
-  var DEFAULT_TILE_ORDER = ['air', 'allergy', 'pavement', 'wind', 'light', 'aurora', 'moon'];
+  var DEFAULT_TILE_ORDER = ['air', 'allergy', 'pavement', 'wind', 'light', 'aurora'];
   var PILL_ONLY = ['burn','frostbite','migraine','arthritis','frizz','bug',
                    'shoe','frost','pipe','rust','mow','mold','fire'];
-  var DEFAULT_HOURLY_ORDER = ['feels','sweat','sky','rain','daylight'];
+  var DEFAULT_HOURLY_ORDER = ['feels', 'sky', 'daylight', 'moon'];
   function orderOf(which) {
     var def = which === 'hourly' ? DEFAULT_HOURLY_ORDER : DEFAULT_TILE_ORDER;
     var saved = (which === 'hourly' ? store.orderH : store.order) || [];
@@ -2228,6 +2301,10 @@
       line.appendChild(tick);
     }
     el.appendChild(line);
+    if (row.caption) {
+      var cap2 = document.createElement('div'); cap2.className = 'caption';
+      cap2.textContent = row.caption; el.appendChild(cap2);
+    }
 
     if (row.tip) {
       var t = document.createElement('p'); t.className = 'tip'; t.textContent = row.tip; t.style.display = 'none';
@@ -2353,10 +2430,9 @@
 
     var hourlyBuilders = {
       feels:    function () { return feelsCard(d); },
-      sweat:    function () { return sweatCard(d); },
       sky:      function () { return skyCard(d); },
-      rain:     function () { return rainCard(d); },
-      daylight: function () { return daylightCard(d); }
+      daylight: function () { return daylightCard(d); },
+      moon:     function () { return moonCard(d.date, state.tz, lat, lon); }
     };
     var col = document.createElement('div'); col.className = 'hourly';
     hourlyOrder().forEach(function (id) { addCard(col, id, hourlyBuilders[id]); });
@@ -2383,7 +2459,7 @@
       air:       function () { return airCard(d, p.airGoogle); },
       light:     function () { return lightCard(d); },
       aurora:    function () { return auroraCard(d, p.kp); },
-      moon:      function () { return moonCard(d.date); }
+      moon:      function () { return moonCard(d.date, state.tz, lat, lon); }
     };
     tileOrder().forEach(function (id) { addCard(grid, id, builders[id]); });
     PILL_ONLY.forEach(function (id) { collectOnly(id, builders[id]); });
@@ -2416,10 +2492,11 @@
     host.innerHTML = '';
     var sHourly = {
       feels:    function () { return feelsCard(d); },
-      sweat:    function () { return sweatCard(d); },
       sky:      function () { return skyCard(d); },
-      rain:     function () { return rainCard(d); },
-      daylight: function () { return daylightCard(d); }
+      daylight: function () { return daylightCard(d); },
+      moon:     function () { return moonCard(d.date, p.wx.timezone || state.tz,
+                                              state.shoreSel ? state.shoreSel.lat : null,
+                                              state.shoreSel ? state.shoreSel.lon : null); }
     };
     var scol = document.createElement('div'); scol.className = 'hourly';
     hourlyOrder().forEach(function (id) { addCard(scol, id, sHourly[id]); });
