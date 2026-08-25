@@ -43,9 +43,10 @@
   /* Sunrise to the left, sunset to the right, so the card reads the way
      the day runs. Wraps to two lines rather than crushing on a narrow
      phone. */
-  .face.split{display:flex;justify-content:space-between;align-items:center;gap:10px;}
-  .face.split .end{display:flex;flex-direction:column;line-height:1.2;}
-  .face.split .end.right{text-align:right;}
+  .face.split{display:flex;align-items:center;gap:10px;}
+  .face.split .end{display:flex;flex-direction:column;line-height:1.2;flex:0 0 auto;}
+  .face.split .end.mid{flex:1 1 auto;text-align:center;font-weight:600;opacity:.78;}
+  .face.split .end.right{text-align:right;margin-left:0;}
   .face.split .end b{display:block;}
   .caption{font-size:13.5px;opacity:.72;text-align:center;margin-top:5px;}
   .now{position:absolute;top:-13px;bottom:-13px;width:2px;margin-left:-1px;
@@ -213,19 +214,6 @@
   <p class="tiphint" id="tipHint">Tap any card for the numbers behind it.</p>
   <div id="homeBody"></div>
 
-  <div id="shoreSection">
-    <div class="hdr section">
-      <div class="l1">Water</div>
-      <div class="l2"><select id="beachSel" aria-label="Shore"></select></div>
-      <div id="shoreBox" style="display:none;margin-top:10px">
-        <input id="shoreQ" type="search" placeholder="Search any coast or lake town"
-               style="font:inherit;width:100%;text-align:center;border:none;border-bottom:1.5px dashed #B9C4CC;padding:4px;background:transparent;color:inherit">
-        <ul id="shoreResults" style="list-style:none;margin:8px 0 0;padding:0;font-size:16px"></ul>
-      </div>
-    </div>
-    <div id="shoreBody"></div>
-  </div>
-
   <p class="disc" id="disclaimer"></p>
 </div>
 
@@ -248,7 +236,6 @@
   var store = loadStore();
   if (!store.cards) store.cards = {};          // absent means on
   if (!store.recents) store.recents = [];
-  if (!store.shores) store.shores = [];
   if (!store.keys) store.keys = {};
 
   /* Which cards exist, what each assumes about you, and which section
@@ -268,7 +255,7 @@
     { id: 'bug',       name: 'Bug spray',         group: 'Outdoors' },
     { id: 'shoe',      name: 'Which shoes',       group: 'Outdoors' },
     { id: 'fire',      name: 'Fire weather',      group: 'Outdoors', note: 'Only when conditions approach a Red Flag' },
-    { id: 'light',     name: 'Daylight exposure', group: 'Outdoors' },
+    { id: 'light',     name: 'Daylight exposure', group: 'Outdoors', note: 'When to go get some light' },
     { id: 'aurora',    name: 'Aurora',            group: 'Outdoors', note: 'Only during a geomagnetic storm' },
     { id: 'moon',      name: 'Moon phase',        group: 'Outdoors' },
     { id: 'pavement',  name: 'Pavement and paws', group: 'If you have', note: 'A dog' },
@@ -277,7 +264,7 @@
     { id: 'pipe',      name: 'Pipe freeze',       group: 'If you have', note: 'A house with exposed plumbing' },
     { id: 'mold',      name: 'Basement damp',     group: 'If you have', note: 'A basement or crawl space' },
     { id: 'mow',       name: 'Mowing',            group: 'If you have', note: 'A lawn you cut yourself' },
-    { id: 'shore',     name: 'Water section',     group: 'If you have', note: 'A coast or lake worth checking' },
+    { id: 'water',     name: 'Water temperature', group: 'If you have', note: 'Shows when a gauge or buoy is near' },
     { id: 'todo',      name: 'To-do list',        group: 'Sections', note: 'A digest of what the other cards say to do' },
     { id: 'ahead',     name: 'Later this week',   group: 'Sections', note: 'Flags a day worth planning around' }
   ];
@@ -309,8 +296,7 @@
   }
 
   var state = { place: store.place || null, tz: 'America/Detroit', dayOffset: 0,
-                home: null, shore: null, shoreSel: store.shore || null,
-                recents: store.recents, shoreRecents: store.shores, kp: null };
+                home: null, recents: store.recents, kp: null };
 
   /* ================= colour ==================================
      Pale enough for dark text on top. Three fill modes, because
@@ -1079,10 +1065,7 @@
   }
 
   function waterCard(water, dateStr) {
-    if (!water) {
-      return { bold: 'No Water Temperature', plain: true,
-        tip: 'No buoy or shoreline gauge within reach, and ocean models do not cover inland water. Try a nearby town directly on the shore.' };
-    }
+    if (!water) return null;   // inland: nothing to say, so no tile
 
     var w, waveFt = null, provenance;
     if (water.kind === 'station') {
@@ -1935,9 +1918,13 @@
      produced an instruction is in PILL_ONLY instead \u2014 still built, still
      switchable, but it contributes a line to the to-do list rather than
      taking a slot in the grid. */
-  var DEFAULT_TILE_ORDER = ['air', 'allergy', 'pavement', 'wind', 'light', 'aurora'];
+  /* Daylight lost its tile: the length of the day is already on the
+     sunrise card and the cloud is already on the sky card, so the tile
+     was restating both. Its pill \u2014 when to go get some light \u2014 is the
+     part that was not said anywhere else, so that stays. */
+  var DEFAULT_TILE_ORDER = ['air', 'allergy', 'water', 'pavement', 'wind', 'aurora'];
   var PILL_ONLY = ['burn','frostbite','migraine','arthritis','frizz','bug',
-                   'shoe','frost','pipe','rust','mow','mold','fire'];
+                   'shoe','frost','pipe','rust','mow','mold','fire','light'];
   var DEFAULT_HOURLY_ORDER = ['feels', 'sky', 'daylight', 'moon'];
   function orderOf(which) {
     var def = which === 'hourly' ? DEFAULT_HOURLY_ORDER : DEFAULT_TILE_ORDER;
@@ -1953,7 +1940,7 @@
     if (i < 0 || j < 0 || j >= o.length) return;
     o.splice(j, 0, o.splice(i, 1)[0]);
     if (which === 'hourly') store.orderH = o; else store.order = o;
-    saveStore(); buildSettings(); renderHome(); renderShore();
+    saveStore(); buildSettings(); renderHome();
   }
 
   /* ================= data =================
@@ -2010,7 +1997,7 @@
     ];
 
     Promise.all(jobs).then(function (r) {
-      state.home = { wx: r[0], aq: r[1], alerts: r[2], kp: r[3], pollen: null, airGoogle: null };
+      state.home = { wx: r[0], aq: r[1], alerts: r[2], kp: r[3], pollen: null, airGoogle: null, water: null };
       state.tz = r[0].timezone || place.tz || 'America/Detroit';
       store.place = place;
       store.recents = [place].concat((store.recents || []).filter(function (x) {
@@ -2021,6 +2008,14 @@
       buildDays(); buildPlaces(); renderHome();
       host.classList.remove('busy');
       if (store.keys.google) loadGoogle(place);
+      // Water arrives on its own schedule: a tile appears if a gauge or
+      // buoy turns out to be near, and nothing appears if you are inland.
+      if (on('water')) {
+        waterFor(place, r[0].timezone).then(function (w) {
+          if (!w || !state.home || state.home.error) return;
+          state.home.water = w; renderHome();
+        });
+      }
     }).catch(function (e) {
       state.home = { error: (e && e.message) || 'Could not reach the weather service.' };
       renderHome(); host.classList.remove('busy');
@@ -2237,26 +2232,6 @@
       .then(function (w) { return w || marineReading(place.lat, place.lon, tz); });
   }
 
-  function loadShore(place) {
-    if (!place) return;
-    state.shoreSel = place; store.shore = place;
-    store.shores = [place].concat((store.shores || []).filter(function (x) {
-      return Math.abs(x.lat - place.lat) > 0.05 || Math.abs(x.lon - place.lon) > 0.05;
-    })).slice(0, 6);
-    state.shoreRecents = store.shores; saveStore();
-    var host = document.getElementById('shoreBody'); host.classList.add('busy');
-    buildBeaches();
-
-    j(wxUrl(place.lat, place.lon, place.tz, 1)).then(function (wx) {
-      return waterFor(place, wx.timezone).then(function (water) {
-        state.shore = { wx: wx, water: water, name: placeLabel(place), lat: place.lat };
-        renderShore(); host.classList.remove('busy');
-      });
-    }).catch(function (e) {
-      state.shore = { error: (e && e.message) || 'Could not reach the weather service.' };
-      renderShore(); host.classList.remove('busy');
-    });
-  }
 
   function search(q) {
     return j('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(q)
@@ -2281,13 +2256,21 @@
     var line = document.createElement('div');
     line.className = 'face' + (row.split ? ' split' : '');
     if (row.split) {
-      ['left', 'right'].forEach(function (side) {
-        var box = document.createElement('div'); box.className = 'end ' + side;
-        row.split[side].forEach(function (txt) {
-          var b3 = document.createElement('b'); b3.textContent = txt; box.appendChild(b3);
+      var lb = document.createElement('div'); lb.className = 'end left';
+      row.split.left.forEach(function (t) { var e2 = document.createElement('b'); e2.textContent = t; lb.appendChild(e2); });
+      line.appendChild(lb);
+      // A middle column, so the phase sits dead centre between the two
+      // times rather than centred on whatever space is left over.
+      var mid = document.createElement('div'); mid.className = 'end mid';
+      if (row.caption) {
+        String(row.caption).split(' \u00B7 ').forEach(function (t) {
+          var e3 = document.createElement('b'); e3.textContent = t; mid.appendChild(e3);
         });
-        line.appendChild(box);
-      });
+      }
+      line.appendChild(mid);
+      var rb = document.createElement('div'); rb.className = 'end right';
+      row.split.right.forEach(function (t) { var e4 = document.createElement('b'); e4.textContent = t; rb.appendChild(e4); });
+      line.appendChild(rb);
     } else {
       var b = document.createElement('b'); b.textContent = row.bold; line.appendChild(b);
       if (row.det) { var s2 = document.createElement('span'); s2.className = 'det'; s2.textContent = row.det; line.appendChild(s2); }
@@ -2307,7 +2290,7 @@
       line.appendChild(tick);
     }
     el.appendChild(line);
-    if (row.caption) {
+    if (row.caption && !row.split) {
       var cap2 = document.createElement('div'); cap2.className = 'caption';
       cap2.textContent = row.caption; el.appendChild(cap2);
     }
@@ -2465,6 +2448,7 @@
       air:       function () { return airCard(d, p.airGoogle); },
       light:     function () { return lightCard(d); },
       aurora:    function () { return auroraCard(d, p.kp); },
+      water:     function () { return waterCard(p.water, d.date); },
       moon:      function () { return moonCard(d.date, state.tz, lat, lon); }
     };
     tileOrder().forEach(function (id) { addCard(grid, id, builders[id]); });
@@ -2476,61 +2460,11 @@
     host.appendChild(grid);
   }
 
-  function renderShore() {
-    var sec = document.getElementById('shoreSection');
-    sec.style.display = on('shore') ? 'block' : 'none';
-    if (!on('shore')) return;
-    var host = document.getElementById('shoreBody');
-    if (!state.shoreSel) {
-      host.innerHTML = '';
-      var hint = document.createElement('div');
-      hint.className = 'card flat plain';
-      hint.textContent = 'Pick a coast or lake town to see water temperature and conditions.';
-      host.appendChild(hint);
-      return;
-    }
-    var p = state.shore;
-    if (!p) return skeleton(host, 5, 2);
-    if (p.error) return fail(host, p.error);
-    var d;
-    try { d = derive(p.wx, null, p.wx.timezone || state.tz, state.dayOffset); }
-    catch (e) { return fail(host, e.message); }
-    host.innerHTML = '';
-    var sHourly = {
-      feels:    function () { return feelsCard(d); },
-      sky:      function () { return skyCard(d); },
-      daylight: function () { return daylightCard(d); },
-      moon:     function () { return moonCard(d.date, p.wx.timezone || state.tz,
-                                              state.shoreSel ? state.shoreSel.lat : null,
-                                              state.shoreSel ? state.shoreSel.lon : null); }
-    };
-    var scol = document.createElement('div'); scol.className = 'hourly';
-    hourlyOrder().forEach(function (id) { addCard(scol, id, sHourly[id]); });
-    host.appendChild(scol);
-    var g = document.createElement('div'); g.className = 'grid';
-    addCard(g, 'wind', function () { return windCard(d); });
-    addCard(g, null,   function () { return waterCard(p.water, d.date); });
-    host.appendChild(g);
-
-    // Rip current and beach hazard products are regional. Rather than
-    // point everyone at a Great Lakes page, send them to the NWS
-    // forecast for their own coordinates.
-    var l = document.createElement('div'); l.className = 'linkcard';
-    var a = document.createElement('a');
-    a.href = 'https://forecast.weather.gov/MapClick.php?lat=' + state.shoreSel.lat.toFixed(4)
-           + '&lon=' + state.shoreSel.lon.toFixed(4);
-    a.target = '_blank'; a.rel = 'noopener';
-    a.textContent = 'Local swim & surf forecast';
-    l.appendChild(a); host.appendChild(l);
-  }
 
   /* ================= controls ================= */
-  var shoreBox = document.getElementById('shoreBox');
   var daySel = document.getElementById('daySel'), placeSel = document.getElementById('placeSel'),
-      beachSel = document.getElementById('beachSel'), searchBox = document.getElementById('searchBox'),
-      results = document.getElementById('results'), qIn = document.getElementById('q'),
-      shoreResults = document.getElementById('shoreResults'),
-      shoreQ = document.getElementById('shoreQ');
+      searchBox = document.getElementById('searchBox'),
+      results = document.getElementById('results'), qIn = document.getElementById('q');
 
   function buildDays() {
     daySel.innerHTML = '';
@@ -2561,34 +2495,9 @@
     var s = document.createElement('option'); s.value = '__search'; s.textContent = 'Search another town';
     placeSel.appendChild(s);
   }
-  function buildBeaches() {
-    beachSel.innerHTML = '';
-    if (!state.shoreSel) {
-      // A one-option select is a dead control: re-picking the option
-      // already selected fires no change event. So the placeholder is a
-      // disabled option and the real action sits below it, and the
-      // search box opens straight away.
-      var ph = document.createElement('option');
-      ph.textContent = 'Choose a shore'; ph.disabled = true; ph.selected = true;
-      beachSel.appendChild(ph);
-      var f = document.createElement('option'); f.value = '__shoresearch';
-      f.textContent = 'Search a coast or lake town'; beachSel.appendChild(f);
-      shoreBox.style.display = 'block';
-      return;
-    }
-    (state.shoreRecents || []).forEach(function (x) {
-      var o = document.createElement('option');
-      o.value = x.lat.toFixed(2) + ',' + x.lon.toFixed(2);
-      o.textContent = placeLabel(x); o._place = x;
-      if (Math.abs(x.lat - state.shoreSel.lat) < 0.05 && Math.abs(x.lon - state.shoreSel.lon) < 0.05) o.selected = true;
-      beachSel.appendChild(o);
-    });
-    var s = document.createElement('option'); s.value = '__shoresearch';
-    s.textContent = 'Search another shore'; beachSel.appendChild(s);
-  }
 
   daySel.addEventListener('change', function () {
-    state.dayOffset = parseInt(daySel.value, 10) || 0; renderHome(); renderShore();
+    state.dayOffset = parseInt(daySel.value, 10) || 0; renderHome();
   });
   placeSel.addEventListener('change', function () {
     if (placeSel.value === '__search') {
@@ -2597,14 +2506,6 @@
     searchBox.style.display = 'none';
     var o = placeSel.options[placeSel.selectedIndex];
     if (o && o._place) loadHome(o._place);
-  });
-  beachSel.addEventListener('change', function () {
-    if (beachSel.value === '__shoresearch') {
-      shoreBox.style.display = 'block'; shoreResults.innerHTML = ''; shoreQ.value = ''; shoreQ.focus(); return;
-    }
-    shoreBox.style.display = 'none';
-    var o = beachSel.options[beachSel.selectedIndex];
-    if (o && o._place) loadShore(o._place);
   });
 
   function wireSearch(input, list, onPick) {
@@ -2633,7 +2534,6 @@
     });
   }
   wireSearch(qIn, results, function (x) { searchBox.style.display = 'none'; loadHome(x); });
-  wireSearch(shoreQ, shoreResults, function (x) { shoreBox.style.display = 'none'; loadShore(x); });
 
   /* ================= settings ================= */
   var settingsPanel = document.getElementById('settingsPanel');
@@ -2673,7 +2573,7 @@
       var r = document.createElement('input'); r.type = 'radio'; r.name = 'skin';
       r.checked = (store.skin || 2) === sk.id;
       r.addEventListener('change', function () {
-        store.skin = sk.id; saveStore(); renderHome(); renderShore();
+        store.skin = sk.id; saveStore(); renderHome();
       });
       var sw = document.createElement('i'); sw.className = 'tone'; sw.style.background = sk.tone;
       var sp = document.createElement('span'); sp.textContent = sk.label;
@@ -2684,7 +2584,7 @@
     var srow0 = document.createElement('label'); srow0.className = 'opt';
     var sbox0 = document.createElement('input'); sbox0.type = 'checkbox'; sbox0.checked = sensitive();
     sbox0.addEventListener('change', function () {
-      store.sensitive = sbox0.checked; saveStore(); renderHome(); renderShore();
+      store.sensitive = sbox0.checked; saveStore(); renderHome();
     });
     var stx0 = document.createElement('span');
     stx0.textContent = 'Air quality affects me sooner than most';
@@ -2706,7 +2606,7 @@
         var box = document.createElement('input'); box.type = 'checkbox';
         box.checked = on(id); box.disabled = !!meta.always;
         box.addEventListener('change', function () {
-          store.cards[id] = box.checked; saveStore(); renderHome(); renderShore();
+          store.cards[id] = box.checked; saveStore(); renderHome();
         });
         var nm = document.createElement('span'); nm.textContent = meta.name;
         if (meta.note) { var sm = document.createElement('small'); sm.textContent = meta.note; nm.appendChild(sm); }
@@ -2732,7 +2632,7 @@
       var row = document.createElement('label'); row.className = 'opt';
       var box = document.createElement('input'); box.type = 'checkbox'; box.checked = on(id);
       box.addEventListener('change', function () {
-        store.cards[id] = box.checked; saveStore(); renderHome(); renderShore();
+        store.cards[id] = box.checked; saveStore(); renderHome();
       });
       var nm = document.createElement('span'); nm.textContent = meta.name;
       if (meta.note) { var sm = document.createElement('small'); sm.textContent = meta.note; nm.appendChild(sm); }
@@ -2743,11 +2643,11 @@
     settingsPanel.appendChild(sh);
     [['todo', 'To-do list', 'A digest of what the other cards say to do'],
      ['ahead', 'Later this week', 'Flags a day worth planning around'],
-     ['shore', 'Water section', 'A coast or lake worth checking']].forEach(function (sec) {
+     ].forEach(function (sec) {
       var srow = document.createElement('label'); srow.className = 'opt';
       var sbox = document.createElement('input'); sbox.type = 'checkbox'; sbox.checked = on(sec[0]);
       sbox.addEventListener('change', function () {
-        store.cards[sec[0]] = sbox.checked; saveStore(); renderHome(); renderShore();
+        store.cards[sec[0]] = sbox.checked; saveStore(); renderHome();
       });
       var stx = document.createElement('span'); stx.textContent = sec[1];
       var ssm = document.createElement('small'); ssm.textContent = sec[2];
@@ -2771,7 +2671,7 @@
       b.appendChild(sw);
       b.addEventListener('click', function () {
         store.theme = { preset: k }; saveStore(); buildRamps();
-        buildSettings(); renderHome(); renderShore();
+        buildSettings(); renderHome();
       });
       pr.appendChild(b);
     });
@@ -2797,7 +2697,7 @@
     reset.textContent = 'Reset colours';
     reset.addEventListener('click', function () {
       store.theme = { preset: 'default' }; saveStore(); buildRamps();
-      buildSettings(); renderHome(); renderShore();
+      buildSettings(); renderHome();
     });
     settingsPanel.appendChild(reset);
     updateContrast();
@@ -2810,7 +2710,7 @@
     inp.addEventListener('input', function () {
       store.theme = store.theme || {};
       store.theme[key] = inp.value;
-      saveStore(); buildRamps(); renderHome(); renderShore(); updateContrast();
+      saveStore(); buildRamps(); renderHome(); updateContrast();
     });
     var sp = document.createElement('span'); sp.textContent = label;
     row.appendChild(inp); row.appendChild(sp); settingsPanel.appendChild(row);
@@ -2901,9 +2801,8 @@
   /* ================= start ================= */
   buildRamps();
   if (store.tapped) document.getElementById('tipHint').style.display = 'none';
-  buildDays(); buildPlaces(); buildBeaches();
-  renderShore();
-  if (state.place) loadHome(state.place);
+  buildDays(); buildPlaces();
+    if (state.place) loadHome(state.place);
   else if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(function (pos) {
       loadHome({ name: 'Your location', region: '', country: 'US',
@@ -2912,7 +2811,6 @@
       searchBox.style.display = 'block';
     }, { timeout: 8000 });
   } else { searchBox.style.display = 'block'; }
-  if (state.shoreSel && on('shore')) loadShore(state.shoreSel);
 })();
 </script>
 </body>
