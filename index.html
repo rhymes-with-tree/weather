@@ -102,10 +102,15 @@
      width their gradients need. */
   @media (min-width:760px){
     .wrap{max-width:1080px;}
-    #homeBody, #shoreBody{display:grid;grid-template-columns:minmax(300px,0.95fr) 1.25fr;
-                          gap:12px;align-items:start;}
-    #homeBody > .alert, #homeBody > .note, #homeBody > .todo,
-    #homeBody > .aheadcard{grid-column:1 / -1;}
+    /* Left column is the day: four full-width cards, then the tiles
+       under them. Right column is the to-do list, which is the longest
+       single element and now has somewhere to be. Anything that
+       announces itself spans both. */
+    #homeBody{display:grid;grid-template-columns:1.15fr 0.85fr;
+              gap:14px;align-items:start;grid-auto-flow:row dense;}
+    #homeBody > .hourly, #homeBody > .grid{grid-column:1;}
+    #homeBody > .todoblock{grid-column:2;grid-row:1 / span 3;margin:0;}
+    #homeBody > .alert, #homeBody > .note, #homeBody > .aheadcard{grid-column:1 / -1;}
     /* Both sides share one row height, so a card on the left lines up
        with a tile on the right instead of each being sized by its own
        rule. */
@@ -119,9 +124,7 @@
     .card.sm.open{grid-column:span 3;min-height:0;}
   }
   @media (min-width:1180px){
-    .wrap{max-width:1240px;}
-    .grid{grid-template-columns:repeat(4,1fr);}
-    .card.sm.open{grid-column:span 4;min-height:0;}
+    .wrap{max-width:1180px;}
   }
   @media (max-width:370px){ .card{font-size:16px;padding:12px 14px;} .hdr .l2{font-size:21px;}
     .card.sm{font-size:13px;padding:9px 10px;} }
@@ -174,10 +177,11 @@
               font:inherit;font-size:15px;line-height:1;cursor:pointer;color:var(--ink);}
   .ord button:disabled{opacity:.32;cursor:default;}
   .card.todo{background:#F3F0E8;border:1px solid var(--line);display:block;
-             padding:14px 18px;min-height:0;margin-bottom:12px;}
-  .todohead{font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;
+             padding:15px 18px 16px;min-height:0;margin-bottom:12px;}
+  .todohead{font-size:12px;letter-spacing:.08em;text-transform:uppercase;
             color:var(--mid);margin-bottom:7px;}
-  .card.todo ul + .todohead{margin-top:13px;}
+  .card.todo ul + .todohead{margin-top:15px;padding-top:13px;
+                            border-top:1px solid rgba(22,35,47,.10);}
   .card.todo ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:7px 9px;}
   .card.todo li{font-size:15.5px;font-weight:600;background:#FFF;border:1px solid var(--line);
                 border-radius:999px;padding:5px 13px;}
@@ -746,6 +750,10 @@
       tip += ' A longer window is not the same as no risk \u2014 UV still ages and damages skin that rarely burns.';
     }
     return { bg: bgFrom('burn', uv), bold: face, tip: tip,
+             // Without a tile, the minutes only survive if the pill
+             // carries them \u2014 and they are the reason the skin setting
+             // exists at all.
+             // The tile carries the minutes, so the pill is just the action.
              todo: uv >= 6 ? 'Sunscreen and a hat' : uv >= 3 ? 'Sunscreen' : null,
              todoWhen: 'out', todoRank: 30 };
   }
@@ -1033,8 +1041,9 @@
     var r = migraineScore(d), s = r.s, why = r.why;
     return { bg: bgFrom('risk', s),
       bold: 'Migraine ' + (s >= 45 ? 'Likely' : s >= 24 ? 'Possible' : 'Unlikely'),
-      todo: s >= 45 ? 'Rescue meds within reach if you have them, and drink early' : null,
-      todoWhen: 'out', todoRank: 25,
+      todo: s >= 45 ? 'High risk for migraine \u2014 keep rescue meds within reach'
+          : s >= 24 ? 'Some migraine risk \u2014 hydrate early, do not skip meals' : null,
+      todoWhen: 'day', todoRank: 25,
       tip: cap(topOf(why) || 'pressure steady, no sharp swings') + '. '
          + (s >= 45 ? 'Front-load water, hold your sleep and meal times, sunglasses outdoors, abortive meds within reach.'
           : s >= 24 ? 'Hydrate early and do not skip meals.' : 'Atmospherically quiet.') };
@@ -1056,8 +1065,9 @@
     var r = arthritisScore(d), s = r.s, why = r.why;
     return { bg: bgFrom('risk', s),
       bold: 'Arthritis Flare ' + (s >= 45 ? 'Likely' : s >= 24 ? 'Possible' : 'Unlikely'),
-      todo: s >= 45 ? 'Joints may flare \u2014 meds, splints, whatever helps you' : null,
-      todoWhen: 'out', todoRank: 25,
+      todo: s >= 45 ? 'High risk for arthritis flare \u2014 meds, splints, whatever helps you'
+          : s >= 24 ? 'Some joint stiffness likely \u2014 give yourself a longer warm-up' : null,
+      todoWhen: 'day', todoRank: 25,
       tip: cap(topOf(why) || 'settled, warm and dry') + '. '
          + (s >= 45 ? 'Heat on the worst joints before you move them, a longer warm-up, and push the physical parts of the day later rather than first thing.'
           : s >= 24 ? 'Extra warm-up time, and keep moving \u2014 sitting still is what tightens up.'
@@ -1372,8 +1382,10 @@
       tip += ' Cold this sharp with wind on top of it tightens blood vessels and puts more load on the heart, so heavy work outdoors \u2014 shovelling especially \u2014 costs more than it looks. Warm up inside first and take it in short stretches.';
     }
     return { bg: bgAt('feels', wc, 9), bold: word, tip: tip,
-             todo: wc <= -18 ? 'Cover every bit of skin' : 'Hat and gloves',
-             todoWhen: 'out', todoRank: wc <= -18 ? 3 : 10 };
+             todo: wc <= -18 ? 'High risk of frostbite \u2014 bare skin in ' + word.replace('Frostbite in ', '')
+                 : wc <= 5 ? 'Frostbite risk \u2014 keep skin covered outdoors'
+                 : 'Cold enough to want a hat and gloves',
+             todoWhen: 'day', todoRank: wc <= -18 ? 3 : 10 };
   }
 
   /* Frizz is a dew point story, and it fails at both ends: damp air
@@ -1388,6 +1400,10 @@
     else              { w = 'Frizz Guaranteed';  why = 'Saturated air. Nothing is holding today.'; }
     if (d.rainChance >= 60 && dp >= 45) why += ' Rain on top of it will not help.';
     return { bg: bgAt('sweat', dp, 7), bold: w,
+      todo: dp >= 70 ? 'High chance of frizz'
+          : dp >= 62 ? 'Some frizz likely'
+          : dp < 20 ? 'Static air \u2014 hair will not behave' : null,
+      todoWhen: 'day', todoRank: 60,
       tip: 'Dew point peaks near ' + Math.round(dp) + DEG + '. ' + why };
   }
 
@@ -1922,8 +1938,8 @@
      sunrise card and the cloud is already on the sky card, so the tile
      was restating both. Its pill \u2014 when to go get some light \u2014 is the
      part that was not said anywhere else, so that stays. */
-  var DEFAULT_TILE_ORDER = ['air', 'allergy', 'water', 'pavement', 'wind', 'aurora'];
-  var PILL_ONLY = ['burn','frostbite','migraine','arthritis','frizz','bug',
+  var DEFAULT_TILE_ORDER = ['air', 'allergy', 'burn', 'water', 'pavement', 'wind', 'aurora'];
+  var PILL_ONLY = ['frostbite','migraine','arthritis','frizz','bug',
                    'shoe','frost','pipe','rust','mow','mold','fire','light'];
   var DEFAULT_HOURLY_ORDER = ['feels', 'sky', 'daylight', 'moon'];
   function orderOf(which) {
@@ -2412,10 +2428,6 @@
     todos = [];
 
     (p.alerts || []).forEach(function (al) { host.appendChild(card(alertCard(al, state.tz))); });
-    var season = seasonCard(d.date, state.tz, lat);
-    if (season) host.appendChild(card(season));
-    var ahead = on('ahead') ? aheadCard(p, state.tz, state.dayOffset) : null;
-    if (ahead) host.appendChild(ahead);
 
     var hourlyBuilders = {
       feels:    function () { return feelsCard(d); },
@@ -2444,6 +2456,7 @@
       mold:      function () { return moldCard(d); },
       arthritis: function () { return arthritisCard(d); },
       allergy:   function () { return allergyCard(d, p.pollen, cal); },
+      burn:      function () { return burnCard(d); },
       migraine:  function () { return migraineCard(d); },
       air:       function () { return airCard(d, p.airGoogle); },
       light:     function () { return lightCard(d); },
@@ -2453,10 +2466,16 @@
     };
     tileOrder().forEach(function (id) { addCard(grid, id, builders[id]); });
     PILL_ONLY.forEach(function (id) { collectOnly(id, builders[id]); });
+    // Today first, then the week, then the year. The to-do list is the
+    // answer to what the cards above it say, so it follows them.
     if (on('todo')) {
       var td = todoCard();
-      if (td) host.insertBefore(td, host.firstChild);
+      if (td) { td.className += ' todoblock'; host.appendChild(td); }
     }
+    var ahead = on('ahead') ? aheadCard(p, state.tz, state.dayOffset) : null;
+    if (ahead) host.appendChild(ahead);
+    var season = seasonCard(d.date, state.tz, lat);
+    if (season) host.appendChild(card(season));
     host.appendChild(grid);
   }
 
