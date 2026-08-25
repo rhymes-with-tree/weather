@@ -3038,27 +3038,70 @@
     el.className = 'lede contrast' + (r.ok ? ' ok' : ' bad');
   }
 
+  /* Kept in one place so it stays honest as cards change: what is
+     measured, what is forecast, what is arithmetic, and what is a rule
+     somebody wrote by hand. */
+  var ABOUT = [
+    ['How to read this', [
+      ['Measured', 'Water temperature, viral levels in wastewater, and National Weather Service alerts are real observations. So is air quality, if you add a key.'],
+      ['Forecast', 'Temperature, humidity, cloud, rain, wind, soil and UV come from weather models. As good as any forecast and no better.'],
+      ['Calculated', 'Sunrise, sunset, moonrise, moonset, phase and the solstices are astronomy. They are exact and need no data source.'],
+      ['Rules written by hand', 'Migraine, arthritis, bugs, frizz, shoes, mowing, frost and the rest are heuristics built from commonly cited triggers. They are the weakest thing here. Every threshold is a number someone chose.']
+    ]],
+    ['Sources', [
+      ['Open-Meteo', 'Forecast, soil, marine and place search. Blends NOAA HRRR and GFS with ECMWF. Free, keyless, CC BY 4.0.'],
+      ['Copernicus CAMS', 'Air quality by default, at roughly 45 km. Replaced by Google Air Quality at 500 m if you add a key.'],
+      ['National Weather Service', 'Active alerts, verbatim. US only.'],
+      ['NOAA CO-OPS and NDBC', 'Water temperature from a shoreline gauge or a buoy. NDBC does not allow browser requests, so in practice it is usually the CO-OPS gauge.'],
+      ['CDC wastewater surveillance', 'Weekly viral activity levels for COVID, influenza A and RSV, by state.'],
+      ['NOAA Space Weather Prediction Center', 'Planetary K index, for the aurora card.'],
+      ['Google Pollen and Air Quality', 'Only if you add your own key. Otherwise allergens come from a bloom calendar.']
+    ]],
+    ['How the less obvious ones work', [
+      ['Migraine', 'Mostly barometric pressure: how far it moved over the past 24 hours, with falls weighted heavier than rises, plus the next twelve hours. Then temperature swing, warm and muggy air, bright glare on a clear day, and gusty wind. Scored out of 100.'],
+      ['Arthritis', 'Falling pressure only \u2014 rises do not count. Then the damp-and-cool combination, which reads worse than either alone, plus rain, a large temperature swing, and heavy humidity. Settled warm dry weather subtracts from the score. Worth knowing: this is the most widely reported weather link and one of the least well supported. Several large studies found little or no association.'],
+      ['Sunburn', 'Minimal erythemal dose for your skin type divided by the UV at solar noon. Fitzpatrick I burns in about a fifth of the time Fitzpatrick VI does. Longer is not the same as safe \u2014 pigment slows burning without stopping UV damage.'],
+      ['Frostbite', 'National Weather Service wind chill thresholds: about thirty minutes on bare skin at minus eighteen, ten at minus thirty-two, five at minus forty-eight. Those assume you are dry; wet clothing changes everything.'],
+      ['Hair frizz', 'Dew point, and it fails at both ends. Above about sixty-six the air swells the hair shaft; below twenty it pulls moisture out and leaves it charged.'],
+      ['Bug spray', 'Warm enough to fly, humid, little wind to keep them off, and standing water from recent rain. A cold night knocks the score back. There is no free mosquito data anywhere, so this is a rule of thumb rather than an observation.'],
+      ['Which shoes', 'Rain, snow and ice come from the forecast. Mud comes from soil moisture and soil temperature \u2014 saturated and unfrozen ground stays soft on a dry day. Road salt is inferred from a cold snowy stretch followed by a dry one.'],
+      ['Mowing', 'Soil temperature and deeper soil moisture, not the top centimetre, which dries within hours of a shower. Cool-season grass north of about thirty-six degrees latitude, warm-season south of it \u2014 the same soil reading means opposite things in Michigan and Georgia.'],
+      ['Allergens', 'Without a key, a bloom calendar for one of six US regions, adjusted for wind, humidity and recent rain. Modelled from the season, not counted. January reads quiet in Michigan and peak mountain cedar in Texas.'],
+      ['Viruses about', 'Wastewater picks up infections before people test or see a doctor, including ones without symptoms. It describes a whole state, not a neighbourhood, and says nothing about your own risk.'],
+      ['Moonrise and moonset', 'A low-precision lunar position converted to altitude for your latitude, then solved for the horizon crossings. Accurate to a couple of minutes.'],
+      ['Later this week', 'Scans the next six days for a migraine or arthritis score that is both high and clearly worse than today, the first overnight freeze, or a temperature swing worth planning around.']
+    ]],
+    ['Privacy', [
+      ['', 'There is no account, no server, no analytics and no cookies. Your settings, saved places and API key live in this browser. Your coordinates go to the weather services above as part of each request, and nowhere else.']
+    ]],
+    ['Limits', [
+      ['', 'US only: units are imperial, alerts and the air quality index are American, and the bloom calendars cover six US regions. Health cards are estimates, not medical advice, and no forecast can tell you how you will feel. Your own record of what sets a condition off is better evidence than any threshold in here.']
+    ]]
+  ];
+
   function buildAbout() {
     aboutPanel.innerHTML = '';
-    var h = document.createElement('h2'); h.textContent = 'Where the numbers come from';
-    aboutPanel.appendChild(h);
-    [['Forecast, soil and marine data', 'Open-Meteo, which blends NOAA HRRR and GFS with ECMWF. Free and keyless.'],
-     ['Air quality', 'Copernicus CAMS by default, at roughly 45 km. Google Air Quality at 500 m if you add a key.'],
-     ['Allergens', 'A regional bloom calendar \u2014 modelled, not counted \u2014 unless you add a Google key. Six US regions, and it is a rough guide even within them.'],
-     ['Alerts', 'National Weather Service, verbatim. US only.'],
-     ['Water temperature', 'NDBC buoys where one is moored within 60 miles, otherwise modelled sea surface temperature, which does not cover the Great Lakes or inland water.'],
-     ['Aurora', 'NOAA Space Weather Prediction Center planetary K index.'],
-     ['Viruses about', 'CDC National Wastewater Surveillance System \u2014 weekly viral activity levels for COVID, influenza A and RSV, by state. Measured, not modelled, but it describes a state rather than a neighbourhood.'],
-     ['Moon and sun', 'Calculated in your browser, not fetched.'],
-     ['Everything else', 'Rules written by hand \u2014 migraine, arthritis, bugs, frizz, shoes, mowing and the rest are heuristics from commonly cited triggers, not validated indices.']
-    ].forEach(function (pair2) {
-      var t = document.createElement('h3'); t.textContent = pair2[0]; aboutPanel.appendChild(t);
-      var p = document.createElement('p'); p.className = 'lede'; p.textContent = pair2[1]; aboutPanel.appendChild(p);
+    ABOUT.forEach(function (group) {
+      var h = document.createElement('h2'); h.textContent = group[0];
+      h.style.cssText = 'font-size:16px;margin:18px 0 2px;';
+      aboutPanel.appendChild(h);
+      group[1].forEach(function (item) {
+        if (item[0]) {
+          var t = document.createElement('h3'); t.textContent = item[0];
+          aboutPanel.appendChild(t);
+        }
+        var p2 = document.createElement('p'); p2.className = 'lede'; p2.textContent = item[1];
+        aboutPanel.appendChild(p2);
+      });
     });
-    var pv = document.createElement('h3'); pv.textContent = 'Privacy'; aboutPanel.appendChild(pv);
-    var pp = document.createElement('p'); pp.className = 'lede';
-    pp.textContent = 'There is no account and no server. Your settings and saved places live in this browser. Your coordinates go to the weather services above as part of each request, and nowhere else.';
-    aboutPanel.appendChild(pp);
+    var live = document.createElement('p'); live.className = 'lede';
+    live.style.cssText = 'margin-top:16px;padding-top:12px;border-top:1px solid var(--line);';
+    var h2 = state.home || {};
+    live.textContent = 'Right now: allergens '
+      + (h2.pollen && h2.pollen.days ? 'measured, from the Google Pollen API.' : 'from a bloom calendar, not measured.')
+      + ' Air quality ' + (h2.airGoogle && h2.airGoogle.days ? 'from Google at 500 m.' : 'from Copernicus CAMS at about 45 km.')
+      + (h2.water ? ' Water temperature ' + (h2.water.kind === 'marine' ? 'modelled for open water.' : 'measured at ' + h2.water.station + '.') : '');
+    aboutPanel.appendChild(live);
   }
 
   function toggle(btn, panel, build) {
