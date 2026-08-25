@@ -113,9 +113,8 @@
        to wedge a full-width block between the columns. */
     #homeBody{display:grid;grid-template-columns:1.15fr 0.85fr;
               gap:14px;align-items:start;}
-    #homeBody > .hourly, #homeBody > .grid{grid-column:1;}
-    #homeBody > .todoblock{grid-column:2;grid-row:1 / span 3;margin:0;}
-    #homeBody > .alert{grid-column:1 / -1;}
+    #homeBody > .todoblock{margin:0;}
+
     /* Both sides share one row height, so a card on the left lines up
        with a tile on the right instead of each being sized by its own
        rule. */
@@ -223,6 +222,7 @@
   <div id="aboutPanel" class="panel" style="display:none"></div>
 
   <p class="tiphint" id="tipHint">Tap any card for the numbers behind it.</p>
+  <div id="alertBody"></div>
   <div id="homeBody"></div>
 
   <p class="disc" id="disclaimer"></p>
@@ -737,12 +737,25 @@
 
     return { timeline: true, bg: bgDay(d, function (r) { return colorAt('feels', r.feels == null ? 60 : r.feels); }),
       bold: face,
-      todo: d.feelsMax < 20 ? 'BUNDLE UP' : d.feelsMax < 40 ? 'A proper coat, not a jacket'
-          : d.feelsMax > 92 ? 'Water, and stay in the shade' : null,
-      todoWhen: 'out', todoRank: 10,
-      todo2: (d.feelsMax - d.feelsMin >= 22 && d.feelsMin < 50)
-        ? { text: 'It drops to ' + Math.round(d.feelsMin) + DEG + ' tonight \u2014 take a layer',
-            when: 'night', rank: 20 } : null,
+      todos: (function () {
+        var out = [];
+        var swing = d.feelsMax - d.feelsMin;
+        if (d.feelsMax < 20) out.push({ text: 'BUNDLE UP', when: 'out', rank: 6 });
+        else if (d.feelsMax < 40) out.push({ text: 'A proper coat, not a jacket', when: 'out', rank: 10 });
+        // A big swing is its own instruction, whatever the day peaks at:
+        // what works at the high is wrong at the low.
+        if (swing >= 20) {
+          out.push({ text: 'Dress in layers \u2014 ' + Math.round(swing) + DEG + ' between the low and the high',
+                     when: 'out', rank: 11 });
+        }
+        if (d.feelsMax >= 85) out.push({ text: 'Bring a water bottle', when: 'out', rank: 9 });
+        if (d.feelsMax > 92) out.push({ text: 'Stay in the shade in the middle of the day', when: 'day', rank: 9 });
+        if (swing >= 20 && d.feelsMin < 55) {
+          out.push({ text: 'It drops to ' + Math.round(d.feelsMin) + DEG + ' tonight \u2014 take a layer',
+                     when: 'night', rank: 20 });
+        }
+        return out;
+      })(),
       tip: 'Feels like ' + Math.round(d.feelsMin) + DEG + ' overnight, ' + Math.round(d.feelsMax) + DEG
          + (d.feelsPeakHour != null ? ' around ' + hr(d.feelsPeakHour) : ' at its peak') + '.'
          + ' Air temperature runs ' + Math.round(d.tMin) + DEG + ' to ' + Math.round(d.tMax) + DEG
@@ -1262,13 +1275,16 @@
   function virusCard(v) {
     if (!v || !v.items || !v.items.length) return null;
     var worst = v.items[0];
+    // Below moderate there is nothing to say and nothing to do, so the
+    // tile stays away rather than reporting an absence.
+    if (worst.rank < 50) return null;
     var cap1 = function (t) { return t.charAt(0).toUpperCase() + t.slice(1); };
-    var face = worst.rank >= 50
-      ? cap1(worst.level) + ' ' + worst.virus + ' About'
-      : 'Little ' + worst.virus + ' About';
-    if (v.items.length > 1 && v.items[1].rank >= 50 && v.items[1].level === worst.level) {
-      face = cap1(worst.level) + ' ' + worst.virus + ' and ' + v.items[1].virus;
-    }
+    var pair2 = (v.items.length > 1 && v.items[1].rank >= 50 && v.items[1].level === worst.level)
+      ? worst.virus + ' and ' + v.items[1].virus : worst.virus;
+    var face = worst.rank >= 78 ? 'Lots of ' + pair2 + ' Going Around'
+             : worst.rank >= 50 ? 'Some ' + pair2 + ' Going Around'
+             : worst.rank >= 25 ? 'Not Much ' + pair2 + ' Going Around'
+             : 'Little Going Around';
 
     var tip = v.items.map(function (i) { return i.virus + ' ' + i.level; }).join(', ')
             + ' in ' + v.state + ' wastewater'
@@ -1313,9 +1329,17 @@
       // No location yet, so rise and set cannot be worked out at all.
       left = [name, illum + '% lit']; right = ['', ''];
     } else {
-      left  = t.rise != null ? ['Moonrise', hr(t.rise)] : ['Moon', 'already up'];
-      right = t.set  != null ? ['Moonset', hr(t.set)]   : ['Moonset', 'after midnight'];
-      if (t.rise == null && t.set == null) { left = ['Moon', 'up all day']; right = ['', '']; }
+      var riseBox = t.rise != null ? ['Moonrise', hr(t.rise)] : null;
+      var setBox  = t.set  != null ? ['Moonset', hr(t.set)]   : null;
+      // Whichever happens first goes on the left, so the card reads the
+      // way the night runs. Past first quarter the moon sets before it
+      // rises again, and showing rise-then-set implied otherwise.
+      if (riseBox && setBox) {
+        if (t.set < t.rise) { left = setBox; right = riseBox; }
+        else { left = riseBox; right = setBox; }
+      } else if (riseBox) { left = riseBox; right = ['Moonset', 'after midnight']; }
+      else if (setBox)    { left = ['Moon', 'already up']; right = setBox; }
+      else { left = ['Moon', 'up all day']; right = ['', '']; }
     }
 
     var toFull = ((14.765 - age) % LUNATION + LUNATION) % LUNATION;
@@ -1436,10 +1460,16 @@
       tip += ' Cold this sharp with wind on top of it tightens blood vessels and puts more load on the heart, so heavy work outdoors \u2014 shovelling especially \u2014 costs more than it looks. Warm up inside first and take it in short stretches.';
     }
     return { bg: bgAt('feels', wc, 9), bold: word, tip: tip,
-             todo: wc <= -18 ? 'High risk of frostbite \u2014 bare skin in ' + word.replace('Frostbite in ', '')
-                 : wc <= 5 ? 'Frostbite risk \u2014 keep skin covered outdoors'
-                 : 'Cold enough to want a hat and gloves',
-             todoWhen: 'day', todoRank: wc <= -18 ? 3 : 10 };
+             // The risk belongs with planning; what to put on belongs with
+             // walking out of the door.
+             todos: wc <= -18
+               ? [{ text: 'High risk of frostbite \u2014 bare skin in ' + word.replace('Frostbite in ', ''),
+                    when: 'day', rank: 3 },
+                  { text: 'Heavy coat, and cover your face, ears and hands', when: 'out', rank: 3 }]
+               : wc <= 5
+               ? [{ text: 'Frostbite risk on bare skin', when: 'day', rank: 10 },
+                  { text: 'Heavy coat, hat, gloves, something over your face', when: 'out', rank: 8 }]
+               : [{ text: 'Hat and gloves', when: 'out', rank: 12 }] };
   }
 
   /* Frizz is a dew point story, and it fails at both ends: damp air
@@ -2612,7 +2642,12 @@
     host.innerHTML = '';
     todos = [];
 
-    (p.alerts || []).forEach(function (al) { host.appendChild(card(alertCard(al, state.tz))); });
+    // Outside the grid entirely. Inside it, the to-do block claims row
+    // one, so a full-width alert could not sit above it and got pushed
+    // into the middle of the page.
+    var alertHost = document.getElementById('alertBody');
+    alertHost.innerHTML = '';
+    (p.alerts || []).forEach(function (al) { alertHost.appendChild(card(alertCard(al, state.tz))); });
 
     var hourlyBuilders = {
       feels:    function () { return feelsCard(d); },
@@ -2669,10 +2704,21 @@
     if (todoEl) todoEl.className += ' todoblock';
 
     var blocks = { cards: col, tiles: grid, todo: todoEl };
-    blockOrder().forEach(function (b) {
-      if (!on('block-' + b)) return;
+    var order = blockOrder().filter(function (b) { return on('block-' + b); });
+    // Left is the equivalent of top. If the to-do list is ordered first
+    // it takes the left column and the cards move right; otherwise it
+    // stays on the right where it started.
+    var todoFirst = order.indexOf('todo') === 0;
+    order.forEach(function (b) {
       var el = blocks[b];
-      if (el && (b !== 'tiles' || el.children.length)) host.appendChild(el);
+      if (!el || (b === 'tiles' && !el.children.length)) return;
+      if (b === 'todo') {
+        el.style.gridColumn = todoFirst ? '1' : '2';
+        el.style.gridRow = '1 / span 3';
+      } else {
+        el.style.gridColumn = todoFirst ? '2' : '1';
+      }
+      host.appendChild(el);
     });
   }
 
