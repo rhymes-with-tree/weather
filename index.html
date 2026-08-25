@@ -56,7 +56,7 @@
         min-height:var(--rowh);display:flex;flex-direction:column;justify-content:center;
         border:none;font:inherit;color:var(--ink);text-align:center;
         font-size:17.5px;display:block;cursor:pointer;}
-  .card.flat{cursor:default;}
+  .card.flat, .card.todo, .card.todo *{cursor:default;}
   /* Compact tier. A card whose gradient runs midnight to midnight
      needs the width to be read across; a card that is one word does
      not, so it gets less height and a slightly smaller face. */
@@ -84,8 +84,6 @@
   .card b{font-weight:700;}
   .det{font-weight:400;opacity:.72;}
   .alert{background:#FBE9E9;border:1px solid #F1D2D2;}
-  .note{background:#F4EEDF;border:1px solid #E4D8BE;}
-  .ahead{background:#EAF0F7;border:1px solid #CFDCEA;}
   .plain{background:#F2F0EB;}
   .tip{font-size:14.5px;line-height:1.45;text-align:left;margin:11px 0 0;padding-top:10px;
        border-top:1px solid rgba(22,35,47,.16);opacity:.82;}
@@ -109,11 +107,15 @@
        under them. Right column is the to-do list, which is the longest
        single element and now has somewhere to be. Anything that
        announces itself spans both. */
+    /* The to-do list is the right column no matter where it sits in the
+       running order; cards and tiles stack on the left in whatever
+       order you chose. Nothing spans both any more, which is what used
+       to wedge a full-width block between the columns. */
     #homeBody{display:grid;grid-template-columns:1.15fr 0.85fr;
               gap:14px;align-items:start;}
     #homeBody > .hourly, #homeBody > .grid{grid-column:1;}
-    #homeBody > .todoblock{grid-column:2;grid-row:1 / span 4;margin:0;}
-    #homeBody > .alert, #homeBody > .note, #homeBody > .aheadcard{grid-column:1 / -1;}
+    #homeBody > .todoblock{grid-column:2;grid-row:1 / span 3;margin:0;}
+    #homeBody > .alert{grid-column:1 / -1;}
     /* Both sides share one row height, so a card on the left lines up
        with a tile on the right instead of each being sized by its own
        rule. */
@@ -181,15 +183,16 @@
   .ord button:disabled{opacity:.32;cursor:default;}
   .card.todo{background:#F3F0E8;border:1px solid var(--line);display:block;
              padding:12px 15px 13px;min-height:0;margin-bottom:10px;}
-  .todohead{font-size:12px;letter-spacing:.08em;text-transform:uppercase;
-            color:var(--mid);margin-bottom:7px;}
-  .card.todo ul + .todohead{margin-top:15px;padding-top:13px;
-                            border-top:1px solid rgba(22,35,47,.10);}
+  .todohead{font-size:12.5px;letter-spacing:.07em;text-transform:uppercase;
+            color:var(--ink);opacity:.62;font-weight:700;margin-bottom:7px;}
+  .card.todo ul + .todohead{margin-top:14px;padding-top:12px;
+                            border-top:1px solid rgba(22,35,47,.13);}
+  .card.todo li.week{background:#EDF1F6;border-color:#D3DEEA;}
+  .ord.sub{padding-left:18px;}
+  .ord.sub span{opacity:.8;}
   .card.todo ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:7px 9px;}
   .card.todo li{font-size:14.5px;font-weight:600;background:#FFF;border:1px solid var(--line);
                 border-radius:999px;padding:4px 11px;}
-  .card.aheadcard{background:#EDF1F6;border-color:#D3DEEA;text-align:left;cursor:pointer;}
-  .card.aheadcard li{background:#FFF;border-color:#D3DEEA;}
   .card.todo .tip{text-align:left;}
   .tiphint{font-size:13px;color:var(--mid);text-align:center;margin:0 0 10px;}
   .disc{font-size:12px;color:#7C8996;line-height:1.55;margin:16px 4px 0;
@@ -255,6 +258,7 @@
     { id: 'burn',      name: 'Sunburn',           group: 'Body' },
     { id: 'frostbite', name: 'Frostbite',         group: 'Body', note: 'Only below freezing' },
     { id: 'air',       name: 'Air quality',       group: 'Body' },
+    { id: 'virus',     name: 'Viruses about',     group: 'Body', note: 'COVID, flu and RSV in your state\u2019s wastewater' },
     { id: 'allergy',   name: 'Allergens',         group: 'Body' },
     { id: 'migraine',  name: 'Migraine',          group: 'Body', note: 'Barometric pressure and temperature swings' },
     { id: 'arthritis', name: 'Arthritis',         group: 'Body', note: 'Weather links here are widely reported and weakly evidenced' },
@@ -272,8 +276,7 @@
     { id: 'mold',      name: 'Basement damp',     group: 'If you have', note: 'A basement or crawl space' },
     { id: 'mow',       name: 'Mowing',            group: 'If you have', note: 'A lawn you cut yourself' },
     { id: 'water',     name: 'Water temperature', group: 'If you have', note: 'Shows when a gauge or buoy is near' },
-    { id: 'todo',      name: 'To-do list',        group: 'Sections', note: 'A digest of what the other cards say to do' },
-    { id: 'ahead',     name: 'Later this week',   group: 'Sections', note: 'Flags a day worth planning around' }
+    { id: 'todo',      name: 'To-do list',        group: 'Sections', note: 'A digest of what the other cards say to do' }
   ];
   function on(id) { return store.cards[id] !== false; }
 
@@ -1243,6 +1246,38 @@
     return { rise: rise, set: set, up: up, tzOff: tzOff };
   }
 
+  /* A community measurement, not a personal risk score \u2014 it says how
+     much virus is in the sewage for your state, which is a real number
+     and one of the few things in this app that is measured rather than
+     modelled. */
+  function virusCard(v) {
+    if (!v || !v.items || !v.items.length) return null;
+    var worst = v.items[0];
+    var cap1 = function (t) { return t.charAt(0).toUpperCase() + t.slice(1); };
+    var face = worst.rank >= 50
+      ? cap1(worst.level) + ' ' + worst.virus + ' About'
+      : 'Little ' + worst.virus + ' About';
+    if (v.items.length > 1 && v.items[1].rank >= 50 && v.items[1].level === worst.level) {
+      face = cap1(worst.level) + ' ' + worst.virus + ' and ' + v.items[1].virus;
+    }
+
+    var tip = v.items.map(function (i) { return i.virus + ' ' + i.level; }).join(', ')
+            + ' in ' + v.state + ' wastewater'
+            + (v.week ? ', week of ' + String(v.week).slice(0, 10) : '') + '. ';
+    tip += 'Wastewater picks up infections before people test or see a doctor, including ones with no symptoms. '
+         + 'It describes your state, not your street, and says nothing about your own risk. '
+         + 'From CDC National Wastewater Surveillance System.';
+
+    var todos = [];
+    if (worst.rank >= 78) {
+      todos.push({ text: 'Mask in crowded places', when: 'out', rank: 18 });
+      todos.push({ text: 'Wash hands more than usual', when: 'day', rank: 18 });
+    } else if (worst.rank >= 50) {
+      todos.push({ text: 'Wash hands more than usual', when: 'day', rank: 22 });
+    }
+    return { bg: bgFlat('risk', worst.rank), bold: face, tip: tip, todos: todos };
+  }
+
   function moonCard(dateStr, tz, lat, lon) {
     var age = moonAge(dateStr);
     var f = age / LUNATION;
@@ -1319,25 +1354,28 @@
     function g(t) { for (var i = 0; i < p.length; i++) if (p[i].type === t) return p[i].value; }
     return g('year') + '-' + g('month') + '-' + g('day');
   }
-  function seasonCard(dateStr, tz, lat) {
-    var year = parseInt(dateStr.slice(0, 4), 10);
+  /* The solstice is a note, not a card. Today it belongs with the day;
+     within the coming week it belongs with the week. */
+  function seasonPill(dateStr, tz, lat, offsetDays) {
+    var y = parseInt(dateStr.slice(0, 4), 10);
     var north = lat == null || lat >= 0;
     var events = [
-      [0,   79,  north ? 'Spring Equinox' : 'Autumn Equinox',  'Day and night are near enough equal.'],
-      [90,  172, north ? 'Summer Solstice' : 'Winter Solstice', north ? 'The longest day of the year.' : 'The shortest day of the year.'],
-      [180, 266, north ? 'Autumn Equinox' : 'Spring Equinox',  'Day and night are near enough equal.'],
-      [270, 355, north ? 'Winter Solstice' : 'Summer Solstice', north ? 'The shortest day of the year.' : 'The longest day of the year.']
+      [0,   79,  north ? 'Spring Equinox' : 'Autumn Equinox'],
+      [90,  172, north ? 'Summer Solstice' : 'Winter Solstice'],
+      [180, 266, north ? 'Autumn Equinox' : 'Spring Equinox'],
+      [270, 355, north ? 'Winter Solstice' : 'Summer Solstice']
     ];
+    var want = new Date(Date.parse(dateStr + 'T12:00:00Z') + offsetDays * 86400000);
+    var target = dateInTz(want, tz);
     for (var i = 0; i < events.length; i++) {
-      var t = seasonInstant(events[i][0], year, events[i][1]);
-      if (t && dateInTz(t, tz) === dateStr) {
-        var at = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(t);
-        return { note: true, bold: events[i][2],
-                 tip: events[i][3] + ' The exact moment is ' + at + ' local time, when the sun reaches its turning point.' };
+      for (var yy = y - 1; yy <= y + 1; yy++) {
+        var t = seasonInstant(events[i][0], yy, events[i][1]);
+        if (t && dateInTz(t, tz) === target) return events[i][2];
       }
     }
     return null;
   }
+
 
   /* Mosquitoes. Warm, humid, calm, and water standing around from
      recent rain. No free mosquito index exists, so this is a rule of
@@ -1772,31 +1810,6 @@
     return out.slice(0, 3);
   }
 
-  function aheadCard(p, tz, offset) {
-    var items = aheadItems(p, tz, offset);
-    if (!items.length) return null;
-    var el = document.createElement('button');
-    el.className = 'card todo aheadcard';
-    var h = document.createElement('div'); h.className = 'todohead';
-    h.textContent = 'Later this week';
-    el.appendChild(h);
-    var ul = document.createElement('ul');
-    items.forEach(function (it) {
-      var li = document.createElement('li'); li.textContent = it.pill; ul.appendChild(li);
-    });
-    el.appendChild(ul);
-    var tip = document.createElement('p'); tip.className = 'tip';
-    tip.textContent = items.map(function (it) { return it.detail; }).join(' ');
-    tip.style.display = 'none';
-    el.appendChild(tip);
-    el.setAttribute('aria-expanded', 'false');
-    el.addEventListener('click', function () {
-      var open = tip.style.display === 'none';
-      tip.style.display = open ? 'block' : 'none';
-      el.setAttribute('aria-expanded', open ? 'true' : 'false');
-    });
-    return el;
-  }
 
   /* Mowing. Two separate questions the data can answer: is the grass
      actually growing, and will the ground take a mower without tearing.
@@ -1948,9 +1961,12 @@
   /* The whole blocks move too, not just the cards inside them. Alerts
      are pinned to the top \u2014 an urgent warning under a to-do list would
      be daft \u2014 and the solstice note stays last. */
-  var DEFAULT_BLOCKS = ['cards', 'tiles', 'todo', 'ahead'];
-  var BLOCK_NAME = { cards: 'Across the day', tiles: 'Tiles',
-                     todo: 'To-do list', ahead: 'Later this week' };
+  /* Three page blocks. "Later this week" used to be a fourth that
+     spanned both columns, which is what wedged itself between them
+     whenever the order changed \u2014 it is now a section of the to-do
+     list, where it reads as part of the same thought anyway. */
+  var DEFAULT_BLOCKS = ['cards', 'tiles', 'todo'];
+  var BLOCK_NAME = { cards: 'Across the day', tiles: 'Tiles', todo: 'To-do list' };
   function blockOrder() {
     var saved = store.blocks || [];
     var out = saved.filter(function (b) { return DEFAULT_BLOCKS.indexOf(b) > -1; });
@@ -1964,7 +1980,7 @@
     store.blocks = o; saveStore(); buildSettings(); renderHome();
   }
 
-  var DEFAULT_TILE_ORDER = ['air', 'allergy', 'burn', 'water', 'pavement', 'wind', 'aurora'];
+  var DEFAULT_TILE_ORDER = ['air', 'allergy', 'virus', 'burn', 'water', 'pavement', 'wind', 'aurora'];
   var PILL_ONLY = ['frostbite','migraine','arthritis','frizz','bug',
                    'shoe','frost','pipe','rust','mow','mold','fire','light'];
   var DEFAULT_HOURLY_ORDER = ['feels', 'sky', 'daylight', 'moon'];
@@ -2039,7 +2055,8 @@
     ];
 
     Promise.all(jobs).then(function (r) {
-      state.home = { wx: r[0], aq: r[1], alerts: r[2], kp: r[3], pollen: null, airGoogle: null, water: null };
+      state.home = { wx: r[0], aq: r[1], alerts: r[2], kp: r[3], pollen: null, airGoogle: null,
+                     water: null, virus: null };
       state.tz = r[0].timezone || place.tz || 'America/Detroit';
       store.place = place;
       store.recents = [place].concat((store.recents || []).filter(function (x) {
@@ -2056,6 +2073,12 @@
         waterFor(place, r[0].timezone).then(function (w) {
           if (!w || !state.home || state.home.error) return;
           state.home.water = w; renderHome();
+        });
+      }
+      if (on('virus')) {
+        virusFor(place).then(function (vv) {
+          if (!vv || !state.home || state.home.error) return;
+          state.home.virus = vv; renderHome();
         });
       }
     }).catch(function (e) {
@@ -2118,6 +2141,109 @@
       state.home.pollen = g[0]; state.home.airGoogle = g[1];
       renderHome();
     });
+  }
+
+  /* ---- respiratory viruses in wastewater ----
+     CDC's National Wastewater Surveillance System, dataset atcp-73re:
+     weekly viral activity levels for SARS-CoV-2, influenza A and RSV,
+     by state. US public domain, keyless.
+
+     Two requests rather than one: the first asks for a single row to
+     learn the column names, because a hardcoded schema breaks silently
+     the day CDC renames a field. The second asks for this state only.
+
+     WastewaterSCAN feeds into this system but publishes under a
+     non-commercial licence that asks you to make contact first, so the
+     CDC copy is the one a public page can use. */
+  var VIRUS_KEY = 'morningbrief.virus.v1';
+  var STATE_ABBR = { alabama:'AL',alaska:'AK',arizona:'AZ',arkansas:'AR',california:'CA',colorado:'CO',
+    connecticut:'CT',delaware:'DE','district of columbia':'DC',florida:'FL',georgia:'GA',hawaii:'HI',
+    idaho:'ID',illinois:'IL',indiana:'IN',iowa:'IA',kansas:'KS',kentucky:'KY',louisiana:'LA',maine:'ME',
+    maryland:'MD',massachusetts:'MA',michigan:'MI',minnesota:'MN',mississippi:'MS',missouri:'MO',
+    montana:'MT',nebraska:'NE',nevada:'NV','new hampshire':'NH','new jersey':'NJ','new mexico':'NM',
+    'new york':'NY','north carolina':'NC','north dakota':'ND',ohio:'OH',oklahoma:'OK',oregon:'OR',
+    pennsylvania:'PA','rhode island':'RI','south carolina':'SC','south dakota':'SD',tennessee:'TN',
+    texas:'TX',utah:'UT',vermont:'VT',virginia:'VA',washington:'WA','west virginia':'WV',
+    wisconsin:'WI',wyoming:'WY','puerto rico':'PR' };
+
+  function findKey(row, pats) {
+    var keys = Object.keys(row || {});
+    for (var i = 0; i < pats.length; i++) {
+      for (var j = 0; j < keys.length; j++) {
+        if (keys[j].toLowerCase().indexOf(pats[i]) > -1) return keys[j];
+      }
+    }
+    return null;
+  }
+  var VIRUS_NAME = { 'sars-cov-2': 'COVID', 'sars cov 2': 'COVID', 'covid': 'COVID',
+    'influenza a': 'Flu A', 'influenza': 'Flu A', 'flu': 'Flu A', 'rsv': 'RSV' };
+  function niceVirus(v) {
+    var t = String(v || '').toLowerCase();
+    var out = null;
+    Object.keys(VIRUS_NAME).forEach(function (k) { if (!out && t.indexOf(k) > -1) out = VIRUS_NAME[k]; });
+    return out || v;
+  }
+  var LEVEL_RANK = { 'very low': 5, 'low': 25, 'moderate': 50, 'high': 78, 'very high': 95 };
+
+  function virusFor(place) {
+    var region = (place && place.region) ? String(place.region).toLowerCase() : '';
+    var abbr = STATE_ABBR[region];
+    if (!abbr) return Promise.resolve(null);       // outside the 50 states plus DC and PR
+
+    var cached = null;
+    try { cached = JSON.parse(localStorage.getItem(VIRUS_KEY)); } catch (e) {}
+    if (cached && cached.abbr === abbr && Date.now() - cached.at < 6 * 3600 * 1000) {
+      return Promise.resolve(cached.data);
+    }
+    var base = 'https://data.cdc.gov/resource/atcp-73re.json';
+    return j(base + '?$limit=1').then(function (sample) {
+      if (!sample || !sample.length) return null;
+      var row = sample[0];
+      var kState = findKey(row, ['state', 'jurisdiction', 'territory', 'reporting']);
+      var kDate  = findKey(row, ['week_end', 'date', 'week']);
+      var kVirus = findKey(row, ['pathogen', 'virus', 'target']);
+      var kLevel = findKey(row, ['category', 'level_class', 'wval_category']);
+      var kValue = findKey(row, ['wval', 'activity_level', 'value', 'level']);
+      if (!kState || !kVirus) return null;
+
+      var where = encodeURIComponent(
+        kState + " in('" + abbr + "','" + region.replace(/(^|\s)\S/g, function (c) { return c.toUpperCase(); }) + "')");
+      var url = base + '?$where=' + where + '&$limit=400'
+              + (kDate ? '&$order=' + kDate + ' DESC' : '');
+      return j(url).then(function (rows) {
+        if (!rows || !rows.length) return null;
+        var latest = {};
+        rows.forEach(function (r) {
+          var v = niceVirus(r[kVirus]);
+          var when = kDate ? r[kDate] : '';
+          if (!latest[v] || when > latest[v].when) {
+            var lvl = kLevel ? String(r[kLevel] || '').toLowerCase() : '';
+            var num = kValue != null ? parseFloat(r[kValue]) : NaN;
+            latest[v] = { when: when, level: lvl, value: isFinite(num) ? num : null };
+          }
+        });
+        var out = { at: Date.now(), abbr: abbr,
+                    data: { state: place.region, week: null, items: [] } };
+        Object.keys(latest).forEach(function (v) {
+          var e = latest[v];
+          var rank = LEVEL_RANK[e.level];
+          if (rank == null && e.value != null) {
+            // Fall back to the published numeric bands when no category
+            // column is present.
+            rank = e.value <= 1.5 ? 5 : e.value <= 3 ? 25 : e.value <= 4.5 ? 50 : e.value <= 8 ? 78 : 95;
+            e.level = e.value <= 1.5 ? 'very low' : e.value <= 3 ? 'low' : e.value <= 4.5 ? 'moderate'
+                    : e.value <= 8 ? 'high' : 'very high';
+          }
+          if (rank == null) return;
+          out.data.week = out.data.week || e.when;
+          out.data.items.push({ virus: v, level: e.level, rank: rank });
+        });
+        if (!out.data.items.length) return null;
+        out.data.items.sort(function (a, b) { return b.rank - a.rank; });
+        try { localStorage.setItem(VIRUS_KEY, JSON.stringify(out)); } catch (e) {}
+        return out.data;
+      });
+    }).catch(function () { return null; });
   }
 
   /* ---- water ----------------------------------------------------
@@ -2290,9 +2416,8 @@
   function card(row) {
     var el = document.createElement(row.tip ? 'button' : 'div');
     el.className = 'card' + (row.tip ? '' : ' flat') + (row.plain ? ' plain' : '')
-                 + (row.alert ? ' alert' : '') + (row.note ? ' note' : '')
-                 + (row.ahead ? ' ahead' : '')
-                 + (row.timeline || row.alert || row.note ? '' : ' sm');
+                 + (row.alert ? ' alert' : '')
+                 + (row.timeline || row.alert ? '' : ' sm');
     if (row.bg) el.style.background = row.bg;
 
     var line = document.createElement('div');
@@ -2393,30 +2518,55 @@
   /* A digest of what the other cards told you to do. Built from their
      own output rather than a second set of rules, so it can never
      disagree with the card it came from. */
-  var TODO_SECTIONS = [['day', 'Planning your day'], ['out', 'Heading out'], ['night', 'Planning your night']];
-  function todoCard() {
-    if (!todos.length) return null;
-    /* Nothing invites you outdoors on a day the same list tells you to
-       stay in. Suggestions go; instructions about what to wear or take
-       stay, because you may still have to go out. */
+  var TODO_ALL = [['day', 'Planning your day'], ['out', 'Heading out'],
+                  ['night', 'Planning your night'], ['week', 'Later this week']];
+  function sectionOrder() {
+    var def = TODO_ALL.map(function (x) { return x[0]; });
+    var saved = store.sections || [];
+    var out = saved.filter(function (x) { return def.indexOf(x) > -1; });
+    def.forEach(function (x) { if (out.indexOf(x) < 0) out.push(x); });
+    return out;
+  }
+  function sectionName(id) {
+    var n = id;
+    TODO_ALL.forEach(function (x) { if (x[0] === id) n = x[1]; });
+    return n;
+  }
+  function moveSection(id, dir) {
+    var o = sectionOrder(), i = o.indexOf(id), j = i + dir;
+    if (i < 0 || j < 0 || j >= o.length) return;
+    o.splice(j, 0, o.splice(i, 1)[0]);
+    store.sections = o; saveStore(); buildSettings(); renderHome();
+  }
+  function todoCard(weekItems) {
     var shutIn = todos.some(function (t) { return t.blocksOutdoor; });
     if (shutIn) todos = todos.filter(function (t) { return !t.outdoor; });
+
     var el = document.createElement('div');
     el.className = 'card todo';
     var any = false;
-    TODO_SECTIONS.forEach(function (sec) {
-      var items = todos.filter(function (t) { return t.when === sec[0]; })
-                       .sort(function (a, b) { return a.rank - b.rank; });
+    sectionOrder().forEach(function (sec) {
+      if (!on('sec-' + sec)) return;
+      var items;
+      if (sec === 'week') {
+        items = (weekItems || []).map(function (w) { return { text: w.pill, detail: w.detail }; });
+      } else {
+        items = todos.filter(function (t) { return t.when === sec; })
+                     .sort(function (a, b) { return a.rank - b.rank; })
+                     .map(function (t) { return { text: t.text }; });
+      }
       if (!items.length) return;
       any = true;
       var h = document.createElement('div'); h.className = 'todohead';
-      h.textContent = sec[1];
+      h.textContent = sectionName(sec);
       el.appendChild(h);
       var ul = document.createElement('ul');
       var seen = {};
       items.forEach(function (t) {
         if (seen[t.text]) return; seen[t.text] = 1;
-        var li = document.createElement('li'); li.textContent = t.text; ul.appendChild(li);
+        var li = document.createElement('li'); li.textContent = t.text;
+        if (sec === 'week') li.className = 'week';
+        ul.appendChild(li);
       });
       el.appendChild(ul);
     });
@@ -2487,6 +2637,7 @@
       light:     function () { return lightCard(d); },
       aurora:    function () { return auroraCard(d, p.kp); },
       water:     function () { return waterCard(p.water, d.date); },
+      virus:     function () { return virusCard(p.virus); },
       moon:      function () { return moonCard(d.date, state.tz, lat, lon); }
     };
     tileOrder().forEach(function (id) { addCard(grid, id, builders[id]); });
@@ -2494,21 +2645,26 @@
     // before anything is placed.
     PILL_ONLY.forEach(function (id) { collectOnly(id, builders[id]); });
 
-    var todoEl = null;
-    if (on('todo')) {
-      todoEl = todoCard();
-      if (todoEl) todoEl.className += ' todoblock';
+    // Solstices and equinoxes: today's goes with the day, one in the
+    // coming week goes with the week.
+    var todaySeason = seasonPill(d.date, state.tz, lat, 0);
+    if (todaySeason) todos.push({ text: todaySeason + ' today', when: 'day', rank: 1 });
+    var weekItems = aheadItems(p, state.tz, state.dayOffset);
+    for (var so = 1; so <= 6; so++) {
+      var sp = seasonPill(d.date, state.tz, lat, so);
+      if (sp) { weekItems.push({ pill: sp + ' ' + dayName(dateStrIn(state.tz, so), state.tz, so),
+                                 detail: sp + ' falls this week.' }); break; }
     }
-    var aheadEl = on('ahead') ? aheadCard(p, state.tz, state.dayOffset) : null;
 
-    var blocks = { cards: col, tiles: grid, todo: todoEl, ahead: aheadEl };
+    var todoEl = on('todo') ? todoCard(weekItems) : null;
+    if (todoEl) todoEl.className += ' todoblock';
+
+    var blocks = { cards: col, tiles: grid, todo: todoEl };
     blockOrder().forEach(function (b) {
+      if (!on('block-' + b)) return;
       var el = blocks[b];
       if (el && (b !== 'tiles' || el.children.length)) host.appendChild(el);
     });
-
-    var season = seasonCard(d.date, state.tz, lat);
-    if (season) host.appendChild(card(season));
   }
 
 
@@ -2676,19 +2832,31 @@
 
     var lh = document.createElement('h3'); lh.textContent = 'Order on the page';
     settingsPanel.appendChild(lh);
-    blockOrder().forEach(function (b, i, arr) {
-      var row = document.createElement('div'); row.className = 'ord';
-      var nm = document.createElement('span'); nm.textContent = BLOCK_NAME[b];
+    function orderRow(label, checked, onToggle, onUp, onDown, first, last, indent) {
+      var row = document.createElement('div'); row.className = 'ord' + (indent ? ' sub' : '');
+      var box = document.createElement('input'); box.type = 'checkbox'; box.checked = checked;
+      box.addEventListener('change', function () { onToggle(box.checked); });
+      var nm = document.createElement('span'); nm.textContent = label;
       var up = document.createElement('button'); up.textContent = '\u2191';
-      up.setAttribute('aria-label', 'Move ' + BLOCK_NAME[b] + ' up');
-      up.disabled = i === 0;
-      up.addEventListener('click', function () { moveBlock(b, -1); });
+      up.setAttribute('aria-label', 'Move ' + label + ' up'); up.disabled = first;
+      up.addEventListener('click', onUp);
       var dn = document.createElement('button'); dn.textContent = '\u2193';
-      dn.setAttribute('aria-label', 'Move ' + BLOCK_NAME[b] + ' down');
-      dn.disabled = i === arr.length - 1;
-      dn.addEventListener('click', function () { moveBlock(b, 1); });
-      row.appendChild(nm); row.appendChild(up); row.appendChild(dn);
+      dn.setAttribute('aria-label', 'Move ' + label + ' down'); dn.disabled = last;
+      dn.addEventListener('click', onDown);
+      row.appendChild(box); row.appendChild(nm); row.appendChild(up); row.appendChild(dn);
       settingsPanel.appendChild(row);
+    }
+    blockOrder().forEach(function (b, i, arr) {
+      orderRow(BLOCK_NAME[b], on('block-' + b),
+        function (v) { store.cards['block-' + b] = v; saveStore(); renderHome(); },
+        function () { moveBlock(b, -1); }, function () { moveBlock(b, 1); },
+        i === 0, i === arr.length - 1, false);
+    });
+    sectionOrder().forEach(function (sec, i, arr) {
+      orderRow(sectionName(sec), on('sec-' + sec),
+        function (v) { store.cards['sec-' + sec] = v; saveStore(); renderHome(); },
+        function () { moveSection(sec, -1); }, function () { moveSection(sec, 1); },
+        i === 0, i === arr.length - 1, true);
     });
 
     var ph = document.createElement('h3'); ph.textContent = 'To-do list only';
@@ -2707,21 +2875,6 @@
       row.appendChild(box); row.appendChild(nm); settingsPanel.appendChild(row);
     });
 
-    var sh = document.createElement('h3'); sh.textContent = 'Sections';
-    settingsPanel.appendChild(sh);
-    [['todo', 'To-do list', 'A digest of what the other cards say to do'],
-     ['ahead', 'Later this week', 'Flags a day worth planning around'],
-     ].forEach(function (sec) {
-      var srow = document.createElement('label'); srow.className = 'opt';
-      var sbox = document.createElement('input'); sbox.type = 'checkbox'; sbox.checked = on(sec[0]);
-      sbox.addEventListener('change', function () {
-        store.cards[sec[0]] = sbox.checked; saveStore(); renderHome();
-      });
-      var stx = document.createElement('span'); stx.textContent = sec[1];
-      var ssm = document.createElement('small'); ssm.textContent = sec[2];
-      stx.appendChild(ssm);
-      srow.appendChild(sbox); srow.appendChild(stx); settingsPanel.appendChild(srow);
-    });
   }
 
   function buildColourTab() {
@@ -2835,6 +2988,7 @@
      ['Alerts', 'National Weather Service, verbatim. US only.'],
      ['Water temperature', 'NDBC buoys where one is moored within 60 miles, otherwise modelled sea surface temperature, which does not cover the Great Lakes or inland water.'],
      ['Aurora', 'NOAA Space Weather Prediction Center planetary K index.'],
+     ['Viruses about', 'CDC National Wastewater Surveillance System \u2014 weekly viral activity levels for COVID, influenza A and RSV, by state. Measured, not modelled, but it describes a state rather than a neighbourhood.'],
      ['Moon and sun', 'Calculated in your browser, not fetched.'],
      ['Everything else', 'Rules written by hand \u2014 migraine, arthritis, bugs, frizz, shoes, mowing and the rest are heuristics from commonly cited triggers, not validated indices.']
     ].forEach(function (pair2) {
