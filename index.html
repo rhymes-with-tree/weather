@@ -34,12 +34,12 @@
   /* A tappable card says so: a small chevron that rotates when open.
      Only appears on cards that actually have something behind them, so
      it never promises a tap that does nothing. */
-  .more{position:absolute;right:0;top:50%;transform:translateY(-50%);
-        width:15px;height:15px;opacity:.42;pointer-events:none;}
+  /* Bottom right corner of the card rather than beside the words, which
+     is where it used to collide with a label that wrapped. */
+  .more{position:absolute;right:7px;bottom:5px;width:12px;height:12px;
+        opacity:.3;pointer-events:none;}
   .more svg{display:block;width:100%;height:100%;}
-  .card.open .more{transform:translateY(-50%) rotate(180deg);opacity:.55;}
-  .card.sm .more{right:-4px;}
-  .card.open .more{top:11px;transform:rotate(180deg);}
+  .card.open .more{transform:rotate(180deg);opacity:.45;}
   /* Sunrise to the left, sunset to the right, so the card reads the way
      the day runs. Wraps to two lines rather than crushing on a narrow
      phone. */
@@ -59,7 +59,7 @@
         min-height:var(--rowh);display:flex;flex-direction:column;justify-content:center;
         border:none;font:inherit;color:var(--ink);text-align:center;
         font-size:17.5px;display:block;cursor:pointer;}
-  .card.flat, .card.todo, .card.todo *{cursor:default;}
+  .card.flat, .card.todo, .card.todo .todohead{cursor:default;}
   /* Compact tier. A card whose gradient runs midnight to midnight
      needs the width to be read across; a card that is one word does
      not, so it gets less height and a slightly smaller face. */
@@ -195,7 +195,9 @@
   .ord.sub span{opacity:.8;}
   .card.todo ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:7px 9px;}
   .card.todo li{font-size:14.5px;font-weight:600;background:#FFF;border:1px solid var(--line);
-                border-radius:999px;padding:4px 11px;}
+                border-radius:999px;padding:4px 11px;cursor:pointer;}
+  .card.todo li:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
+  .card.todo li.done{opacity:.38;font-weight:400;text-decoration:line-through;background:transparent;}
   .card.todo .tip{text-align:left;}
   .tiphint{font-size:13px;color:var(--mid);text-align:center;margin:0 0 10px;}
   .disc{font-size:12px;color:#7C8996;line-height:1.55;margin:16px 4px 0;
@@ -251,6 +253,7 @@
   if (!store.cards) store.cards = {};          // absent means on
   if (!store.recents) store.recents = [];
   if (!store.keys) store.keys = {};
+  if (!store.done) store.done = {};
 
   /* Which cards exist, what each assumes about you, and which section
      of the settings panel it sits in. Everything defaults to on. */
@@ -271,6 +274,7 @@
     { id: 'wind',      name: 'Wind',              note: 'Kite and sailing notes in the tap' },
     { id: 'aurora',    name: 'Aurora',            note: 'Only during a geomagnetic storm' },
     // to-do list only
+    { id: 'mask',      name: 'Masking',           note: 'Suggests a mask when the air or the viruses are bad' },
     { id: 'arthritis', name: 'Arthritis',         note: 'Some people\u2019s arthritis flares with the weather' },
     { id: 'mold',      name: 'Basement',          note: 'If you have one, should you air it out?' },
     { id: 'bug',       name: 'Bug Spray' },
@@ -748,7 +752,10 @@
         else if (d.feelsMax < 40) out.push({ text: 'A proper coat, not a jacket', when: 'out', rank: 10 });
         // A big swing is its own instruction, whatever the day peaks at:
         // what works at the high is wrong at the low.
-        if (swing >= 20) {
+        // A swing only calls for layers when it crosses the line where
+        // clothing changes. Phoenix at 94 rising to 115 is the same
+        // outfit, and so is Minneapolis at minus seventeen rising to four.
+        if (swing >= 18 && d.feelsMin <= 62 && d.feelsMax >= 70) {
           out.push({ text: 'Dress in layers \u2014 ' + Math.round(swing) + DEG + ' between the low and the high',
                      when: 'out', rank: 11 });
         }
@@ -955,8 +962,8 @@
     var out = [];
     if (sens) {
       if (a > 50)  out.push({ text: 'Keep your rescue inhaler nearby', when: 'out', rank: 6 });
-      if (a > 50)  out.push({ text: 'Use it before you head out', when: 'out', rank: 7 });
-      if (a > 100) out.push({ text: 'Mask if you will be out a while', when: 'out', rank: 5 });
+      if (a > 50)  out.push({ text: 'Consider using your inhaler before you head out', when: 'out', rank: 7 });
+      if (a > 100 && on('mask')) out.push({ text: 'Mask if you will be out a while', when: 'out', rank: 5 });
       if (a > 100) out.push({ text: 'Keep outdoor time short', when: 'day', rank: 5, blocksOutdoor: true });
       if (a > 100) out.push({ text: 'Keep the windows shut', when: 'day', rank: 6 });
       if (a > 150) out.push({ text: 'Stay inside if you can', when: 'day', rank: 2, blocksOutdoor: true });
@@ -1330,7 +1337,7 @@
 
     var todos = [];
     if (worst.rank >= 78) {
-      todos.push({ text: 'Mask in crowded places', when: 'out', rank: 18 });
+      if (on('mask')) todos.push({ text: 'Mask in crowded places', when: 'out', rank: 18 });
       todos.push({ text: 'Wash hands more than usual', when: 'day', rank: 18 });
     } else if (worst.rank >= 50) {
       todos.push({ text: 'Wash hands more than usual', when: 'day', rank: 22 });
@@ -1817,6 +1824,28 @@
   /* Names what it is about. "A rough one" said nothing once the app
      tracked twenty things. Returns a list so more than one thing can be
      worth flagging. */
+  /* Water temperature changes over days, not hours, so today's reading
+     is a fair stand-in for the week. The air is the part that varies,
+     and that is forecast. */
+  function swimAhead(p, tz, days) {
+    var w = p && p.water;
+    var t = w && w.available !== false
+      ? (w.waterF != null ? w.waterF : (w.days && w.days[Object.keys(w.days)[0]] || {}).waterF)
+      : null;
+    if (t == null || t < 68) return null;
+    var best = null;
+    days.forEach(function (x) {
+      if (x.d.feelsMax < 78 || x.d.rainChance > 45) return;
+      if (!best || x.d.feelsMax > best.d.feelsMax) best = x;
+    });
+    if (!best) return null;
+    var name = dayName(best.d.date, tz, best.off);
+    return { pill: name + ': good swimming weather',
+             detail: name + ' reaches ' + Math.round(best.d.feelsMax) + DEG
+                   + ' with the water around ' + t + DEG
+                   + '. Water temperature moves slowly, so today\u2019s reading is a fair guide to the week.' };
+  }
+
   function aheadItems(p, tz, offset) {
     if (offset !== 0 || !p || !p.wx) return [];
     var today;
@@ -1867,6 +1896,9 @@
       }
     }
 
+    var swim = swimAhead(p, tz, days);
+    if (swim) out.push(swim);
+
     var drop = null, rise = null;
     days.forEach(function (x) {
       var diff = x.d.tMax - today.tMax;
@@ -1881,7 +1913,7 @@
                        + Math.round(swing.x.d.tMax) + DEG + ' on ' + n3
                        + '. A swing that size is its own trigger, separate from where it lands.' });
     }
-    return out.slice(0, 3);
+    return out.slice(0, 4);
   }
 
 
@@ -2056,7 +2088,7 @@
 
   var DEFAULT_TILE_ORDER = ['flag', 'air', 'allergy', 'virus', 'burn', 'water', 'pavement', 'wind', 'aurora'];
   var PILL_ONLY = ['frostbite','migraine','arthritis','frizz','bug',
-                   'shoe','frost','pipe','rust','mow','mold','fire','light'];
+                   'shoe','frost','pipe','rust','mow','mold','fire','light','mask'];
   var DEFAULT_HOURLY_ORDER = ['feels', 'sky', 'daylight', 'moon'];
   function orderOf(which) {
     var def = which === 'hourly' ? DEFAULT_HOURLY_ORDER : DEFAULT_TILE_ORDER;
@@ -2610,6 +2642,7 @@
                  + (row.timeline || row.alert ? '' : ' sm');
     if (row.bg) el.style.background = row.bg;
 
+    el.style.position = 'relative';
     var line = document.createElement('div');
     line.className = 'face' + (row.split ? ' split' : '');
     if (row.split) {
@@ -2638,7 +2671,7 @@
       chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true">'
         + '<path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" '
         + 'stroke-linecap="round" stroke-linejoin="round"/></svg>';
-      line.appendChild(chev);
+      el.appendChild(chev);
     }
     if (row.timeline && state.dayOffset === 0) {
       var tick = document.createElement('div');
@@ -2717,6 +2750,15 @@
   /* A digest of what the other cards told you to do. Built from their
      own output rather than a second set of rules, so it can never
      disagree with the card it came from. */
+  function todayKey() { return dateStrIn(state.tz || 'UTC', 0); }
+  /* Yesterday's ticks are not useful, and left alone the store would
+     grow for ever. */
+  function pruneDone() {
+    var k = todayKey(), keep = {};
+    if (store.done[k]) keep[k] = store.done[k];
+    store.done = keep; saveStore();
+  }
+
   var TODO_ALL = [['day', 'Planning your day'], ['out', 'Heading out'],
                   ['night', 'Planning your night'], ['week', 'Later this week']];
   function sectionOrder() {
@@ -2765,6 +2807,23 @@
         if (seen[t.text]) return; seen[t.text] = 1;
         var li = document.createElement('li'); li.textContent = t.text;
         if (sec === 'week') li.className = 'week';
+        // Tapping something you have dealt with fades it rather than
+        // removing it, so the list still reads as complete. Kept for
+        // today only \u2014 tomorrow it is a new list.
+        var key = todayKey();
+        if (store.done[key] && store.done[key][t.text]) li.className += ' done';
+        li.setAttribute('role', 'button');
+        li.setAttribute('tabindex', '0');
+        var toggle = function () {
+          if (!store.done[key]) store.done[key] = {};
+          if (store.done[key][t.text]) delete store.done[key][t.text];
+          else store.done[key][t.text] = 1;
+          saveStore(); renderHome();
+        };
+        li.addEventListener('click', toggle);
+        li.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+        });
         ul.appendChild(li);
       });
       el.appendChild(ul);
@@ -2865,6 +2924,7 @@
       migraine:  function () { return migraineCard(d); },
       air:       function () { return airCard(d, p.airGoogle); },
       light:     function () { return lightCard(d); },
+      mask:      function () { return null; },   // a switch, not a card
       aurora:    function () { return auroraCard(d, p.kp); },
       water:     function () { return waterCard(p.water, d.date); },
       virus:     function () { return virusCard(p.virus); },
@@ -3218,7 +3278,7 @@
     var mh = document.createElement('h3'); mh.textContent = 'Mast key, for state flag orders';
     settingsPanel.appendChild(mh);
     var ml = document.createElement('p'); ml.className = 'lede';
-    ml.textContent = 'Optional. Without a key the flag card covers federal orders only \u2014 presidential proclamations and the dates set by law. Governors issue their own orders and there is no single source for them, so state coverage needs Mast, which maintains a reader for each state. The free tier is 250 requests a month; this app uses about four a day, cached for six hours. Sign up at mast.today.';
+    ml.textContent = 'Optional. Without a key the flag card covers federal orders only \u2014 presidential proclamations and the dates set by law. Governors issue their own orders and there is no single source for them, so state coverage needs Mast, which maintains a reader for each state. The free tier is 250 requests a month; this app uses up to four a day, per state, cached for six hours. Sign up at mast.today.';
     settingsPanel.appendChild(ml);
     var mi = document.createElement('input'); mi.type = 'text';
     mi.placeholder = 'Paste Mast key, or leave blank';
@@ -3264,7 +3324,7 @@
       ['Arthritis', 'Falling pressure only \u2014 rises do not count. Then the damp-and-cool combination, which reads worse than either alone, plus rain, a large temperature swing, and heavy humidity. Settled warm dry weather subtracts from the score. Worth knowing: this is the most widely reported weather link and one of the least well supported. Several large studies found little or no association.'],
       ['Sunburn', 'Minimal erythemal dose for your skin type divided by the UV at solar noon. Fitzpatrick I burns in about a fifth of the time Fitzpatrick VI does. Longer is not the same as safe \u2014 pigment slows burning without stopping UV damage.'],
       ['Frostbite', 'National Weather Service wind chill thresholds: about thirty minutes on bare skin at minus eighteen, ten at minus thirty-two, five at minus forty-eight. Those assume you are dry; wet clothing changes everything.'],
-      ['Hair frizz', 'Dew point, and it fails at both ends. Above about sixty-six the air swells the hair shaft; below twenty it pulls moisture out and leaves it charged.'],
+      ['Hair frizz', 'Dew point. Above about sixty-six the air swells the hair shaft; below twenty it pulls moisture out and leaves it charged.'],
       ['Bug spray', 'Warm enough to fly, humid, little wind to keep them off, and standing water from recent rain. A cold night knocks the score back. There is no free mosquito data anywhere, so this is a rule of thumb rather than an observation.'],
       ['Which shoes', 'Rain, snow and ice come from the forecast. Mud comes from soil moisture and soil temperature \u2014 saturated and unfrozen ground stays soft on a dry day. Road salt is inferred from a cold snowy stretch followed by a dry one.'],
       ['Mowing', 'Soil temperature and deeper soil moisture, not the top centimetre, which dries within hours of a shower. Cool-season grass north of about thirty-six degrees latitude, warm-season south of it \u2014 the same soil reading means opposite things in Michigan and Georgia.'],
@@ -3334,6 +3394,7 @@
 
   /* ================= start ================= */
   buildRamps();
+  pruneDone();
   if (store.tapped) document.getElementById('tipHint').style.display = 'none';
   buildDays(); buildPlaces();
     if (state.place) loadHome(state.place);
