@@ -5,7 +5,6 @@ joints, migraines, bugs, mud, frost on the windshield, and whether the water is
 safe to get into.
 
 One static HTML file. No server, no build step, no account, no tracking.
-Open it and it works.
 
 **Live:** https://rhymes-with-tree.github.io/weather/
 
@@ -36,6 +35,11 @@ basement, no dog, conditions you don't have. Everything is on to start with.
 | [Copernicus CAMS](https://atmosphere.copernicus.eu) via Open-Meteo | Air quality when no Google key is set | Copernicus licence |
 | [NOAA / National Weather Service](https://www.weather.gov) | Active alerts | US public domain |
 | [CDC NWSS](https://www.cdc.gov/wastewater) | COVID, influenza A and RSV in state wastewater | US public domain |
+| [Federal Register](https://www.federalregister.gov) | Presidential half-staff proclamations | US public domain |
+| [Mast](https://www.mast.today) | State half-staff orders, **only** with a user's own key | Mast terms |
+
+When Mast data is on screen, the card carries a *Powered by Mast* credit linking
+back to them, as they ask. Nothing is shown when no Mast key is set.
 | [NOAA CO-OPS](https://tidesandcurrents.noaa.gov) | Water temperature, coast and Great Lakes | US public domain |
 | [NOAA NDBC](https://www.ndbc.noaa.gov) | Buoy water temperature and waves, where reachable | US public domain |
 | [NOAA SWPC](https://www.swpc.noaa.gov) | Planetary K index, for aurora | US public domain |
