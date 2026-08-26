@@ -2333,39 +2333,34 @@
     }).catch(function () { return null; });
   }
 
-  /* Mast covers state orders, which have no common source. The exact
-     auth parameter is not documented publicly, so this tries a query
-     parameter and falls back to a bearer token rather than failing
-     outright on a guess. */
+  /* Mast covers state orders, which have no common source. Confirmed
+     against their published documentation (mast.today/api#us-status):
+     the key goes in an x-mast-license-key header, not a query string,
+     and the response is { ok, status: { isHalfMast, title, authority },
+     calendar, cache }. An earlier version of this guessed at the shape
+     from field-name patterns and got the header, the nesting and the
+     field names all wrong \u2014 it silently produced 'A state order is in
+     effect: A state order is in effect', the fallback text echoing
+     itself because the real fields were never there to read. */
   function mastFlag(stateCode) {
     var k = (store.keys && store.keys.mast) || '';
     if (!k || !stateCode) return Promise.resolve(null);
-    var base = 'https://www.mast.today/api/v1/status?countryCode=US&stateCode=' + stateCode;
-    var read = function (r) {
-      if (!r) return null;
-      var half = false;
-      ['halfStaff', 'isHalfStaff', 'half_staff', 'status'].forEach(function (kk) {
-        if (r[kk] === true) half = true;
-        if (typeof r[kk] === 'string' && r[kk].toLowerCase().indexOf('half') > -1) half = true;
-      });
-      if (r.status && typeof r.status === 'object') {
-        var sv = JSON.stringify(r.status).toLowerCase();
-        if (sv.indexOf('half') > -1) half = true;
-      }
-      if (!half) return null;
-      var order = r.order || r.activeOrder || r.active_order || {};
-      return { title: order.title || r.title || 'A state order is in effect',
-               authority: order.authority || r.authority || '',
-               url: order.sourceUrl || order.source_url || r.sourceUrl || r.url || '' };
-    };
-    return j(base + '&key=' + encodeURIComponent(k)).then(read).catch(function () {
-      return fetch(base, { headers: { 'Authorization': 'Bearer ' + k } })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(read).catch(function () { return null; });
-    });
+    return fetch('https://www.mast.today/api/v1/status?countryCode=US&stateCode=' + stateCode, {
+      headers: { 'x-mast-license-key': k }
+    }).then(function (r) {
+      if (!r.ok) return null;
+      return r.json();
+    }).then(function (j2) {
+      if (!j2 || !j2.ok || !j2.status || !j2.status.isHalfMast) return null;
+      var st = j2.status;
+      if (!st.title || /^no active order$/i.test(st.title)) return null;
+      return { title: st.title,
+               authority: (st.authority && !/^unknown$/i.test(st.authority)) ? st.authority : '',
+               url: st.sourceUrl || st.url || '' };
+    }).catch(function () { return null; });
   }
 
-  /* ---- respiratory viruses in wastewater ----
+  /* ---- respiratory viruses in wastewater ----  /* ---- respiratory viruses in wastewater ----
      CDC's National Wastewater Surveillance System, dataset atcp-73re:
      weekly viral activity levels for SARS-CoV-2, influenza A and RSV,
      by state. US public domain, keyless.
