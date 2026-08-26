@@ -49,6 +49,9 @@
   .face.split .end.right{text-align:right;margin-left:0;}
   .face.split .end b{display:block;}
   .caption{font-size:13.5px;opacity:.72;text-align:center;margin-top:5px;}
+  .credit{display:block;margin-top:8px;}
+  .credit a{color:inherit;text-decoration:none;font:700 13px system-ui;border:none;}
+  .mastmark{font-family:'Lobster',cursive;font-size:1.35em;font-weight:400;}
   .now{position:absolute;top:-13px;bottom:-13px;width:2px;margin-left:-1px;
        background:rgba(22,35,47,.30);box-shadow:0 0 0 1px rgba(255,255,255,.45);
        pointer-events:none;border-radius:1px;}
@@ -258,6 +261,7 @@
     { id: 'daylight',  name: 'Sunrise and sunset' },
     { id: 'moon',      name: 'Moon phase' },
     // tiles
+    { id: 'flag',      name: 'Flag at half-staff', note: 'Only when an order is in effect' },
     { id: 'air',       name: 'Air quality' },
     { id: 'allergy',   name: 'Allergens' },
     { id: 'virus',     name: 'Viruses about',     note: 'COVID, flu and RSV in your state\u2019s wastewater' },
@@ -772,9 +776,9 @@
     var tip = 'UV ' + uv.toFixed(1) + ' at solar noon, ' + hr(d.solarNoon)
             + '. Unprotected, for skin that ' + sk.label.toLowerCase() + '. ';
     tip += uv >= 8
-      ? 'Sunscreen before you leave, plus a hat, and shade in the middle of the day. Sunburn can provoke new plaques.'
+      ? 'Sunscreen before you leave, plus a hat, and shade in the middle of the day.'
       : uv >= 6 ? 'Sunscreen before ' + burnStart(d) + ', and again after you swim or sweat.'
-      : 'Sunscreen past half an hour outside. This is also the useful range for short, deliberate sun on affected skin.';
+      : 'Sunscreen past half an hour outside.';
     // Longer to burn is not the same as safe: pigment slows erythema but
     // does not stop UV damage, and skin cancer in darker skin is more
     // often found late.
@@ -1142,7 +1146,7 @@
     var tip = w + DEG + (waveFt != null ? ', waves ' + waveFt + ' ft' : '') + '. ';
     if (w < 65) tip = 'Cold enough for cold-water shock \u2014 get in slowly, never jump. ' + tip;
     return { bg: bgFlat('water', w), bold: word, tip: tip + provenance,
-             todo: w >= 70 ? 'Go for a swim' : null, todoWhen: 'out', todoRank: 95, todoOutdoor: true };
+             todo: w >= 70 ? 'Go for a swim' : null, todoWhen: 'day', todoRank: 95, todoOutdoor: true };
   }
 
   /* The card is the day: slate at the edges, warm gold through the
@@ -1272,6 +1276,37 @@
      much virus is in the sewage for your state, which is a real number
      and one of the few things in this app that is measured rather than
      modelled. */
+  /* Phrased as the question people actually ask. "Flag at Half-Staff"
+     reads as an instruction to lower one. */
+  function flagCard(f) {
+    if (!f) return null;
+    var parts = [], link = null;
+    if (f.statutory) {
+      parts.push(f.statutory.why + ', by federal law, until ' + f.statutory.until + '.');
+    }
+    if (f.federal) {
+      parts.push('Presidential proclamation: ' + f.federal.title.trim()
+               + (f.federal.signed ? ' Signed ' + f.federal.signed + '.' : ''));
+      link = { href: f.federal.url, text: 'Read the proclamation' };
+    }
+    if (f.state) {
+      parts.push('Your state also has an order in effect: ' + f.state.title
+               + (f.state.authority ? ' (' + f.state.authority + ')' : '') + '.');
+      if (!link && f.state.url) link = { href: f.state.url, text: 'Official source' };
+    }
+    if (!parts.length) return null;
+    if (!f.state) {
+      parts.push((store.keys && store.keys.mast)
+        ? 'No state order found for your state.'
+        : 'Federal orders only. Governors issue their own, and those need a Mast key in Settings.');
+    }
+    if (f.federal) {
+      parts.push('Proclamations reach the Federal Register a day or more after signing, so a very recent order may not be here yet.');
+    }
+    return { bg: bgFlat('risk', 55), bold: 'Why is the Flag at Half-Staff?',
+             tip: parts.join(' '), link: link };
+  }
+
   function virusCard(v) {
     if (!v || !v.items || !v.items.length) return null;
     var worst = v.items[0];
@@ -2019,7 +2054,7 @@
     store.blocks = o; saveStore(); buildSettings(); renderHome();
   }
 
-  var DEFAULT_TILE_ORDER = ['air', 'allergy', 'virus', 'burn', 'water', 'pavement', 'wind', 'aurora'];
+  var DEFAULT_TILE_ORDER = ['flag', 'air', 'allergy', 'virus', 'burn', 'water', 'pavement', 'wind', 'aurora'];
   var PILL_ONLY = ['frostbite','migraine','arthritis','frizz','bug',
                    'shoe','frost','pipe','rust','mow','mold','fire','light'];
   var DEFAULT_HOURLY_ORDER = ['feels', 'sky', 'daylight', 'moon'];
@@ -2095,7 +2130,7 @@
 
     Promise.all(jobs).then(function (r) {
       state.home = { wx: r[0], aq: r[1], alerts: r[2], kp: r[3], pollen: null, airGoogle: null,
-                     water: null, virus: null };
+                     water: null, virus: null, flag: null };
       state.tz = r[0].timezone || place.tz || 'America/Detroit';
       store.place = place;
       store.recents = [place].concat((store.recents || []).filter(function (x) {
@@ -2118,6 +2153,12 @@
         virusFor(place).then(function (vv) {
           if (!vv || !state.home || state.home.error) return;
           state.home.virus = vv; renderHome();
+        });
+      }
+      if (on('flag')) {
+        flagFor(place, dateStrIn(r[0].timezone || place.tz, 0)).then(function (ff) {
+          if (!ff || !state.home || state.home.error) return;
+          state.home.flag = ff; renderHome();
         });
       }
     }).catch(function (e) {
@@ -2179,6 +2220,116 @@
       if (!state.home || state.home.error) return;
       state.home.pollen = g[0]; state.home.airGoogle = g[1];
       renderHome();
+    });
+  }
+
+  /* ---- why is the flag at half-staff ----
+     Three layers. The recurring dates are set by statute (4 USC 7(m))
+     and need no network at all. Presidential proclamations come from
+     the Federal Register, which is free, keyless and sends CORS
+     headers. State orders need a Mast key, because there is no single
+     source for them \u2014 every governor publishes differently and Mast
+     maintains a parser per state. */
+  function nthWeekday(y, m, weekday, n) {     // n = 1 for first, -1 for last
+    if (n > 0) {
+      var d = new Date(Date.UTC(y, m - 1, 1));
+      var shift = (weekday - d.getUTCDay() + 7) % 7;
+      return new Date(Date.UTC(y, m - 1, 1 + shift + (n - 1) * 7));
+    }
+    var last = new Date(Date.UTC(y, m, 0));
+    var back = (last.getUTCDay() - weekday + 7) % 7;
+    return new Date(Date.UTC(y, m, 0 - back));
+  }
+  function statutoryHalfStaff(dateStr) {
+    var y = +dateStr.slice(0, 4), m = +dateStr.slice(5, 7), d = +dateStr.slice(8, 10);
+    var iso = function (dt) { return dt.toISOString().slice(0, 10); };
+    if (m === 5 && d === 15) return { why: 'Peace Officers Memorial Day', until: 'sunset' };
+    if (m === 9 && d === 11) return { why: 'Patriot Day', until: 'sunset' };
+    if (m === 12 && d === 7) return { why: 'National Pearl Harbor Remembrance Day', until: 'sunset' };
+    if (m === 5 && iso(nthWeekday(y, 5, 1, -1)) === dateStr) {
+      return { why: 'Memorial Day', until: 'noon' };
+    }
+    if (m === 10 && iso(nthWeekday(y, 10, 0, 1)) === dateStr) {
+      return { why: 'National Fallen Firefighters Memorial Service', until: 'sunset' };
+    }
+    return null;
+  }
+
+  var FLAG_KEY = 'morningbrief.flag.v1';
+  function flagFor(place, dateStr) {
+    var cached = null;
+    try { cached = JSON.parse(localStorage.getItem(FLAG_KEY)); } catch (e) {}
+    var stateCode = place && place.region ? STATE_ABBR[String(place.region).toLowerCase()] : null;
+    if (cached && cached.at && Date.now() - cached.at < 6 * 3600 * 1000
+        && cached.date === dateStr && cached.stateCode === stateCode) {
+      return Promise.resolve(cached.data);
+    }
+    var jobs = [federalFlag(dateStr), mastFlag(stateCode)];
+    return Promise.all(jobs).then(function (r) {
+      var out = { federal: r[0], state: r[1],
+                  statutory: statutoryHalfStaff(dateStr) };
+      if (!out.federal && !out.state && !out.statutory) out = null;
+      try {
+        localStorage.setItem(FLAG_KEY, JSON.stringify({ at: Date.now(), date: dateStr,
+                                                        stateCode: stateCode, data: out }));
+      } catch (e) {}
+      return out;
+    }).catch(function () { return null; });
+  }
+
+  function federalFlag(dateStr) {
+    // Anything ordered in the last 45 days could still be running.
+    var since = new Date(Date.parse(dateStr + 'T12:00:00Z') - 45 * 86400000).toISOString().slice(0, 10);
+    var url = 'https://www.federalregister.gov/api/v1/documents.json'
+            + '?conditions[term]=' + encodeURIComponent('"half-staff"')
+            + '&conditions[type][]=PRESDOCU'
+            + '&conditions[publication_date][gte]=' + since
+            + '&order=newest&per_page=4'
+            + '&fields[]=title&fields[]=publication_date&fields[]=signing_date'
+            + '&fields[]=html_url&fields[]=raw_text_url';
+    return j(url).then(function (r) {
+      var docs = (r && r.results) || [];
+      for (var i = 0; i < docs.length; i++) {
+        var t = String(docs[i].title || '');
+        if (t.toLowerCase().indexOf('half-staff') < 0) continue;
+        return { title: t.replace(/^Display of the Flag at Half-Staff\s*/i, '')
+                         .replace(/^as a Mark of Respect\s*/i, 'As a mark of respect '),
+                 signed: docs[i].signing_date || docs[i].publication_date,
+                 url: docs[i].html_url, raw: docs[i].raw_text_url };
+      }
+      return null;
+    }).catch(function () { return null; });
+  }
+
+  /* Mast covers state orders, which have no common source. The exact
+     auth parameter is not documented publicly, so this tries a query
+     parameter and falls back to a bearer token rather than failing
+     outright on a guess. */
+  function mastFlag(stateCode) {
+    var k = (store.keys && store.keys.mast) || '';
+    if (!k || !stateCode) return Promise.resolve(null);
+    var base = 'https://www.mast.today/api/v1/status?countryCode=US&stateCode=' + stateCode;
+    var read = function (r) {
+      if (!r) return null;
+      var half = false;
+      ['halfStaff', 'isHalfStaff', 'half_staff', 'status'].forEach(function (kk) {
+        if (r[kk] === true) half = true;
+        if (typeof r[kk] === 'string' && r[kk].toLowerCase().indexOf('half') > -1) half = true;
+      });
+      if (r.status && typeof r.status === 'object') {
+        var sv = JSON.stringify(r.status).toLowerCase();
+        if (sv.indexOf('half') > -1) half = true;
+      }
+      if (!half) return null;
+      var order = r.order || r.activeOrder || r.active_order || {};
+      return { title: order.title || r.title || 'A state order is in effect',
+               authority: order.authority || r.authority || '',
+               url: order.sourceUrl || order.source_url || r.sourceUrl || r.url || '' };
+    };
+    return j(base + '&key=' + encodeURIComponent(k)).then(read).catch(function () {
+      return fetch(base, { headers: { 'Authorization': 'Bearer ' + k } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(read).catch(function () { return null; });
     });
   }
 
@@ -2503,6 +2654,15 @@
 
     if (row.tip) {
       var t = document.createElement('p'); t.className = 'tip'; t.textContent = row.tip; t.style.display = 'none';
+      if (row.link && row.link.href) {
+        t.appendChild(document.createTextNode(' '));
+        var a2 = document.createElement('a');
+        a2.href = row.link.href; a2.target = '_blank'; a2.rel = 'noopener';
+        a2.textContent = row.link.text;
+        // Opening the link should not also close the card underneath it.
+        a2.addEventListener('click', function (e) { e.stopPropagation(); });
+        t.appendChild(a2);
+      }
       el.appendChild(t);
       el.setAttribute('aria-expanded', 'false');
       el.addEventListener('click', function () {
@@ -2612,6 +2772,32 @@
     return any ? el : null;
   }
 
+  /* Mast asks for attribution where the status appears. It is a
+     request rather than a condition, and worth honouring for a free
+     tier someone maintains by hand. The Lobster stylesheet is fetched
+     only when Mast data is actually on screen, so nobody who is not
+     using Mast makes a request to Google for a font. */
+  function mastLockup() {
+    try {
+      if (!document.getElementById('lobsterFont')) {
+        var l = document.createElement('link');
+        l.id = 'lobsterFont'; l.rel = 'stylesheet';
+        l.href = 'https://fonts.googleapis.com/css2?family=Lobster&display=swap';
+        document.head.appendChild(l);
+      }
+    } catch (e) { /* the credit still reads fine without the font */ }
+    var wrap = document.createElement('span');
+    wrap.className = 'credit';
+    var a = document.createElement('a');
+    a.href = 'https://www.mast.today'; a.target = '_blank'; a.rel = 'noopener';
+    a.addEventListener('click', function (e) { e.stopPropagation(); });
+    a.appendChild(document.createTextNode('Powered by '));
+    var m = document.createElement('span'); m.className = 'mastmark'; m.textContent = 'Mast';
+    a.appendChild(m);
+    wrap.appendChild(a);
+    return wrap;
+  }
+
   function skeleton(host, tall, short) {
     host.innerHTML = '';
     var c = document.createElement('div'); c.className = 'hourly';
@@ -2682,6 +2868,7 @@
       aurora:    function () { return auroraCard(d, p.kp); },
       water:     function () { return waterCard(p.water, d.date); },
       virus:     function () { return virusCard(p.virus); },
+      flag:      function () { return flagCard(p.flag); },
       moon:      function () { return moonCard(d.date, state.tz, lat, lon); }
     };
     tileOrder().forEach(function (id) { addCard(grid, id, builders[id]); });
@@ -3027,6 +3214,21 @@
       if (state.place) loadHome(state.place);
     });
     settingsPanel.appendChild(input);
+
+    var mh = document.createElement('h3'); mh.textContent = 'Mast key, for state flag orders';
+    settingsPanel.appendChild(mh);
+    var ml = document.createElement('p'); ml.className = 'lede';
+    ml.textContent = 'Optional. Without a key the flag card covers federal orders only \u2014 presidential proclamations and the dates set by law. Governors issue their own orders and there is no single source for them, so state coverage needs Mast, which maintains a reader for each state. The free tier is 250 requests a month; this app uses about four a day, cached for six hours. Sign up at mast.today.';
+    settingsPanel.appendChild(ml);
+    var mi = document.createElement('input'); mi.type = 'text';
+    mi.placeholder = 'Paste Mast key, or leave blank';
+    mi.value = (store.keys && store.keys.mast) || '';
+    mi.addEventListener('change', function () {
+      store.keys.mast = mi.value.trim(); saveStore();
+      try { localStorage.removeItem('morningbrief.flag.v1'); } catch (e) {}
+      if (state.place) loadHome(state.place);
+    });
+    settingsPanel.appendChild(mi);
   }
 
   function updateContrast() {
@@ -3072,7 +3274,7 @@
       ['Later this week', 'Scans the next six days for a migraine or arthritis score that is both high and clearly worse than today, the first overnight freeze, or a temperature swing worth planning around.']
     ]],
     ['Privacy', [
-      ['', 'There is no account, no server, no analytics and no cookies. Your settings, saved places and API key live in this browser. Your coordinates go to the weather services above as part of each request, and nowhere else.']
+      ['', 'There is no account, no server, no analytics and no cookies. Your settings, saved places and API keys live in this browser. Your coordinates go to the weather services above as part of each request, and nowhere else. One exception worth naming: if you add a Mast key, opening this panel loads one font from Google so the Mast credit renders in their wordmark. Nothing else on the page fetches anything from a third party.']
     ]],
     ['Limits', [
       ['', 'US only: units are imperial, alerts and the air quality index are American, and the bloom calendars cover six US regions. Health cards are estimates, not medical advice, and no forecast can tell you how you will feel. Your own record of what sets a condition off is better evidence than any threshold in here.']
@@ -3094,6 +3296,13 @@
         aboutPanel.appendChild(p2);
       });
     });
+    if (store.keys && store.keys.mast) {
+      var cr = document.createElement('p'); cr.className = 'lede';
+      cr.style.marginTop = '10px';
+      cr.appendChild(mastLockup());
+      aboutPanel.appendChild(cr);
+    }
+
     var live = document.createElement('p'); live.className = 'lede';
     live.style.cssText = 'margin-top:16px;padding-top:12px;border-top:1px solid var(--line);';
     var h2 = state.home || {};
