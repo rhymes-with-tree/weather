@@ -41,20 +41,17 @@
      narrow phone; a landscape phone or a tablet gets everything in one
      row, which is the reason the request mentioned turning the phone
      sideways \u2014 width is the whole constraint here. */
-  .mdgrid{display:grid;gap:5px;}
-  .mdcell{border:none;font:inherit;color:var(--ink);border-radius:11px;
-          padding:9px 5px;min-height:52px;cursor:pointer;display:flex;
-          flex-direction:column;align-items:center;justify-content:center;
-          text-align:center;overflow:hidden;}
-  .mdcell.mdhead{min-height:46px;}
-  .mdname{font-size:12.5px;font-weight:700;line-height:1.15;}
-  .mddate{font-size:11px;opacity:.7;margin-top:1px;}
-  .mdtext{font-size:12px;font-weight:700;line-height:1.2;}
-  .mdcell.today{box-shadow:0 0 0 2px rgba(22,35,47,.45) inset;}
-  @media (max-width:430px){
-    .mdtext{font-size:10.5px;} .mdname{font-size:11px;} .mddate{font-size:10px;}
-    .mdcell{padding:7px 3px;border-radius:9px;}
-  }
+  .mdstrip{cursor:default;}
+  .mdface{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+  .mdrowlabel{font-size:14px;}
+  .mdsummary{font-size:12.5px;font-weight:600;opacity:.7;}
+  .dayaxis{display:flex;margin:3px 1px 0;}
+  .daytick{background:none;border:none;font:inherit;color:var(--mid);cursor:pointer;
+           padding:2px 0;text-align:center;line-height:1.15;}
+  .daytick .dtname{display:block;font-size:11.5px;font-weight:600;}
+  .daytick .dtdate{display:block;font-size:10px;opacity:.65;}
+  .daytick.today{color:var(--ink);}
+  .daytick.today .dtname{font-weight:700;}
   .ref{position:absolute;top:2px;bottom:2px;width:1px;
        background:rgba(22,35,47,.22);pointer-events:none;}
   .ref.major{background:rgba(22,35,47,.34);}
@@ -1495,8 +1492,7 @@
     if (!e.greatest) return e.dateUTC;
     var day = dateInTz(new Date(e.greatest), tz);
     if (localHourOf(e.greatest, tz) >= 5) return day;
-    var off = dayOffsetOf(day, tz);
-    return off != null && off > 0 ? dateStrIn(tz, off - 1) : day;
+    return dayBefore(day);
   }
   function eclipseLabel(e, tz) {
     var kindName = e.type + ' ' + (e.kind === 'lunar' ? 'Lunar' : 'Solar') + ' Eclipse';
@@ -1508,20 +1504,32 @@
     var off = dayOffsetOf(day, tz);
     var time = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' })
       .format(new Date(e.greatest));
-    if (localHourOf(e.greatest, tz) < 5 && off != null && off > 0) {
-      // Both ends of the night as plain weekday names. Mixing a weekday
-      // with "Tomorrow" reads as two different nights.
+    if (localHourOf(e.greatest, tz) < 5) {
+      // Both ends of the night as plain weekday names. Works whether the
+      // eclipse is today or days out \u2014 the previous day comes from the
+      // date itself, not from an offset that goes negative on day zero.
       var wd = function (ds) {
         return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long' })
           .format(new Date(ds + 'T12:00:00Z'));
       };
-      return kindName + ', ' + wd(dateStrIn(tz, off - 1)) + '\u2013' + wd(day) + ' night, ' + time;
+      return kindName + ', ' + wd(dayBefore(day)) + '\u2013' + wd(day) + ' night, ' + time;
     }
     return kindName + (off != null ? ' ' + dayName(day, tz, off) : '') + ' at ' + time;
   }
 
+  function dayBefore(dateStr) {
+    return new Date(Date.parse(dateStr + 'T12:00:00Z') - 86400000).toISOString().slice(0, 10);
+  }
+  /* Only events still to come, or still under way. A partial eclipse that
+     ended at one in the morning should not still be sitting on the page
+     at lunchtime saying "Overnight". */
   function eclipseOn(dateStr, tz) {
-    return ECLIPSES.filter(function (e) { return dateInTz(new Date(e.greatest), tz) === dateStr; });
+    return ECLIPSES.filter(function (e) {
+      if (!e.greatest) return e.dateUTC === dateStr;
+      if (dateInTz(new Date(e.greatest), tz) !== dateStr) return false;
+      var ends = e.u4 ? new Date(e.u4) : new Date(new Date(e.greatest).getTime() + 2 * 3600 * 1000);
+      return ends.getTime() > Date.now();
+    });
   }
   function eclipseWithin(days, tz) {
     var out = [];
@@ -3160,6 +3168,23 @@
     for (var pct = 0; pct <= 100; pct += 20) stops.push(fn(pct / 100) + ' ' + pct + '%');
     return 'linear-gradient(90deg,' + stops.join(',') + ')';
   }
+  /* One continuous strip per card, spanning the whole range, with a tick
+     at each day boundary and the day names on a shared axis underneath.
+     The point of a week view is seeing the shape of the week \u2014 the warm
+     run, the cold front arriving \u2014 and separate cards per day threw
+     exactly that away by chopping the gradient into boxes. */
+  function bgAcross(days, fn) {
+    var stops = [], total = days.length * 24, n = 0;
+    days.forEach(function (x) {
+      for (var h = 0; h < 24; h++) {
+        var rec = x.d.hours[h] || x.d.hours[Object.keys(x.d.hours)[0]];
+        stops.push(fn(rec, h, x.d) + ' ' + ((n / (total - 1)) * 100).toFixed(2) + '%');
+        n++;
+      }
+    });
+    return 'linear-gradient(90deg,' + stops.join(',') + ')';
+  }
+
   function renderMultiDay(p, lat, lon, cal, span) {
     var host = document.getElementById('homeBody');
     host.innerHTML = ''; host.className = 'multiday';
@@ -3169,54 +3194,85 @@
     }
     if (!days.length) return fail(host, 'No forecast for that range.');
 
-    var grid = document.createElement('div');
-    grid.className = 'mdgrid';
-    grid.style.gridTemplateColumns = 'repeat(' + days.length + ', 1fr)';
+    var col = document.createElement('div'); col.className = 'hourly';
 
-    /* Columns are days, rows are the same four cards as the single-day
-       view. Each cell keeps its own midnight-to-midnight gradient, so a
-       week reads as a set of comparable strips rather than a summary
-       that has thrown the shape of each day away. */
-    function cell(d, off, build, isHeader) {
-      var row = build(d, off);
-      var el = document.createElement('button');
-      el.className = 'mdcell' + (off === 0 ? ' today' : '') + (isHeader ? ' mdhead' : '');
-      el.style.background = row.bg;
-      if (isHeader) {
-        var dn = document.createElement('div'); dn.className = 'mdname';
-        dn.textContent = off === 0 ? 'Today' : off === 1 ? 'Tomorrow'
-                       : labelFor(state.tz, off).split(',')[0];
-        var dt = document.createElement('div'); dt.className = 'mddate';
-        dt.textContent = (+d.date.slice(5, 7)) + '/' + (+d.date.slice(8, 10));
-        el.appendChild(dn); el.appendChild(dt);
-      } else {
-        var t = document.createElement('div'); t.className = 'mdtext';
-        t.textContent = row.bold;
-        el.appendChild(t);
+    function strip(label, bg, summary) {
+      var el = document.createElement('div');
+      el.className = 'card mdstrip';
+      el.style.background = bg;
+      var face = document.createElement('div'); face.className = 'face mdface';
+      var l = document.createElement('b'); l.className = 'mdrowlabel'; l.textContent = label;
+      face.appendChild(l);
+      if (summary) {
+        var sm = document.createElement('span'); sm.className = 'mdsummary'; sm.textContent = summary;
+        face.appendChild(sm);
       }
-      el.addEventListener('click', function () {
-        state.dayOffset = off; store.span = 1; saveStore();
-        buildDays(); buildSpan(); renderHome();
-      });
-      return el;
+      // A tick at every day boundary, matching the hour ticks in the
+      // single-day view.
+      for (var i = 1; i < days.length; i++) {
+        var t = document.createElement('div');
+        t.className = 'ref major';
+        t.style.left = ((i / days.length) * 100).toFixed(3) + '%';
+        face.appendChild(t);
+      }
+      el.appendChild(face);
+      col.appendChild(el);
     }
 
-    var rows = [
-      [true,  function (d) { return daylightCard(d, lat, lon, state.tz); }],
-      [false, function (d) { return feelsCard(d); }],
-      [false, function (d) { return skyCard(d); }],
-      [false, function (d) { return moonCard(d.date, state.tz, lat, lon); }]
-    ];
-    rows.forEach(function (r) {
-      days.forEach(function (x) {
-        try { grid.appendChild(cell(x.d, x.off, r[1], r[0])); }
-        catch (e) {
-          var blank = document.createElement('div'); blank.className = 'mdcell';
-          grid.appendChild(blank);
-        }
+    var lo = Math.min.apply(null, days.map(function (x) { return x.d.feelsMin; }));
+    var hi = Math.max.apply(null, days.map(function (x) { return x.d.feelsMax; }));
+    strip('Feels Like',
+      bgAcross(days, function (r) { return colorAt('feels', r.feels == null ? 60 : r.feels); }),
+      Math.round(lo) + DEG + ' to ' + Math.round(hi) + DEG);
+
+    var wettest = days.reduce(function (a2, b2) { return b2.d.rainChance > a2.d.rainChance ? b2 : a2; });
+    strip('Sky',
+      bgAcross(days, function (r) {
+        var base = skyColor(r).match(/\d+/g).map(Number);
+        return css(blend(base, [92, 122, 176], Math.min(1, (r.pop || 0) / 100) * 0.65));
+      }),
+      wettest.d.rainChance >= 30
+        ? 'wettest ' + (wettest.off === 0 ? 'today' : labelFor(state.tz, wettest.off).split(',')[0])
+        : 'mostly dry');
+
+    strip('Daylight',
+      bgAcross(days, function (r, h, d) {
+        var srF = frac(d.sunriseISO), ssF = frac(d.sunsetISO);
+        var up = Math.max(0, Math.min(1, (h - (srF - 0.75)) / 1.5));
+        var down = Math.max(0, Math.min(1, ((ssF + 0.75) - h) / 1.5));
+        var t = up * down;
+        return css(t < 0.5 ? mix3(NIGHT, TWILIGHT, t * 2) : mix3(TWILIGHT, DAYLIT, (t - 0.5) * 2));
+      }),
+      hm(Math.round((days[0].d.sunset - days[0].d.sunrise) * 60)) + ' today');
+
+    strip('Moon',
+      bgAcross(days, function (r, h, d) {
+        var t = (lat == null) ? { up: [] } : moonTimes(d.date, state.tz, lat, lon);
+        var lit = Math.round(((1 - Math.cos(2 * Math.PI * (moonAge(d.date) / LUNATION))) / 2) * 100);
+        var isUp = t.up.length ? t.up[h] : false;
+        return css(isUp ? blend(NIGHT, [248, 249, 251], 0.25 + 0.7 * (lit / 100)) : NIGHT);
+      }),
+      moonCard(days[0].d.date, state.tz, lat, lon).caption || '');
+
+    // Day names as a shared axis, each one a way into that day.
+    var axis = document.createElement('div'); axis.className = 'dayaxis';
+    days.forEach(function (x, i) {
+      var b3 = document.createElement('button');
+      b3.className = 'daytick' + (x.off === 0 ? ' today' : '');
+      b3.style.width = (100 / days.length) + '%';
+      var nm = document.createElement('span'); nm.className = 'dtname';
+      nm.textContent = x.off === 0 ? 'Today' : labelFor(state.tz, x.off).split(',')[0].slice(0, 3);
+      var dt = document.createElement('span'); dt.className = 'dtdate';
+      dt.textContent = (+x.d.date.slice(5, 7)) + '/' + (+x.d.date.slice(8, 10));
+      b3.appendChild(nm); b3.appendChild(dt);
+      b3.addEventListener('click', function () {
+        state.dayOffset = x.off; store.span = 1; saveStore();
+        buildDays(); buildSpan(); renderHome();
       });
+      axis.appendChild(b3);
     });
-    host.appendChild(grid);
+    col.appendChild(axis);
+    host.appendChild(col);
   }
 
   function renderHome() {
@@ -3786,6 +3842,19 @@
   /* ================= start ================= */
   buildRamps();
   pruneDone();
+
+  /* Rotating a phone changes which layout applies, but the gradients and
+     column widths are computed in JavaScript, so a CSS breakpoint on its
+     own leaves them stale. Re-render, debounced. */
+  var relayout = null;
+  function onViewportChange() {
+    clearTimeout(relayout);
+    relayout = setTimeout(function () {
+      if (state.home) { renderHome(); }
+    }, 180);
+  }
+  window.addEventListener('resize', onViewportChange);
+  window.addEventListener('orientationchange', onViewportChange);
   if (store.tapped) document.getElementById('tipHint').style.display = 'none';
   buildDays(); buildSpan(); buildPlaces();
     if (state.place) loadHome(state.place);
