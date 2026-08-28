@@ -1369,17 +1369,28 @@
       link = { href: f.federal.url, text: 'Read the proclamation' };
     }
     if (f.state) {
-      parts.push('Your state also has an order in effect: ' + f.state.title
-               + (f.state.authority ? ' (' + f.state.authority + ')' : '') + '.');
+      /* Mast reports the effective status for a state, which includes
+         federal orders \u2014 a presidential proclamation lowers flags in
+         every state. Reading the authority tells us which it is, rather
+         than assuming anything from Mast is a governor's doing. */
+      var auth = f.state.authority || '';
+      var federalAuthority = /president|white house|\bu\.?s\.?\b|federal/i.test(auth);
+      if (federalAuthority) {
+        // Skip if the Federal Register already reported the same thing.
+        if (!f.federal) {
+          parts.push('Presidential order: ' + f.state.title
+                   + (auth ? ' (' + auth + ')' : '') + '.');
+        }
+      } else {
+        parts.push((auth ? auth + ': ' : 'State order in effect: ') + f.state.title + '.');
+      }
       if (!link && f.state.url) link = { href: f.state.url, text: 'Official source' };
     }
     if (!parts.length) return null;
-    if (!f.state) {
-      parts.push((store.keys && store.keys.mast)
-        ? 'No state order found for your state.'
-        : 'Federal orders only. Governors issue their own, and those need a Mast key in Settings.');
+    if (!f.state && !(store.keys && store.keys.mast)) {
+      parts.push('Federal orders only. Governors issue their own, and those need a Mast key in Settings.');
     }
-    if (f.federal) {
+    if (!f.federal && !f.state) {
       parts.push('Proclamations reach the Federal Register a day or more after signing, so a very recent order may not be here yet.');
     }
     return { bg: bgFlat('risk', 55), bold: 'Why is the Flag at Half-Staff?',
@@ -1459,6 +1470,24 @@
     { kind: 'lunar', type: 'Total', dateUTC: '2032-10-18', greatest: '2032-10-18T19:04:00Z', p1: '2032-10-18T16:26:00Z', u4: '2032-10-18T20:42:00Z', duration: 'about 47 min of totality', region: 'the Americas, Europe, Africa, Asia and Australia' }
   ];
 
+  /* An eclipse at 12:01 AM and one at 10:30 PM are both "tomorrow" and
+     mean completely different evenings. Everything below works from the
+     local hour rather than the calendar date alone. */
+  function localHourOf(iso, tz) {
+    var h = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hour12: false })
+      .format(new Date(iso));
+    var n = parseInt(h, 10);
+    return n === 24 ? 0 : n;
+  }
+  function whenWord(hour) {
+    return hour < 5 ? 'Overnight' : hour < 12 ? 'This Morning'
+         : hour < 17 ? 'This Afternoon' : 'Tonight';
+  }
+  function dayOffsetOf(dateStr, tz) {
+    for (var i = 0; i <= 7; i++) if (dateStrIn(tz, i) === dateStr) return i;
+    return null;
+  }
+
   function eclipseOn(dateStr, tz) {
     return ECLIPSES.filter(function (e) { return dateInTz(new Date(e.greatest), tz) === dateStr; });
   }
@@ -1492,7 +1521,7 @@
         alt = moonAlt(y, m, d, hUTC, 0, lat, lon);
       }
       var up = alt != null && alt > 0;
-      var face = e.type + ' Lunar Eclipse ' + (up ? 'Tonight' : 'Today');
+      var face = e.type + ' Lunar Eclipse ' + whenWord(localHourOf(e.greatest, tz));
       var tip = 'Greatest eclipse at ' + localTime + ' local time. ' + e.duration + '. ';
       tip += up
         ? 'The moon is above your horizon then, so it should be visible if the sky is clear.'
@@ -2066,11 +2095,29 @@
 
     if (on('eclipse')) {
       eclipseWithin(6, tz).forEach(function (e) {
-        var day = dateInTz(new Date(e.greatest), tz);
-        var offGuess = Math.round((new Date(e.greatest) - Date.now()) / 86400000);
-        var n = dayName(day, tz, Math.max(1, offGuess));
-        out.push({ pill: n + ': ' + e.type + ' ' + (e.kind === 'lunar' ? 'Lunar' : 'Solar') + ' Eclipse',
-                   detail: eclipseCard(e, tz, null, null).tip });
+        var day = e.greatest ? dateInTz(new Date(e.greatest), tz) : e.dateUTC;
+        // Exact offset from local calendar dates rather than a rounded
+        // millisecond difference, which drifts across a DST change.
+        var off = dayOffsetOf(day, tz);
+        if (off == null) return;
+        var kindName = e.type + ' ' + (e.kind === 'lunar' ? 'Lunar' : 'Solar') + ' Eclipse';
+        var label;
+        if (!e.greatest) {
+          label = kindName + ' ' + dayName(day, tz, off);
+        } else {
+          var hour = localHourOf(e.greatest, tz);
+          var time = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' })
+            .format(new Date(e.greatest));
+          if (hour < 5) {
+            // The small hours belong to the evening before, which is the
+            // night you would actually have to stay up for.
+            var prev = off > 0 ? dayName(dateStrIn(tz, off - 1), tz, off - 1) : 'tonight';
+            label = kindName + ', overnight ' + prev + ' at ' + time;
+          } else {
+            label = kindName + ' ' + dayName(day, tz, off) + ' at ' + time;
+          }
+        }
+        out.push({ pill: label, detail: eclipseCard(e, tz, null, null).tip });
       });
     }
 
