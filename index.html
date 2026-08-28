@@ -41,25 +41,26 @@
      narrow phone; a landscape phone or a tablet gets everything in one
      row, which is the reason the request mentioned turning the phone
      sideways \u2014 width is the whole constraint here. */
-  .multiday .hourly{gap:10px;}
-  .mdrow{display:flex;gap:6px;flex-wrap:wrap;}
-  .mdcard{flex:1 1 78px;min-width:70px;border-radius:12px;padding:8px 6px 7px;
-          text-align:center;cursor:pointer;border:none;font:inherit;color:var(--ink);}
-  .mdcard .mdday{font-size:11px;font-weight:700;opacity:.75;margin-bottom:3px;}
-  .mdcard .mdbar{height:8px;border-radius:4px;margin:2px 0 5px;}
-  .mdcard .mdmain{font-size:13.5px;font-weight:700;line-height:1.2;}
-  .mdcard .mdsub{font-size:11px;opacity:.7;margin-top:1px;}
-  .mdcard.today{box-shadow:0 0 0 2px var(--ink) inset;}
-  .mdlabel{font-size:11px;letter-spacing:.06em;text-transform:uppercase;
-           color:var(--mid);margin:2px 0 6px;}
-  @media (orientation:landscape) and (max-width:900px){
-    .mdcard{flex:1 1 0;min-width:0;}
+  .mdgrid{display:grid;gap:5px;}
+  .mdcell{border:none;font:inherit;color:var(--ink);border-radius:11px;
+          padding:9px 5px;min-height:52px;cursor:pointer;display:flex;
+          flex-direction:column;align-items:center;justify-content:center;
+          text-align:center;overflow:hidden;}
+  .mdcell.mdhead{min-height:46px;}
+  .mdname{font-size:12.5px;font-weight:700;line-height:1.15;}
+  .mddate{font-size:11px;opacity:.7;margin-top:1px;}
+  .mdtext{font-size:12px;font-weight:700;line-height:1.2;}
+  .mdcell.today{box-shadow:0 0 0 2px rgba(22,35,47,.45) inset;}
+  @media (max-width:430px){
+    .mdtext{font-size:10.5px;} .mdname{font-size:11px;} .mddate{font-size:10px;}
+    .mdcell{padding:7px 3px;border-radius:9px;}
   }
   .ref{position:absolute;top:2px;bottom:2px;width:1px;
        background:rgba(22,35,47,.22);pointer-events:none;}
   .ref.major{background:rgba(22,35,47,.34);}
-  .reflabel{position:absolute;top:-1px;font-size:9.5px;color:rgba(22,35,47,.4);
-            transform:translateX(-50%);pointer-events:none;white-space:nowrap;}
+  .timeaxis{position:relative;height:15px;margin:1px 2px 0;}
+  .timeaxis span{position:absolute;top:0;font-size:10.5px;color:var(--mid);
+                 transform:translateX(-50%);white-space:nowrap;}
   /* A tappable card says so: a small chevron that rotates when open.
      Only appears on cards that actually have something behind them, so
      it never promises a tap that does nothing. */
@@ -2284,10 +2285,20 @@
   /* ================= data =================
      Every request goes straight from this browser to a public,
      keyless endpoint. Nothing is proxied. */
+  /* Google and CDC both return a JSON body explaining a 400. Reading it
+     turns "Service returned 400" into something a person can act on \u2014
+     an unsupported location reads very differently from a bad key. */
   function j(url, opts) {
     return fetch(url, opts || {}).then(function (r) {
-      if (!r.ok) throw new Error('Service returned ' + r.status);
-      return r.json();
+      if (r.ok) return r.json();
+      return r.text().then(function (body) {
+        var msg = '';
+        try {
+          var parsed = JSON.parse(body);
+          msg = (parsed.error && parsed.error.message) || parsed.message || '';
+        } catch (e) { /* not JSON, fall back to the status */ }
+        throw new Error(msg || ('Service returned ' + r.status));
+      }, function () { throw new Error('Service returned ' + r.status); });
     });
   }
 
@@ -2382,7 +2393,9 @@
     Promise.all([
       j('https://pollen.googleapis.com/v1/forecast:lookup?key=' + encodeURIComponent(k)
         + '&location.latitude=' + place.lat + '&location.longitude=' + place.lon
-        + '&days=5&languageCode=en&plantsDescription=false')
+        // Google's docs are explicit that this takes 0, not false. Sending
+        // 'false' is rejected as a malformed request.
+        + '&days=5&languageCode=en&plantsDescription=0')
         .then(function (p) {
           return { days: (p.dailyInfo || []).map(function (dd) {
             var dt2 = dd.date || {};
@@ -2843,6 +2856,8 @@
       el.appendChild(chev);
     }
     if (row.timeline) {
+      // Guide lines only. The labels live once, on a shared axis under
+      // the whole stack, rather than repeating on every card.
       var step = store.tickHours;
       if (step) {
         for (var h = step; h < 24; h += step) {
@@ -2850,12 +2865,6 @@
           rt.className = 'ref' + (h % 12 === 0 ? ' major' : '');
           rt.style.left = ((h / 23) * 100).toFixed(2) + '%';
           line.appendChild(rt);
-          if (row.showTickLabels !== false) {
-            var lab = document.createElement('span'); lab.className = 'reflabel';
-            lab.style.left = rt.style.left;
-            lab.textContent = h % 12 === 0 ? (h === 0 ? '12a' : '12p') : (h > 12 ? h - 12 : h);
-            line.appendChild(lab);
-          }
         }
       }
       if (state.dayOffset === 0) {
@@ -3043,6 +3052,22 @@
     return wrap;
   }
 
+  /* The axis is a row of its own, so the hours are stated once for the
+     column of cards above it. */
+  function timeAxis() {
+    var step = store.tickHours;
+    if (!step) return null;
+    var ax = document.createElement('div'); ax.className = 'timeaxis';
+    for (var h = step; h < 24; h += step) {
+      var lab = document.createElement('span');
+      lab.style.left = ((h / 23) * 100).toFixed(2) + '%';
+      lab.textContent = h === 12 ? 'noon' : h === 0 ? 'midnight'
+                      : (h > 12 ? (h - 12) + 'pm' : h + 'am');
+      ax.appendChild(lab);
+    }
+    return ax;
+  }
+
   function skeleton(host, tall, short) {
     host.innerHTML = '';
     var c = document.createElement('div'); c.className = 'hourly';
@@ -3080,59 +3105,54 @@
     }
     if (!days.length) return fail(host, 'No forecast for that range.');
 
-    function row(label, build) {
-      var wrap = document.createElement('div');
-      var lb = document.createElement('div'); lb.className = 'mdlabel'; lb.textContent = label;
-      wrap.appendChild(lb);
-      var r = document.createElement('div'); r.className = 'mdrow';
-      days.forEach(function (x) {
-        var card = build(x.d, x.off);
-        if (card) r.appendChild(card);
-      });
-      wrap.appendChild(r);
-      host.appendChild(wrap);
-    }
+    var grid = document.createElement('div');
+    grid.className = 'mdgrid';
+    grid.style.gridTemplateColumns = 'repeat(' + days.length + ', 1fr)';
 
-    row('Feels Like', function (d, off) {
-      var f = feelsCard(d);
-      return mdCard(off, d, mdBar(function (t) { return colorAt('feels', d.feelsMin + (d.feelsMax - d.feelsMin) * t); }),
-        Math.round(d.feelsMin) + DEG + '\u2013' + Math.round(d.feelsMax) + DEG, tempWord(d.feelsMax), f.tip);
-    });
-    row('Sky', function (d, off) {
-      var sk = skyCard(d);
-      return mdCard(off, d, mdBar(function (t) { return skyColor({ cloud: d.cloudDay, code: d.code, day: true }); }),
-        sk.bold.split(',')[0], sk.bold.indexOf(',') > -1 ? 'wet' : (d.rainChance >= 15 ? Math.round(d.rainChance) + '% rain' : ''), sk.tip);
-    });
-    row('Sunrise and sunset', function (d, off) {
-      return mdCard(off, d, mdBar(function () { return css(DAYLIT); }),
-        hr(d.sunrise), '', null,
-        clock(d.sunriseISO) + ' \u2013 ' + clock(d.sunsetISO));
-    });
-    row('Moon', function (d, off) {
-      var mc = moonCard(d.date, state.tz, lat, lon);
-      return mdCard(off, d, mdBar(function () { return css(NIGHT); }),
-        mc.caption ? mc.caption.split(' \u00B7 ')[0] : 'Moon', mc.caption ? mc.caption.split(' \u00B7 ')[1] : '', mc.tip);
-    });
-  }
-
-  function mdCard(off, d, bg, main, sub, tip, override) {
-    var el = document.createElement('button');
-    el.className = 'mdcard' + (off === 0 ? ' today' : '');
-    var day = document.createElement('div'); day.className = 'mdday';
-    day.textContent = off === 0 ? 'Today' : labelFor(state.tz, off).split(',')[0].slice(0, 3);
-    var bar = document.createElement('div'); bar.className = 'mdbar'; bar.style.background = bg;
-    var main2 = document.createElement('div'); main2.className = 'mdmain'; main2.textContent = override || main;
-    el.appendChild(day); el.appendChild(bar); el.appendChild(main2);
-    if (sub) { var s2 = document.createElement('div'); s2.className = 'mdsub'; s2.textContent = sub; el.appendChild(s2); }
-    if (tip) {
+    /* Columns are days, rows are the same four cards as the single-day
+       view. Each cell keeps its own midnight-to-midnight gradient, so a
+       week reads as a set of comparable strips rather than a summary
+       that has thrown the shape of each day away. */
+    function cell(d, off, build, isHeader) {
+      var row = build(d, off);
+      var el = document.createElement('button');
+      el.className = 'mdcell' + (off === 0 ? ' today' : '') + (isHeader ? ' mdhead' : '');
+      el.style.background = row.bg;
+      if (isHeader) {
+        var dn = document.createElement('div'); dn.className = 'mdname';
+        dn.textContent = off === 0 ? 'Today' : off === 1 ? 'Tomorrow'
+                       : labelFor(state.tz, off).split(',')[0];
+        var dt = document.createElement('div'); dt.className = 'mddate';
+        dt.textContent = (+d.date.slice(5, 7)) + '/' + (+d.date.slice(8, 10));
+        el.appendChild(dn); el.appendChild(dt);
+      } else {
+        var t = document.createElement('div'); t.className = 'mdtext';
+        t.textContent = row.bold;
+        el.appendChild(t);
+      }
       el.addEventListener('click', function () {
-        state.dayOffset = off;
-        var sel = document.getElementById('spanSel'); if (sel) sel.value = '1';
-        store.span = 1; saveStore();
-        buildDays(); renderHome();
+        state.dayOffset = off; store.span = 1; saveStore();
+        buildDays(); buildSpan(); renderHome();
       });
+      return el;
     }
-    return el;
+
+    var rows = [
+      [true,  function (d) { return daylightCard(d, lat, lon, state.tz); }],
+      [false, function (d) { return feelsCard(d); }],
+      [false, function (d) { return skyCard(d); }],
+      [false, function (d) { return moonCard(d.date, state.tz, lat, lon); }]
+    ];
+    rows.forEach(function (r) {
+      days.forEach(function (x) {
+        try { grid.appendChild(cell(x.d, x.off, r[1], r[0])); }
+        catch (e) {
+          var blank = document.createElement('div'); blank.className = 'mdcell';
+          grid.appendChild(blank);
+        }
+      });
+    });
+    host.appendChild(grid);
   }
 
   function renderHome() {
@@ -3216,6 +3236,9 @@
 
     var todoEl = on('todo') ? todoCard(weekItems) : null;
     if (todoEl) todoEl.className += ' todoblock';
+
+    var axis = timeAxis();
+    if (axis) col.appendChild(axis);
 
     var blocks = { cards: col, tiles: grid, todo: todoEl };
     var order = blockOrder().filter(function (b) { return on('block-' + b); });
