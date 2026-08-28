@@ -31,6 +31,35 @@
   select:focus-visible{outline:2px solid var(--link);outline-offset:3px;}
 
   .face{position:relative;}
+  /* Fixed-interval reference ticks, off by default. The live "now" tick
+     tells you where you are; these tell you where six o'clock is,
+     for anyone who does not track that by feel. Reuses the same
+     positioning maths as the now-tick, just at fixed hours instead of
+     the current time. */
+  /* Multi-day view: each of the four across-the-day cards becomes a
+     row of narrow day-cards instead of one 24-hour card. Wraps on a
+     narrow phone; a landscape phone or a tablet gets everything in one
+     row, which is the reason the request mentioned turning the phone
+     sideways \u2014 width is the whole constraint here. */
+  .multiday .hourly{gap:10px;}
+  .mdrow{display:flex;gap:6px;flex-wrap:wrap;}
+  .mdcard{flex:1 1 78px;min-width:70px;border-radius:12px;padding:8px 6px 7px;
+          text-align:center;cursor:pointer;border:none;font:inherit;color:var(--ink);}
+  .mdcard .mdday{font-size:11px;font-weight:700;opacity:.75;margin-bottom:3px;}
+  .mdcard .mdbar{height:8px;border-radius:4px;margin:2px 0 5px;}
+  .mdcard .mdmain{font-size:13.5px;font-weight:700;line-height:1.2;}
+  .mdcard .mdsub{font-size:11px;opacity:.7;margin-top:1px;}
+  .mdcard.today{box-shadow:0 0 0 2px var(--ink) inset;}
+  .mdlabel{font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+           color:var(--mid);margin:2px 0 6px;}
+  @media (orientation:landscape) and (max-width:900px){
+    .mdcard{flex:1 1 0;min-width:0;}
+  }
+  .ref{position:absolute;top:2px;bottom:2px;width:1px;
+       background:rgba(22,35,47,.22);pointer-events:none;}
+  .ref.major{background:rgba(22,35,47,.34);}
+  .reflabel{position:absolute;top:-1px;font-size:9.5px;color:rgba(22,35,47,.4);
+            transform:translateX(-50%);pointer-events:none;white-space:nowrap;}
   /* A tappable card says so: a small chevron that rotates when open.
      Only appears on cards that actually have something behind them, so
      it never promises a tap that does nothing. */
@@ -209,7 +238,9 @@
 <body>
 <div class="wrap">
   <div class="hdr">
-    <div class="l1"><select id="daySel" aria-label="Day"></select></div>
+    <div class="l1"><select id="daySel" aria-label="Day"></select>
+      <select id="spanSel" aria-label="Days shown" style="margin-left:6px"></select>
+    </div>
     <div class="l2"><select id="placeSel" aria-label="Location"></select></div>
     <div id="searchBox" style="display:none;margin-top:10px">
       <input id="q" type="search" placeholder="Search any US town" autocomplete="off"
@@ -273,8 +304,10 @@
     { id: 'pavement',  name: 'Pavement and paws', note: 'A dog' },
     { id: 'wind',      name: 'Wind',              note: 'Kite and sailing notes in the tap' },
     { id: 'aurora',    name: 'Aurora',            note: 'Only during a geomagnetic storm' },
+    { id: 'eclipse',   name: 'Eclipse',           note: 'Only on an eclipse day' },
     // to-do list only
     { id: 'mask',      name: 'Masking',           note: 'Suggests a mask when the air or the viruses are bad' },
+    { id: 'swim',      name: 'Swimming',          note: 'Suggests a swim, and flags good swimming days ahead' },
     { id: 'arthritis', name: 'Arthritis',         note: 'Some people\u2019s arthritis flares with the weather' },
     { id: 'mold',      name: 'Basement',          note: 'If you have one, should you air it out?' },
     { id: 'bug',       name: 'Bug Spray' },
@@ -1153,12 +1186,43 @@
     var tip = w + DEG + (waveFt != null ? ', waves ' + waveFt + ' ft' : '') + '. ';
     if (w < 65) tip = 'Cold enough for cold-water shock \u2014 get in slowly, never jump. ' + tip;
     return { bg: bgFlat('water', w), bold: word, tip: tip + provenance,
-             todo: w >= 70 ? 'Go for a swim' : null, todoWhen: 'day', todoRank: 95, todoOutdoor: true };
+             todo: (w >= 70 && on('swim')) ? 'Go for a swim' : null, todoWhen: 'day', todoRank: 95, todoOutdoor: true };
   }
 
   /* The card is the day: slate at the edges, warm gold through the
      middle, with the colour turning at the actual sunrise and sunset. */
-  function daylightCard(d) {
+  /* Standard photography threshold: golden hour runs while the sun sits
+     under 6 degrees above the horizon. Solved the same way as solar
+     noon \u2014 nothing fetched, just geometry. */
+  function solarElevation(lat, lon, dateStr, hourLocal, tzOff) {
+    var rad = Math.PI / 180;
+    var y = +dateStr.slice(0, 4), m = +dateStr.slice(5, 7), dd = +dateStr.slice(8, 10);
+    var dayOfYear = Math.floor((Date.UTC(y, m - 1, dd) - Date.UTC(y, 0, 0)) / 86400000);
+    var decl = 23.44 * Math.sin(rad * (360 / 365) * (dayOfYear - 81));
+    var utcHour = hourLocal - tzOff;
+    var b = rad * (360 / 365) * (dayOfYear - 81);
+    var eqTime = 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b);
+    var solarTime = utcHour * 60 + 4 * lon + eqTime;
+    var hourAngle = (solarTime / 4) - 180;
+    var e = Math.asin(Math.sin(rad * lat) * Math.sin(rad * decl)
+                     + Math.cos(rad * lat) * Math.cos(rad * decl) * Math.cos(rad * hourAngle));
+    return e / rad;
+  }
+  function goldenHour(d, lat, lon, tzOff) {
+    if (lat == null) return null;
+    var sr = d.sunrise, ss = d.sunset;   // derive() names them sunrise/sunset
+    var amEnd = null, pmStart = null;
+    for (var h1 = sr - 0.5; h1 < sr + 4; h1 += 1 / 30) {
+      if (solarElevation(lat, lon, d.date, h1, tzOff) > 6) { amEnd = h1; break; }
+    }
+    for (var h2 = ss - 4; h2 < ss + 0.5; h2 += 1 / 30) {
+      if (solarElevation(lat, lon, d.date, h2, tzOff) <= 6) pmStart = h2;
+    }
+    if (amEnd == null && pmStart == null) return null;
+    return { amEnd: amEnd, pmStart: pmStart };
+  }
+
+  function daylightCard(d, lat, lon, tz) {
     var srF = frac(d.sunriseISO), ssF = frac(d.sunsetISO);
     var mins = span(d.sunriseISO, d.sunsetISO);
     var bg = bgDay(d, function (r, h) {
@@ -1169,6 +1233,13 @@
       return css(c);
     });
     var tip = hm(mins) + ' of daylight. Solar noon at ' + hr((srF + ssF) / 2) + '.';
+    var golden = goldenHour(d, lat, lon, tzOffsetHours(d.date, tz));
+    if (golden) {
+      var bits = [];
+      if (golden.amEnd != null) bits.push('early light until ' + hr(golden.amEnd));
+      if (golden.pmStart != null) bits.push('golden light from ' + hr(golden.pmStart));
+      tip += ' Golden hour: ' + bits.join(', and ') + '.';
+    }
     if (d.prevSunriseISO) {
       var delta = mins - span(d.prevSunriseISO, d.prevSunsetISO);
       if (delta !== 0) {
@@ -1343,6 +1414,99 @@
       todos.push({ text: 'Wash hands more than usual', when: 'day', rank: 22 });
     }
     return { bg: bgFlat('risk', worst.rank), bold: face, tip: tip, todos: todos };
+  }
+
+  /* Hand-maintained from NASA/Espenak eclipse predictions, public
+     domain. Extends into 2028; add more when this runs low. Times are
+     the instant of greatest eclipse, UTC.
+
+     Lunar eclipses are visible from the whole night side of Earth, so
+     local circumstances are computable exactly \u2014 same moon-altitude
+     check used for moonrise. Solar eclipses trace a path a few hundred
+     miles wide, and knowing whether one point on Earth falls inside it
+     needs the actual shadow geometry (Besselian elements), not
+     something safe to approximate here. Those get a heads-up and a
+     link to NASA's own calculator rather than a claim about your sky. */
+  var ECLIPSES = [
+    // Hand-maintained from NASA/Espenak eclipse predictions, public
+    // domain. Chronological order. Extend past 2032 when this runs low
+    // (see eclipse.gsfc.nasa.gov).
+    { kind: 'lunar', type: 'Total', dateUTC: '2026-03-03', greatest: '2026-03-03T11:34:00Z', p1: '2026-03-03T08:44:00Z', u4: '2026-03-03T13:17:00Z', duration: '58 min of totality', region: 'the Americas, eastern Asia, Australia and the Pacific' },
+    { kind: 'solar', type: 'Total', dateUTC: '2026-08-12', greatest: '2026-08-12T17:47:00Z', region: 'the path crosses Greenland, Iceland and northern Spain; partial phases reach a wider band across the Arctic and Europe' },
+    { kind: 'lunar', type: 'Partial', dateUTC: '2026-08-28', greatest: '2026-08-28T04:13:00Z', p1: '2026-08-28T02:33:00Z', u4: '2026-08-28T05:53:00Z', duration: 'about an hour of partial eclipse', region: 'the eastern Pacific, the Americas, the Atlantic, Europe and Africa' },
+    { kind: 'lunar', type: 'Penumbral', dateUTC: '2027-02-20', greatest: null, region: 'the Americas, Europe, Africa and Asia' },
+    { kind: 'solar', type: 'Total', dateUTC: '2027-08-02', greatest: '2027-08-02T10:07:00Z', region: 'the path crosses Morocco, Spain, Algeria, Libya and Egypt, with up to six minutes of totality near Luxor' },
+    { kind: 'lunar', type: 'Penumbral', dateUTC: '2027-08-17', greatest: null, region: 'the eastern Pacific, the Americas, Europe, Africa and western Asia' },
+    { kind: 'lunar', type: 'Partial', dateUTC: '2028-01-12', greatest: '2028-01-12T04:14:00Z', p1: '2028-01-12T02:07:00Z', u4: '2028-01-12T06:22:00Z', duration: 'a slight partial eclipse, 7% at greatest', region: 'the eastern Pacific, the Americas, the Atlantic, Europe, Africa and western Asia' },
+    { kind: 'lunar', type: 'Total', dateUTC: '2028-12-31', greatest: '2028-12-31T16:53:00Z', p1: '2028-12-31T14:30:00Z', u4: '2028-12-31T19:16:00Z', duration: '1 h 11 min of totality', region: 'Europe, Africa, Asia and Australia' },
+    { kind: 'solar', type: 'Partial', dateUTC: '2029-01-14', greatest: '2029-01-14T17:13:00Z', region: 'the Arctic and northern North America; no totality anywhere on this one' },
+    { kind: 'solar', type: 'Partial', dateUTC: '2029-06-12', greatest: '2029-06-12T13:36:00Z', region: 'the Arctic, far northern Europe, Asia and North America' },
+    { kind: 'lunar', type: 'Total', dateUTC: '2029-06-26', greatest: '2029-06-26T03:22:00Z', p1: '2029-06-26T00:35:00Z', u4: '2029-06-26T06:10:00Z', duration: 'about 42 min of totality', region: 'the Americas, Europe, Africa and western Asia' },
+    { kind: 'solar', type: 'Partial', dateUTC: '2029-12-05', greatest: '2029-12-05T15:37:00Z', region: 'Antarctica and the southernmost tip of South America and Africa' },
+    { kind: 'lunar', type: 'Total', dateUTC: '2029-12-20', greatest: '2029-12-20T22:42:00Z', p1: '2029-12-20T19:43:00Z', u4: '2029-12-21T00:29:00Z', duration: 'about 54 min of totality', region: 'the Americas, Europe, Africa, Asia and Australia' },
+    { kind: 'solar', type: 'Annular', dateUTC: '2030-06-01', greatest: '2030-06-01T06:29:00Z', region: 'the path crosses North Africa, Greece, Turkey, the Caucasus and into Asia; partial phases reach much of Europe, Africa and Asia' },
+    { kind: 'lunar', type: 'Partial', dateUTC: '2030-06-15', greatest: '2030-06-15T18:35:00Z', p1: '2030-06-15T16:15:00Z', u4: '2030-06-15T19:47:00Z', duration: 'about 2 h 24 min of partial eclipse', region: 'the Americas, Europe, Africa, Asia and Australia' },
+    { kind: 'solar', type: 'Total', dateUTC: '2030-11-25', greatest: '2030-11-25T06:51:00Z', region: 'the path crosses southern Africa, the Indian Ocean and Australia, with over four minutes of totality' },
+    { kind: 'lunar', type: 'Penumbral', dateUTC: '2030-12-09', greatest: null, region: 'a subtle penumbral shading' },
+    { kind: 'lunar', type: 'Penumbral', dateUTC: '2031-05-07', greatest: null, region: 'a subtle penumbral shading' },
+    { kind: 'solar', type: 'Annular', dateUTC: '2031-05-21', greatest: '2031-05-21T07:16:00Z', region: 'the path crosses central Africa; partial phases reach much of Africa, the Middle East, South and Southeast Asia, and Australia' },
+    { kind: 'lunar', type: 'Penumbral', dateUTC: '2031-06-05', greatest: null, region: 'a subtle penumbral shading' },
+    { kind: 'lunar', type: 'Penumbral', dateUTC: '2031-10-30', greatest: null, region: 'a subtle penumbral shading' },
+    { kind: 'solar', type: 'Hybrid', dateUTC: '2031-11-14', greatest: '2031-11-14T21:00:00Z', region: 'a rare hybrid eclipse over the Pacific, switching between annular and total along its path' },
+    { kind: 'lunar', type: 'Total', dateUTC: '2032-04-25', greatest: '2032-04-25T15:15:00Z', p1: '2032-04-25T12:22:00Z', u4: '2032-04-25T16:59:00Z', duration: 'about 65 min of totality', region: 'the Americas, Europe, Africa, Asia and Australia' },
+    { kind: 'solar', type: 'Annular', dateUTC: '2032-05-09', greatest: null, region: 'mostly over the South Atlantic; no land sees the ring of fire on this one' },
+    { kind: 'lunar', type: 'Total', dateUTC: '2032-10-18', greatest: '2032-10-18T19:04:00Z', p1: '2032-10-18T16:26:00Z', u4: '2032-10-18T20:42:00Z', duration: 'about 47 min of totality', region: 'the Americas, Europe, Africa, Asia and Australia' }
+  ];
+
+  function eclipseOn(dateStr, tz) {
+    return ECLIPSES.filter(function (e) { return dateInTz(new Date(e.greatest), tz) === dateStr; });
+  }
+  function eclipseWithin(days, tz) {
+    var out = [];
+    ECLIPSES.forEach(function (e) {
+      var diff = (new Date(e.greatest) - new Date()) / 86400000;
+      if (diff > 0 && diff <= days) out.push(e);
+    });
+    return out;
+  }
+
+  function eclipseCard(e, tz, lat, lon) {
+    if (!e) return null;
+    // Penumbral lunar eclipses are listed without a precise greatest-eclipse
+    // time because the shading is faint enough that the exact minute is
+    // not worth claiming \u2014 the whole event is a soft, easy-to-miss dimming.
+    if (e.kind === 'lunar' && !e.greatest) {
+      return { bg: bgFlat('risk', 15), bold: 'Penumbral Lunar Eclipse Today',
+        tip: 'A subtle shading across part of the moon, not the dramatic red of a total eclipse. '
+           + 'Easy to miss even when the sky is clear. Visible in general from ' + e.region + '.' };
+    }
+    var when = new Date(e.greatest);
+    var localTime = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(when);
+
+    if (e.kind === 'lunar') {
+      var alt = null;
+      if (lat != null) {
+        var y = when.getUTCFullYear(), m = when.getUTCMonth() + 1, d = when.getUTCDate();
+        var hUTC = when.getUTCHours() + when.getUTCMinutes() / 60;
+        alt = moonAlt(y, m, d, hUTC, 0, lat, lon);
+      }
+      var up = alt != null && alt > 0;
+      var face = e.type + ' Lunar Eclipse ' + (up ? 'Tonight' : 'Today');
+      var tip = 'Greatest eclipse at ' + localTime + ' local time. ' + e.duration + '. ';
+      tip += up
+        ? 'The moon is above your horizon then, so it should be visible if the sky is clear.'
+        : 'The moon is below your horizon at that point, so this one is not visible from here.';
+      tip += ' Visible in general from ' + e.region + '.';
+      return { bg: bgFlat('risk', up ? 60 : 20), bold: face, tip: tip };
+    }
+
+    var face2 = e.type + ' Solar Eclipse ' + (e.dateUTC === dateStrIn(tz, 0) ? 'Today' : 'This Week');
+    var tip2 = 'Greatest eclipse around ' + localTime + ' local time. ' + e.region + '. '
+             + 'Whether it reaches your exact location depends on the path, which this cannot calculate \u2014 '
+             + 'check timeanddate.com/eclipse or NASA\u2019s eclipse pages for your coordinates. '
+             + 'Never look at the sun without eclipse glasses, even during a partial phase.';
+    return { bg: bgFlat('burn', 6), bold: face2, tip: tip2,
+             link: { href: 'https://www.timeanddate.com/eclipse/', text: 'Check exact visibility' } };
   }
 
   function moonCard(dateStr, tz, lat, lon) {
@@ -1896,8 +2060,18 @@
       }
     }
 
-    var swim = swimAhead(p, tz, days);
+    var swim = on('swim') ? swimAhead(p, tz, days) : null;
     if (swim) out.push(swim);
+
+    if (on('eclipse')) {
+      eclipseWithin(6, tz).forEach(function (e) {
+        var day = dateInTz(new Date(e.greatest), tz);
+        var offGuess = Math.round((new Date(e.greatest) - Date.now()) / 86400000);
+        var n = dayName(day, tz, Math.max(1, offGuess));
+        out.push({ pill: n + ': ' + e.type + ' ' + (e.kind === 'lunar' ? 'Lunar' : 'Solar') + ' Eclipse',
+                   detail: eclipseCard(e, tz, null, null).tip });
+      });
+    }
 
     var drop = null, rise = null;
     days.forEach(function (x) {
@@ -2086,9 +2260,9 @@
     store.blocks = o; saveStore(); buildSettings(); renderHome();
   }
 
-  var DEFAULT_TILE_ORDER = ['flag', 'air', 'allergy', 'virus', 'burn', 'water', 'pavement', 'wind', 'aurora'];
+  var DEFAULT_TILE_ORDER = ['flag', 'air', 'allergy', 'virus', 'burn', 'water', 'pavement', 'wind', 'aurora', 'eclipse'];
   var PILL_ONLY = ['frostbite','migraine','arthritis','frizz','bug',
-                   'shoe','frost','pipe','rust','mow','mold','fire','light','mask'];
+                   'shoe','frost','pipe','rust','mow','mold','fire','light','mask','swim'];
   var DEFAULT_HOURLY_ORDER = ['feels', 'sky', 'daylight', 'moon'];
   function orderOf(which) {
     var def = which === 'hourly' ? DEFAULT_HOURLY_ORDER : DEFAULT_TILE_ORDER;
@@ -2170,7 +2344,7 @@
       })).slice(0, 8);
       state.recents = store.recents;
       saveStore();
-      buildDays(); buildPlaces(); renderHome();
+      buildDays(); buildSpan(); buildPlaces(); renderHome();
       host.classList.remove('busy');
       if (store.keys.google) loadGoogle(place);
       // Water arrives on its own schedule: a tile appears if a gauge or
@@ -2668,11 +2842,28 @@
         + 'stroke-linecap="round" stroke-linejoin="round"/></svg>';
       el.appendChild(chev);
     }
-    if (row.timeline && state.dayOffset === 0) {
-      var tick = document.createElement('div');
-      tick.className = 'now';
-      tick.style.left = (nowFraction() * 100).toFixed(2) + '%';
-      line.appendChild(tick);
+    if (row.timeline) {
+      var step = store.tickHours;
+      if (step) {
+        for (var h = step; h < 24; h += step) {
+          var rt = document.createElement('div');
+          rt.className = 'ref' + (h % 12 === 0 ? ' major' : '');
+          rt.style.left = ((h / 23) * 100).toFixed(2) + '%';
+          line.appendChild(rt);
+          if (row.showTickLabels !== false) {
+            var lab = document.createElement('span'); lab.className = 'reflabel';
+            lab.style.left = rt.style.left;
+            lab.textContent = h % 12 === 0 ? (h === 0 ? '12a' : '12p') : (h > 12 ? h - 12 : h);
+            line.appendChild(lab);
+          }
+        }
+      }
+      if (state.dayOffset === 0) {
+        var tick = document.createElement('div');
+        tick.className = 'now';
+        tick.style.left = (nowFraction() * 100).toFixed(2) + '%';
+        line.appendChild(tick);
+      }
     }
     el.appendChild(line);
     if (row.caption && !row.split) {
@@ -2870,6 +3061,80 @@
     var e = document.createElement('div'); e.className = 'card flat alert'; e.textContent = msg; host.appendChild(e);
   }
 
+  /* Building N compact days re-runs derive() per day rather than adding
+     a "compact" branch to every card function. Slower by a few
+     milliseconds, but it means the multi-day summaries can never drift
+     from what the single-day cards say, because they call the exact
+     same code. */
+  function mdBar(fn) {
+    var stops = [];
+    for (var pct = 0; pct <= 100; pct += 20) stops.push(fn(pct / 100) + ' ' + pct + '%');
+    return 'linear-gradient(90deg,' + stops.join(',') + ')';
+  }
+  function renderMultiDay(p, lat, lon, cal, span) {
+    var host = document.getElementById('homeBody');
+    host.innerHTML = ''; host.className = 'multiday';
+    var days = [];
+    for (var off = 0; off < span; off++) {
+      try { days.push({ off: off, d: derive(p.wx, p.aq, state.tz, off) }); } catch (e) {}
+    }
+    if (!days.length) return fail(host, 'No forecast for that range.');
+
+    function row(label, build) {
+      var wrap = document.createElement('div');
+      var lb = document.createElement('div'); lb.className = 'mdlabel'; lb.textContent = label;
+      wrap.appendChild(lb);
+      var r = document.createElement('div'); r.className = 'mdrow';
+      days.forEach(function (x) {
+        var card = build(x.d, x.off);
+        if (card) r.appendChild(card);
+      });
+      wrap.appendChild(r);
+      host.appendChild(wrap);
+    }
+
+    row('Feels Like', function (d, off) {
+      var f = feelsCard(d);
+      return mdCard(off, d, mdBar(function (t) { return colorAt('feels', d.feelsMin + (d.feelsMax - d.feelsMin) * t); }),
+        Math.round(d.feelsMin) + DEG + '\u2013' + Math.round(d.feelsMax) + DEG, tempWord(d.feelsMax), f.tip);
+    });
+    row('Sky', function (d, off) {
+      var sk = skyCard(d);
+      return mdCard(off, d, mdBar(function (t) { return skyColor({ cloud: d.cloudDay, code: d.code, day: true }); }),
+        sk.bold.split(',')[0], sk.bold.indexOf(',') > -1 ? 'wet' : (d.rainChance >= 15 ? Math.round(d.rainChance) + '% rain' : ''), sk.tip);
+    });
+    row('Sunrise and sunset', function (d, off) {
+      return mdCard(off, d, mdBar(function () { return css(DAYLIT); }),
+        hr(d.sunrise), '', null,
+        clock(d.sunriseISO) + ' \u2013 ' + clock(d.sunsetISO));
+    });
+    row('Moon', function (d, off) {
+      var mc = moonCard(d.date, state.tz, lat, lon);
+      return mdCard(off, d, mdBar(function () { return css(NIGHT); }),
+        mc.caption ? mc.caption.split(' \u00B7 ')[0] : 'Moon', mc.caption ? mc.caption.split(' \u00B7 ')[1] : '', mc.tip);
+    });
+  }
+
+  function mdCard(off, d, bg, main, sub, tip, override) {
+    var el = document.createElement('button');
+    el.className = 'mdcard' + (off === 0 ? ' today' : '');
+    var day = document.createElement('div'); day.className = 'mdday';
+    day.textContent = off === 0 ? 'Today' : labelFor(state.tz, off).split(',')[0].slice(0, 3);
+    var bar = document.createElement('div'); bar.className = 'mdbar'; bar.style.background = bg;
+    var main2 = document.createElement('div'); main2.className = 'mdmain'; main2.textContent = override || main;
+    el.appendChild(day); el.appendChild(bar); el.appendChild(main2);
+    if (sub) { var s2 = document.createElement('div'); s2.className = 'mdsub'; s2.textContent = sub; el.appendChild(s2); }
+    if (tip) {
+      el.addEventListener('click', function () {
+        state.dayOffset = off;
+        var sel = document.getElementById('spanSel'); if (sel) sel.value = '1';
+        store.span = 1; saveStore();
+        buildDays(); renderHome();
+      });
+    }
+    return el;
+  }
+
   function renderHome() {
     var host = document.getElementById('homeBody'), p = state.home;
     if (!state.place) { host.innerHTML = ''; return; }
@@ -2879,6 +3144,9 @@
     try { d = derive(p.wx, p.aq, state.tz, state.dayOffset); } catch (e) { return fail(host, e.message); }
     var lat = state.place.lat, lon = state.place.lon;
     var cal = calendarFor(lat, lon);
+    var span = store.span || 1;
+    if (span > 1) return renderMultiDay(p, lat, lon, cal, span);
+    host.className = '';
     host.innerHTML = '';
     todos = [];
 
@@ -2892,7 +3160,7 @@
     var hourlyBuilders = {
       feels:    function () { return feelsCard(d); },
       sky:      function () { return skyCard(d); },
-      daylight: function () { return daylightCard(d); },
+      daylight: function () { return daylightCard(d, lat, lon, state.tz); },
       moon:     function () { return moonCard(d.date, state.tz, lat, lon); }
     };
     var col = document.createElement('div'); col.className = 'hourly';
@@ -2921,6 +3189,10 @@
       light:     function () { return lightCard(d); },
       mask:      function () { return null; },   // a switch, not a card
       aurora:    function () { return auroraCard(d, p.kp); },
+      eclipse:   function () {
+        var hits = eclipseOn(d.date, state.tz);
+        return hits.length ? eclipseCard(hits[0], state.tz, lat, lon) : null;
+      },
       water:     function () { return waterCard(p.water, d.date); },
       virus:     function () { return virusCard(p.virus); },
       flag:      function () { return flagCard(p.flag); },
@@ -2972,12 +3244,27 @@
 
   function buildDays() {
     daySel.innerHTML = '';
+    var span = store.span || 1;
+    daySel.style.display = span > 1 ? 'none' : '';
     for (var i = 0; i < 7; i++) {
       var o = document.createElement('option');
       o.value = String(i); o.textContent = labelFor(state.tz, i);
       if (i === state.dayOffset) o.selected = true;
       daySel.appendChild(o);
     }
+  }
+  function buildSpan() {
+    var sel = document.getElementById('spanSel');
+    sel.innerHTML = '';
+    [[1, 'Today'], [3, '3 days'], [5, '5 days'], [7, '7 days']].forEach(function (opt) {
+      var o = document.createElement('option'); o.value = String(opt[0]); o.textContent = opt[1];
+      if ((store.span || 1) === opt[0]) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.addEventListener('change', function () {
+      store.span = parseInt(sel.value, 10) || 1; saveStore();
+      buildDays(); renderHome();
+    });
   }
   function buildPlaces() {
     placeSel.innerHTML = '';
@@ -3097,6 +3384,21 @@
     var h = document.createElement('h3'); h.textContent = heading;
     settingsPanel.appendChild(h);
     ids.forEach(function (id, i, arr) { cardRow(id, i, arr, which); });
+    if (which === 'hourly') {
+      var th = document.createElement('h3'); th.textContent = 'Time markers';
+      settingsPanel.appendChild(th);
+      [[0, 'Off'], [6, 'Every 6 hours'], [4, 'Every 4 hours'], [3, 'Every 3 hours']]
+        .forEach(function (opt) {
+          var row = document.createElement('label'); row.className = 'opt sub';
+          var r = document.createElement('input'); r.type = 'radio'; r.name = 'ticks';
+          r.checked = (store.tickHours || 0) === opt[0];
+          r.addEventListener('change', function () {
+            store.tickHours = opt[0]; saveStore(); renderHome();
+          });
+          var sp = document.createElement('span'); sp.textContent = opt[1];
+          row.appendChild(r); row.appendChild(sp); settingsPanel.appendChild(row);
+        });
+    }
   }
 
   function subControls(id) {
@@ -3391,7 +3693,7 @@
   buildRamps();
   pruneDone();
   if (store.tapped) document.getElementById('tipHint').style.display = 'none';
-  buildDays(); buildPlaces();
+  buildDays(); buildSpan(); buildPlaces();
     if (state.place) loadHome(state.place);
   else if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(function (pos) {
