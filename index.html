@@ -1488,6 +1488,38 @@
     return null;
   }
 
+  /* The night an eclipse belongs to is not always the date it falls on.
+     12:13 AM Friday is Thursday night as far as anyone staying up is
+     concerned, so it is named for both days. */
+  function eclipseNightOwner(e, tz) {
+    if (!e.greatest) return e.dateUTC;
+    var day = dateInTz(new Date(e.greatest), tz);
+    if (localHourOf(e.greatest, tz) >= 5) return day;
+    var off = dayOffsetOf(day, tz);
+    return off != null && off > 0 ? dateStrIn(tz, off - 1) : day;
+  }
+  function eclipseLabel(e, tz) {
+    var kindName = e.type + ' ' + (e.kind === 'lunar' ? 'Lunar' : 'Solar') + ' Eclipse';
+    if (!e.greatest) {
+      var d0 = dayOffsetOf(e.dateUTC, tz);
+      return kindName + (d0 != null ? ' ' + dayName(e.dateUTC, tz, d0) : '');
+    }
+    var day = dateInTz(new Date(e.greatest), tz);
+    var off = dayOffsetOf(day, tz);
+    var time = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' })
+      .format(new Date(e.greatest));
+    if (localHourOf(e.greatest, tz) < 5 && off != null && off > 0) {
+      // Both ends of the night as plain weekday names. Mixing a weekday
+      // with "Tomorrow" reads as two different nights.
+      var wd = function (ds) {
+        return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'long' })
+          .format(new Date(ds + 'T12:00:00Z'));
+      };
+      return kindName + ', ' + wd(dateStrIn(tz, off - 1)) + '\u2013' + wd(day) + ' night, ' + time;
+    }
+    return kindName + (off != null ? ' ' + dayName(day, tz, off) : '') + ' at ' + time;
+  }
+
   function eclipseOn(dateStr, tz) {
     return ECLIPSES.filter(function (e) { return dateInTz(new Date(e.greatest), tz) === dateStr; });
   }
@@ -2095,29 +2127,14 @@
 
     if (on('eclipse')) {
       eclipseWithin(6, tz).forEach(function (e) {
+        // Anything whose night is tonight is handled as a to-do instead.
+        if (eclipseNightOwner(e, tz) === dateStrIn(tz, 0)) return;
         var day = e.greatest ? dateInTz(new Date(e.greatest), tz) : e.dateUTC;
         // Exact offset from local calendar dates rather than a rounded
         // millisecond difference, which drifts across a DST change.
         var off = dayOffsetOf(day, tz);
         if (off == null) return;
-        var kindName = e.type + ' ' + (e.kind === 'lunar' ? 'Lunar' : 'Solar') + ' Eclipse';
-        var label;
-        if (!e.greatest) {
-          label = kindName + ' ' + dayName(day, tz, off);
-        } else {
-          var hour = localHourOf(e.greatest, tz);
-          var time = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' })
-            .format(new Date(e.greatest));
-          if (hour < 5) {
-            // The small hours belong to the evening before, which is the
-            // night you would actually have to stay up for.
-            var prev = off > 0 ? dayName(dateStrIn(tz, off - 1), tz, off - 1) : 'tonight';
-            label = kindName + ', overnight ' + prev + ' at ' + time;
-          } else {
-            label = kindName + ' ' + dayName(day, tz, off) + ' at ' + time;
-          }
-        }
-        out.push({ pill: label, detail: eclipseCard(e, tz, null, null).tip });
+        out.push({ pill: eclipseLabel(e, tz), detail: eclipseCard(e, tz, null, null).tip });
       });
     }
 
@@ -3272,6 +3289,13 @@
 
     // Solstices and equinoxes: today's goes with the day, one in the
     // coming week goes with the week.
+    if (on('eclipse')) {
+      eclipseWithin(6, state.tz).forEach(function (e) {
+        if (eclipseNightOwner(e, state.tz) !== dateStrIn(state.tz, 0)) return;
+        todos.push({ text: eclipseLabel(e, state.tz), when: 'day', rank: 2, outdoor: true });
+      });
+    }
+
     var todaySeason = seasonPill(d.date, state.tz, lat, 0);
     if (todaySeason) todos.push({ text: todaySeason + ' today', when: 'day', rank: 1 });
     var weekItems = aheadItems(p, state.tz, state.dayOffset);
