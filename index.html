@@ -89,9 +89,12 @@
   .credit{display:block;margin-top:8px;}
   .credit a{color:inherit;text-decoration:none;font:700 13px system-ui;border:none;}
   .mastmark{font-family:'Lobster',cursive;font-size:1.35em;font-weight:400;}
-  .now{position:absolute;top:-13px;bottom:-13px;width:2px;margin-left:-1px;
-       background:rgba(22,35,47,.30);box-shadow:0 0 0 1px rgba(255,255,255,.45);
-       pointer-events:none;border-radius:1px;}
+  /* "You are here" \u2014 one line, full column, in the accent colour so it
+     reads as different in kind from the hour markers rather than just
+     another tick among them. */
+  .nowover{position:absolute;left:0;top:0;bottom:24px;width:2.5px;margin-left:-1.25px;
+           background:var(--link);box-shadow:0 0 0 1px rgba(255,255,255,.6);
+           pointer-events:none;z-index:3;border-radius:1px;}
   .card{border-radius:14px;padding:9px 16px;margin:0 0 var(--gap);width:100%;
         min-height:var(--rowh);display:flex;flex-direction:column;justify-content:center;
         border:none;font:inherit;color:var(--ink);text-align:center;
@@ -319,7 +322,7 @@
     { id: 'arthritis', name: 'Arthritis',         note: 'Some people\u2019s arthritis flares with the weather' },
     { id: 'mold',      name: 'Basement',          note: 'If you have one, should you air it out?' },
     { id: 'bug',       name: 'Bug Spray' },
-    { id: 'light',     name: 'Daylight Exposure', note: 'When to get some morning light' },
+    { id: 'light',     name: 'Daylight',          note: 'How much usable light today, and when' },
     { id: 'fire',      name: 'Fire Weather',      note: 'Conditions are approaching Red Flag' },
     { id: 'frostbite', name: 'Frostbite' },
     { id: 'frizz',     name: 'Hair Frizz' },
@@ -2343,9 +2346,9 @@
     store.blocks = o; saveStore(); buildSettings(); renderHome();
   }
 
-  var DEFAULT_TILE_ORDER = ['flag', 'air', 'allergy', 'virus', 'burn', 'water', 'pavement', 'wind', 'aurora', 'eclipse'];
+  var DEFAULT_TILE_ORDER = ['flag', 'air', 'allergy', 'virus', 'burn', 'light', 'water', 'pavement', 'wind', 'aurora', 'eclipse'];
   var PILL_ONLY = ['frostbite','migraine','arthritis','frizz','bug',
-                   'shoe','frost','pipe','rust','mow','mold','fire','light','mask','swim'];
+                   'shoe','frost','pipe','rust','mow','mold','fire','mask','swim'];
   var DEFAULT_HOURLY_ORDER = ['feels', 'sky', 'daylight', 'moon'];
   function orderOf(which) {
     var def = which === 'hourly' ? DEFAULT_HOURLY_ORDER : DEFAULT_TILE_ORDER;
@@ -2937,16 +2940,9 @@
         + 'stroke-linecap="round" stroke-linejoin="round"/></svg>';
       el.appendChild(chev);
     }
-    if (row.timeline) {
-      // Lines are drawn once, over the whole column \u2014 see timeOverlay().
-      // A tick inside each box was too quiet to find.
-      if (state.dayOffset === 0) {
-        var tick = document.createElement('div');
-        tick.className = 'now';
-        tick.style.left = (nowFraction() * 100).toFixed(2) + '%';
-        line.appendChild(tick);
-      }
-    }
+    // Lines are drawn once, over the whole column \u2014 see timeOverlay()
+    // and nowOverlay(). A tick inside each box was too quiet to find, and
+    // a second one overhanging its own box bled into the next card.
     el.appendChild(line);
     if (row.caption && !row.split) {
       var cap2 = document.createElement('div'); cap2.className = 'caption';
@@ -3376,6 +3372,7 @@
 
     var grid = document.createElement('div'); grid.className = 'grid';
     var builders = {
+      light:     function () { return lightCard(d); },
       burn:      function () { return burnCard(d); },
       frostbite: function () { return frostbiteCard(d); },
       frost:     function () { return frostCard(d); },
@@ -3434,6 +3431,12 @@
 
     var overlay = timeOverlay();
     if (overlay) { col.style.position = 'relative'; col.appendChild(overlay); }
+    if (state.dayOffset === 0) {
+      col.style.position = 'relative';
+      var nowLine = document.createElement('div'); nowLine.className = 'nowover';
+      nowLine.style.left = (nowFraction() * 100).toFixed(2) + '%';
+      col.appendChild(nowLine);
+    }
     var axis = timeAxis();
     if (axis) col.appendChild(axis);
 
@@ -3462,21 +3465,30 @@
       searchBox = document.getElementById('searchBox'),
       results = document.getElementById('results'), qIn = document.getElementById('q');
 
+  /* The dropdown works the same in every view: pick a date, land on that
+     date's full single-day page \u2014 same words, same tiles, same pills as
+     if you had chosen "1 day" to begin with. In multi-day mode nothing
+     is pre-selected, since none of the seven dates is "the" current one
+     the way it is in single-day mode. */
   function buildDays() {
     daySel.innerHTML = '';
     var span = store.span || 1;
-    daySel.style.display = span > 1 ? 'none' : '';
+    if (span > 1) {
+      var ph = document.createElement('option');
+      ph.textContent = 'Jump to a day'; ph.disabled = true; ph.selected = true;
+      daySel.appendChild(ph);
+    }
     for (var i = 0; i < 7; i++) {
       var o = document.createElement('option');
       o.value = String(i); o.textContent = labelFor(state.tz, i);
-      if (i === state.dayOffset) o.selected = true;
+      if (span === 1 && i === state.dayOffset) o.selected = true;
       daySel.appendChild(o);
     }
   }
   function buildSpan() {
     var sel = document.getElementById('spanSel');
     sel.innerHTML = '';
-    [[1, 'Today'], [3, '3 days'], [5, '5 days'], [7, '7 days']].forEach(function (opt) {
+    [[1, '1 day'], [3, '3 days'], [5, '5 days'], [7, '7 days']].forEach(function (opt) {
       var o = document.createElement('option'); o.value = String(opt[0]); o.textContent = opt[1];
       if ((store.span || 1) === opt[0]) o.selected = true;
       sel.appendChild(o);
@@ -3508,7 +3520,9 @@
   }
 
   daySel.addEventListener('change', function () {
-    state.dayOffset = parseInt(daySel.value, 10) || 0; renderHome();
+    state.dayOffset = parseInt(daySel.value, 10) || 0;
+    if ((store.span || 1) > 1) { store.span = 1; saveStore(); buildSpan(); }
+    buildDays(); renderHome();
   });
   placeSel.addEventListener('change', function () {
     if (placeSel.value === '__search') {
