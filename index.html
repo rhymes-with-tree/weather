@@ -42,21 +42,31 @@
      row, which is the reason the request mentioned turning the phone
      sideways \u2014 width is the whole constraint here. */
   .mdstrip{cursor:default;}
-  .mdface{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
-  .mdrowlabel{font-size:14px;}
-  .mdsummary{font-size:12.5px;font-weight:600;opacity:.7;}
-  .dayaxis{display:flex;margin:3px 1px 0;}
-  .daytick{background:none;border:none;font:inherit;color:var(--mid);cursor:pointer;
-           padding:2px 0;text-align:center;line-height:1.15;}
-  .daytick .dtname{display:block;font-size:11.5px;font-weight:600;}
-  .daytick .dtdate{display:block;font-size:10px;opacity:.65;}
-  .daytick.today{color:var(--ink);}
-  .daytick.today .dtname{font-weight:700;}
+  .dayhead{display:flex;gap:var(--gap);margin-bottom:var(--gap);}
+  .dayseg{flex:1 1 0;min-width:0;border:none;font:inherit;color:var(--ink);
+          border-radius:14px;min-height:var(--rowh);padding:6px 3px;cursor:pointer;
+          display:flex;flex-direction:column;align-items:center;justify-content:center;
+          line-height:1.15;overflow:hidden;}
+  .dayseg .dsname{font-size:14px;font-weight:700;white-space:nowrap;}
+  .dayseg .dsdate{font-size:12px;opacity:.75;margin-top:1px;}
+  .dayseg.today{box-shadow:0 0 0 2px rgba(22,35,47,.45) inset;}
+  @media (max-width:430px){
+    .dayseg .dsname{font-size:12px;} .dayseg .dsdate{font-size:11px;}
+  }
   .ref{position:absolute;top:2px;bottom:2px;width:1px;
        background:rgba(22,35,47,.22);pointer-events:none;}
   .ref.major{background:rgba(22,35,47,.34);}
-  .timeaxis{position:relative;height:15px;margin:1px 2px 0;}
-  .timeaxis span{position:absolute;top:0;font-size:10.5px;color:var(--mid);
+  /* The lines sit above the cards but must not eat taps meant for them. */
+  .timeover{position:absolute;left:0;right:0;top:0;bottom:24px;pointer-events:none;z-index:2;}
+  .tline{position:absolute;top:0;bottom:0;width:1px;margin-left:-0.5px;
+         background:rgba(255,255,255,.8);
+         box-shadow:0 0 0 .5px rgba(22,35,47,.18);}
+  .tline.major{width:2px;margin-left:-1px;background:rgba(255,255,255,.92);
+               box-shadow:0 0 0 .5px rgba(22,35,47,.26);}
+  /* Same weight as the card labels, because people could not find the
+     time when it was small and grey. */
+  .timeaxis{position:relative;height:22px;margin:3px 2px 0;}
+  .timeaxis span{position:absolute;top:0;font-size:15px;font-weight:700;color:var(--ink);
                  transform:translateX(-50%);white-space:nowrap;}
   /* A tappable card says so: a small chevron that rotates when open.
      Only appears on cards that actually have something behind them, so
@@ -2928,17 +2938,8 @@
       el.appendChild(chev);
     }
     if (row.timeline) {
-      // Guide lines only. The labels live once, on a shared axis under
-      // the whole stack, rather than repeating on every card.
-      var step = store.tickHours;
-      if (step) {
-        for (var h = step; h < 24; h += step) {
-          var rt = document.createElement('div');
-          rt.className = 'ref' + (h % 12 === 0 ? ' major' : '');
-          rt.style.left = ((h / 23) * 100).toFixed(2) + '%';
-          line.appendChild(rt);
-        }
-      }
+      // Lines are drawn once, over the whole column \u2014 see timeOverlay().
+      // A tick inside each box was too quiet to find.
       if (state.dayOffset === 0) {
         var tick = document.createElement('div');
         tick.className = 'now';
@@ -3126,6 +3127,22 @@
 
   /* The axis is a row of its own, so the hours are stated once for the
      column of cards above it. */
+  /* One set of lines drawn across the whole column of cards, so a time
+     reads as a single vertical cut through the day rather than a faint
+     mark repeated inside each box. White with a dark edge so it holds up
+     over both the pale and the saturated ends of every gradient. */
+  function timeOverlay(count) {
+    var step = store.tickHours;
+    if (!step) return null;
+    var ov = document.createElement('div'); ov.className = 'timeover';
+    for (var h = step; h < 24; h += step) {
+      var l = document.createElement('div');
+      l.className = 'tline' + (h % 12 === 0 ? ' major' : '');
+      l.style.left = ((h / 23) * 100).toFixed(2) + '%';
+      ov.appendChild(l);
+    }
+    return ov;
+  }
   function timeAxis() {
     var step = store.tickHours;
     if (!step) return null;
@@ -3185,6 +3202,68 @@
     return 'linear-gradient(90deg,' + stops.join(',') + ')';
   }
 
+  function bgAcross(days, fn) {
+    var stops = [], total = days.length * 24, n = 0;
+    days.forEach(function (x) {
+      for (var h = 0; h < 24; h++) {
+        var rec = x.d.hours[h] || x.d.hours[Object.keys(x.d.hours)[0]];
+        stops.push(fn(rec, h, x.d) + ' ' + ((n / (total - 1)) * 100).toFixed(2) + '%');
+        n++;
+      }
+    });
+    return 'linear-gradient(90deg,' + stops.join(',') + ')';
+  }
+
+  /* A range is summarised the way a single day is: one phrase for the
+     whole span. "Cool to Hot, Humid" describes a week the same way it
+     describes an afternoon, so the eye reads the row once instead of
+     re-reading the same words in seven boxes. */
+  function rangeFeels(days) {
+    var lo = Math.min.apply(null, days.map(function (x) { return x.d.feelsMin; }));
+    var hi = Math.max.apply(null, days.map(function (x) { return x.d.feelsMax; }));
+    var dew = Math.max.apply(null, days.map(function (x) { return x.d.dewMax; }));
+    var span = pair(tempWord(lo), tempWord(hi));
+    var hum = dew < 15 ? 'Bone Dry' : dew < 30 ? 'Very Dry'
+            : dew >= 75 ? 'Miserable Humidity' : dew >= 70 ? 'Oppressive'
+            : dew >= 65 ? 'Muggy' : dew >= 60 && hi > 72 ? 'Humid' : null;
+    return hum ? span + ', ' + hum : span;
+  }
+  function rangeSky(days) {
+    var first = days[0].d, last = days[days.length - 1].d;
+    var w = function (d) {
+      var cl = [], cd = [];
+      for (var h = d.sunrise; h <= d.sunset; h++) {
+        var r = d.hours[h]; if (!r) continue;
+        cl.push(r.cloud == null ? 50 : r.cloud); cd.push(r.code);
+      }
+      return skyWord(avg(cl), cd);
+    };
+    var base = pair(w(first), w(last));
+    // Name the wet day, since that is the thing anyone scanning a week
+    // is looking for.
+    var wet = null;
+    days.forEach(function (x) {
+      if (x.d.rainChance >= 55 && (!wet || x.d.rainChance > wet.d.rainChance)) wet = x;
+    });
+    if (wet) {
+      var kind = precipKind(wet.d.codesDay || []) || 'rain';
+      var noun = { hail: 'storms', thunder: 'storms', freezing: 'freezing rain',
+                   snow: 'snow', showers: 'showers', rain: 'rain', drizzle: 'drizzle' }[kind];
+      var when = wet.off === 0 ? 'today' : wet.off === 1 ? 'tomorrow'
+               : 'on ' + labelFor(state.tz, wet.off).split(',')[0];
+      base += ' with ' + noun + ' ' + when;
+    }
+    return base;
+  }
+  function rangeMoon(days, tz, lat, lon) {
+    var a2 = moonCard(days[0].d.date, tz, lat, lon).caption;
+    var b2 = moonCard(days[days.length - 1].d.date, tz, lat, lon).caption;
+    var na = a2 ? a2.split(' \u00B7 ')[0] : '', nb = b2 ? b2.split(' \u00B7 ')[0] : '';
+    if (!na) return '';
+    if (na === nb) return na;
+    return na + ' to ' + nb;
+  }
+
   function renderMultiDay(p, lat, lon, cal, span) {
     var host = document.getElementById('homeBody');
     host.innerHTML = ''; host.className = 'multiday';
@@ -3196,82 +3275,71 @@
 
     var col = document.createElement('div'); col.className = 'hourly';
 
-    function strip(label, bg, summary) {
-      var el = document.createElement('div');
-      el.className = 'card mdstrip';
-      el.style.background = bg;
-      var face = document.createElement('div'); face.className = 'face mdface';
-      var l = document.createElement('b'); l.className = 'mdrowlabel'; l.textContent = label;
-      face.appendChild(l);
-      if (summary) {
-        var sm = document.createElement('span'); sm.className = 'mdsummary'; sm.textContent = summary;
-        face.appendChild(sm);
-      }
-      // A tick at every day boundary, matching the hour ticks in the
-      // single-day view.
-      for (var i = 1; i < days.length; i++) {
-        var t = document.createElement('div');
-        t.className = 'ref major';
-        t.style.left = ((i / days.length) * 100).toFixed(3) + '%';
-        face.appendChild(t);
-      }
-      el.appendChild(face);
-      col.appendChild(el);
-    }
-
-    var lo = Math.min.apply(null, days.map(function (x) { return x.d.feelsMin; }));
-    var hi = Math.max.apply(null, days.map(function (x) { return x.d.feelsMax; }));
-    strip('Feels Like',
-      bgAcross(days, function (r) { return colorAt('feels', r.feels == null ? 60 : r.feels); }),
-      Math.round(lo) + DEG + ' to ' + Math.round(hi) + DEG);
-
-    var wettest = days.reduce(function (a2, b2) { return b2.d.rainChance > a2.d.rainChance ? b2 : a2; });
-    strip('Sky',
-      bgAcross(days, function (r) {
-        var base = skyColor(r).match(/\d+/g).map(Number);
-        return css(blend(base, [92, 122, 176], Math.min(1, (r.pop || 0) / 100) * 0.65));
-      }),
-      wettest.d.rainChance >= 30
-        ? 'wettest ' + (wettest.off === 0 ? 'today' : labelFor(state.tz, wettest.off).split(',')[0])
-        : 'mostly dry');
-
-    strip('Daylight',
-      bgAcross(days, function (r, h, d) {
-        var srF = frac(d.sunriseISO), ssF = frac(d.sunsetISO);
+    /* Day headers stay one box per day, because that is the row you tap
+       and the row that has to carry a name. Everything below is one
+       strip with one label. */
+    var head = document.createElement('div'); head.className = 'dayhead';
+    days.forEach(function (x) {
+      var b3 = document.createElement('button');
+      b3.className = 'dayseg' + (x.off === 0 ? ' today' : '');
+      var srF = frac(x.d.sunriseISO), ssF = frac(x.d.sunsetISO);
+      b3.style.background = bgDay(x.d, function (r, h) {
         var up = Math.max(0, Math.min(1, (h - (srF - 0.75)) / 1.5));
         var down = Math.max(0, Math.min(1, ((ssF + 0.75) - h) / 1.5));
         var t = up * down;
         return css(t < 0.5 ? mix3(NIGHT, TWILIGHT, t * 2) : mix3(TWILIGHT, DAYLIT, (t - 0.5) * 2));
-      }),
-      hm(Math.round((days[0].d.sunset - days[0].d.sunrise) * 60)) + ' today');
-
-    strip('Moon',
-      bgAcross(days, function (r, h, d) {
-        var t = (lat == null) ? { up: [] } : moonTimes(d.date, state.tz, lat, lon);
-        var lit = Math.round(((1 - Math.cos(2 * Math.PI * (moonAge(d.date) / LUNATION))) / 2) * 100);
-        var isUp = t.up.length ? t.up[h] : false;
-        return css(isUp ? blend(NIGHT, [248, 249, 251], 0.25 + 0.7 * (lit / 100)) : NIGHT);
-      }),
-      moonCard(days[0].d.date, state.tz, lat, lon).caption || '');
-
-    // Day names as a shared axis, each one a way into that day.
-    var axis = document.createElement('div'); axis.className = 'dayaxis';
-    days.forEach(function (x, i) {
-      var b3 = document.createElement('button');
-      b3.className = 'daytick' + (x.off === 0 ? ' today' : '');
-      b3.style.width = (100 / days.length) + '%';
-      var nm = document.createElement('span'); nm.className = 'dtname';
-      nm.textContent = x.off === 0 ? 'Today' : labelFor(state.tz, x.off).split(',')[0].slice(0, 3);
-      var dt = document.createElement('span'); dt.className = 'dtdate';
+      });
+      // Names while they fit; past four days there is only room for dates.
+      var nm = document.createElement('span'); nm.className = 'dsname';
+      var wide = days.length <= 4;
+      nm.textContent = wide
+        ? (x.off === 0 ? 'Today' : x.off === 1 ? 'Tomorrow' : labelFor(state.tz, x.off).split(',')[0])
+        : (x.off === 0 ? 'Today' : labelFor(state.tz, x.off).split(',')[0].slice(0, 3));
+      var dt = document.createElement('span'); dt.className = 'dsdate';
       dt.textContent = (+x.d.date.slice(5, 7)) + '/' + (+x.d.date.slice(8, 10));
       b3.appendChild(nm); b3.appendChild(dt);
       b3.addEventListener('click', function () {
         state.dayOffset = x.off; store.span = 1; saveStore();
         buildDays(); buildSpan(); renderHome();
       });
-      axis.appendChild(b3);
+      head.appendChild(b3);
     });
-    col.appendChild(axis);
+    col.appendChild(head);
+
+    function strip(bg, label) {
+      var el = document.createElement('div');
+      el.className = 'card mdstrip';
+      el.style.background = bg;
+      var face = document.createElement('div'); face.className = 'face';
+      var b4 = document.createElement('b'); b4.textContent = label; face.appendChild(b4);
+      el.appendChild(face);
+      col.appendChild(el);
+    }
+
+    strip(bgAcross(days, function (r) { return colorAt('feels', r.feels == null ? 60 : r.feels); }),
+          rangeFeels(days));
+    strip(bgAcross(days, function (r) {
+            var base = skyColor(r).match(/\d+/g).map(Number);
+            return css(blend(base, [92, 122, 176], Math.min(1, (r.pop || 0) / 100) * 0.65));
+          }), rangeSky(days));
+    strip(bgAcross(days, function (r, h, d) {
+            var t = (lat == null) ? { up: [] } : moonTimes(d.date, state.tz, lat, lon);
+            var lit = Math.round(((1 - Math.cos(2 * Math.PI * (moonAge(d.date) / LUNATION))) / 2) * 100);
+            var isUp = t.up.length ? t.up[h] : false;
+            return css(isUp ? blend(NIGHT, [248, 249, 251], 0.25 + 0.7 * (lit / 100)) : NIGHT);
+          }), rangeMoon(days, state.tz, lat, lon));
+
+    // Day boundaries, drawn across the whole stack like the hour lines.
+    if (days.length > 1) {
+      var ov = document.createElement('div'); ov.className = 'timeover';
+      for (var i = 1; i < days.length; i++) {
+        var l = document.createElement('div'); l.className = 'tline major';
+        l.style.left = ((i / days.length) * 100).toFixed(3) + '%';
+        ov.appendChild(l);
+      }
+      col.style.position = 'relative';
+      col.appendChild(ov);
+    }
     host.appendChild(col);
   }
 
@@ -3364,6 +3432,8 @@
     var todoEl = on('todo') ? todoCard(weekItems) : null;
     if (todoEl) todoEl.className += ' todoblock';
 
+    var overlay = timeOverlay();
+    if (overlay) { col.style.position = 'relative'; col.appendChild(overlay); }
     var axis = timeAxis();
     if (axis) col.appendChild(axis);
 
