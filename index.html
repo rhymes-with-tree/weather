@@ -41,7 +41,20 @@
      narrow phone; a landscape phone or a tablet gets everything in one
      row, which is the reason the request mentioned turning the phone
      sideways \u2014 width is the whole constraint here. */
-  .mdstrip{cursor:default;}
+  .mdstrip{cursor:pointer;text-align:left;display:block;width:100%;}
+  .mdexpand{margin-top:10px;padding-top:9px;border-top:1px solid rgba(22,35,47,.14);}
+  .mdday{font-size:14px;line-height:1.4;margin:0 0 6px;}
+  .mdday:last-child{margin-bottom:0;}
+  .mdday b{font-weight:700;}
+
+  .mdpillrow{margin-bottom:12px;}
+  .mdpills{display:flex;gap:6px;flex-wrap:wrap;}
+  .mdpill{flex:1 1 70px;min-width:64px;border:none;border-radius:12px;
+          padding:9px 6px;font:inherit;font-size:13px;font-weight:700;
+          color:var(--ink);cursor:pointer;text-align:center;}
+  .mdpilltip{font-size:12.5px;font-weight:400;line-height:1.35;margin:6px 0 0;
+             text-align:left;color:var(--ink);}
+  @media (max-width:430px){ .mdpill{font-size:12px;padding:8px 5px;} }
   .dayhead{display:flex;gap:var(--gap);margin-bottom:var(--gap);}
   .dayseg{flex:1 1 0;min-width:0;border:none;font:inherit;color:var(--ink);
           border-radius:14px;min-height:var(--rowh);padding:6px 3px;cursor:pointer;
@@ -53,16 +66,19 @@
   @media (max-width:430px){
     .dayseg .dsname{font-size:12px;} .dayseg .dsdate{font-size:11px;}
   }
-  .ref{position:absolute;top:2px;bottom:2px;width:1px;
-       background:rgba(22,35,47,.22);pointer-events:none;}
-  .ref.major{background:rgba(22,35,47,.34);}
-  /* The lines sit above the cards but must not eat taps meant for them. */
-  .timeover{position:absolute;left:0;right:0;top:0;bottom:24px;pointer-events:none;z-index:2;}
-  .tline{position:absolute;top:0;bottom:0;width:1px;margin-left:-0.5px;
-         background:rgba(255,255,255,.8);
+  /* Lines live inside each card's own .face, not a shared overlay
+     outside the cards. That is what lets them sit above the card's
+     colored background (visible crossing the gradient) while staying
+     below the card's own text (z-index 0 vs 1) \u2014 only guaranteed
+     within one shared stacking context. Every card draws the same
+     x-position independently, so the page still reads as one
+     continuous line; the small gap between cards is the only break. */
+  .tline{position:absolute;top:0;bottom:0;width:1px;margin-left:-0.5px;z-index:0;
+         pointer-events:none;background:rgba(255,255,255,.8);
          box-shadow:0 0 0 .5px rgba(22,35,47,.18);}
   .tline.major{width:2px;margin-left:-1px;background:rgba(255,255,255,.92);
                box-shadow:0 0 0 .5px rgba(22,35,47,.26);}
+  .face b, .mdrowlabel, .dsname, .dsdate{position:relative;z-index:1;}
   /* Same weight as the card labels, because people could not find the
      time when it was small and grey. */
   .timeaxis{position:relative;height:22px;margin:3px 2px 0;}
@@ -89,12 +105,10 @@
   .credit{display:block;margin-top:8px;}
   .credit a{color:inherit;text-decoration:none;font:700 13px system-ui;border:none;}
   .mastmark{font-family:'Lobster',cursive;font-size:1.35em;font-weight:400;}
-  /* "You are here" \u2014 one line, full column, in the accent colour so it
-     reads as different in kind from the hour markers rather than just
-     another tick among them. */
-  .nowover{position:absolute;left:0;top:0;bottom:24px;width:2.5px;margin-left:-1.25px;
-           background:var(--link);box-shadow:0 0 0 1px rgba(255,255,255,.6);
-           pointer-events:none;z-index:3;border-radius:1px;}
+  /* "You are here", same local containment as the hour lines, in the
+     accent colour so it reads as different in kind. */
+  .nowline{position:absolute;top:0;bottom:0;width:2.5px;margin-left:-1.25px;z-index:0;
+           background:var(--link);box-shadow:0 0 0 1px rgba(255,255,255,.6);}
   .card{border-radius:14px;padding:9px 16px;margin:0 0 var(--gap);width:100%;
         min-height:var(--rowh);display:flex;flex-direction:column;justify-content:center;
         border:none;font:inherit;color:var(--ink);text-align:center;
@@ -2940,9 +2954,26 @@
         + 'stroke-linecap="round" stroke-linejoin="round"/></svg>';
       el.appendChild(chev);
     }
-    // Lines are drawn once, over the whole column \u2014 see timeOverlay()
-    // and nowOverlay(). A tick inside each box was too quiet to find, and
-    // a second one overhanging its own box bled into the next card.
+    // Local to this card's own .face: contained (no overhang into the
+    // next card), and behind the text by z-index rather than by hoping
+    // paint order works out (see .tline / .face b in the stylesheet).
+    if (row.timeline) {
+      var tstep = store.tickHours;
+      if (tstep) {
+        for (var th = tstep; th < 24; th += tstep) {
+          var trt = document.createElement('div');
+          trt.className = 'tline' + (th % 12 === 0 ? ' major' : '');
+          trt.style.left = ((th / 23) * 100).toFixed(2) + '%';
+          line.appendChild(trt);
+        }
+      }
+      if (state.dayOffset === 0) {
+        var tnow = document.createElement('div');
+        tnow.className = 'nowline';
+        tnow.style.left = (nowFraction() * 100).toFixed(2) + '%';
+        line.appendChild(tnow);
+      }
+    }
     el.appendChild(line);
     if (row.caption && !row.split) {
       var cap2 = document.createElement('div'); cap2.className = 'caption';
@@ -3122,23 +3153,10 @@
   }
 
   /* The axis is a row of its own, so the hours are stated once for the
-     column of cards above it. */
-  /* One set of lines drawn across the whole column of cards, so a time
-     reads as a single vertical cut through the day rather than a faint
-     mark repeated inside each box. White with a dark edge so it holds up
-     over both the pale and the saturated ends of every gradient. */
-  function timeOverlay(count) {
-    var step = store.tickHours;
-    if (!step) return null;
-    var ov = document.createElement('div'); ov.className = 'timeover';
-    for (var h = step; h < 24; h += step) {
-      var l = document.createElement('div');
-      l.className = 'tline' + (h % 12 === 0 ? ' major' : '');
-      l.style.left = ((h / 23) * 100).toFixed(2) + '%';
-      ov.appendChild(l);
-    }
-    return ov;
-  }
+     column of cards above it, rather than repeated on every card. The
+     lines themselves are drawn per card \u2014 see card(), near .now/.tline
+     \u2014 because that is the only way to keep them under the text without
+     also hiding them under the card's own background. */
   function timeAxis() {
     var step = store.tickHours;
     if (!step) return null;
@@ -3271,9 +3289,8 @@
 
     var col = document.createElement('div'); col.className = 'hourly';
 
-    /* Day headers stay one box per day, because that is the row you tap
-       and the row that has to carry a name. Everything below is one
-       strip with one label. */
+    /* Day headers stay one box per day \u2014 the row you tap to jump into
+       that date's full single-day view. */
     var head = document.createElement('div'); head.className = 'dayhead';
     days.forEach(function (x) {
       var b3 = document.createElement('button');
@@ -3285,7 +3302,6 @@
         var t = up * down;
         return css(t < 0.5 ? mix3(NIGHT, TWILIGHT, t * 2) : mix3(TWILIGHT, DAYLIT, (t - 0.5) * 2));
       });
-      // Names while they fit; past four days there is only room for dates.
       var nm = document.createElement('span'); nm.className = 'dsname';
       var wide = days.length <= 4;
       nm.textContent = wide
@@ -3302,40 +3318,111 @@
     });
     col.appendChild(head);
 
-    function strip(bg, label) {
-      var el = document.createElement('div');
+    /* Day-boundary lines are drawn inside each strip's own .face, exactly
+       like the hour lines on a single day \u2014 the only way to have them
+       cross the gradient visibly while staying behind the label text. */
+    function dayLines(face) {
+      for (var i = 1; i < days.length; i++) {
+        var l = document.createElement('div'); l.className = 'tline major';
+        l.style.left = ((i / days.length) * 100).toFixed(3) + '%';
+        face.appendChild(l);
+      }
+    }
+
+    /* Tapping a strip shows, for every day in view, the exact sentence
+       the single-day card would have shown for that date \u2014 same
+       function, same words, just asked once per day instead of once. */
+    function strip(bg, label, tipFor) {
+      var el = document.createElement('button');
       el.className = 'card mdstrip';
       el.style.background = bg;
       var face = document.createElement('div'); face.className = 'face';
       var b4 = document.createElement('b'); b4.textContent = label; face.appendChild(b4);
-      el.appendChild(face);
+      if (days.length > 1) dayLines(face);
+      var chev = document.createElement('span'); chev.className = 'more';
+      chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true">'
+        + '<path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" '
+        + 'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      el.appendChild(face); el.appendChild(chev);
+
+      var body = document.createElement('div'); body.className = 'mdexpand'; body.style.display = 'none';
+      days.forEach(function (x) {
+        var row = document.createElement('p'); row.className = 'mdday';
+        var dn = document.createElement('b');
+        dn.textContent = (x.off === 0 ? 'Today' : x.off === 1 ? 'Tomorrow' : labelFor(state.tz, x.off).split(',')[0]) + ': ';
+        row.appendChild(dn);
+        row.appendChild(document.createTextNode(tipFor(x.d)));
+        body.appendChild(row);
+      });
+      el.appendChild(body);
+      el.setAttribute('aria-expanded', 'false');
+      el.addEventListener('click', function () {
+        var open = body.style.display === 'none';
+        body.style.display = open ? 'block' : 'none';
+        el.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
       col.appendChild(el);
     }
 
-    strip(bgAcross(days, function (r) { return colorAt('feels', r.feels == null ? 60 : r.feels); }),
-          rangeFeels(days));
-    strip(bgAcross(days, function (r) {
-            var base = skyColor(r).match(/\d+/g).map(Number);
-            return css(blend(base, [92, 122, 176], Math.min(1, (r.pop || 0) / 100) * 0.65));
-          }), rangeSky(days));
-    strip(bgAcross(days, function (r, h, d) {
-            var t = (lat == null) ? { up: [] } : moonTimes(d.date, state.tz, lat, lon);
-            var lit = Math.round(((1 - Math.cos(2 * Math.PI * (moonAge(d.date) / LUNATION))) / 2) * 100);
-            var isUp = t.up.length ? t.up[h] : false;
-            return css(isUp ? blend(NIGHT, [248, 249, 251], 0.25 + 0.7 * (lit / 100)) : NIGHT);
-          }), rangeMoon(days, state.tz, lat, lon));
-
-    // Day boundaries, drawn across the whole stack like the hour lines.
-    if (days.length > 1) {
-      var ov = document.createElement('div'); ov.className = 'timeover';
-      for (var i = 1; i < days.length; i++) {
-        var l = document.createElement('div'); l.className = 'tline major';
-        l.style.left = ((i / days.length) * 100).toFixed(3) + '%';
-        ov.appendChild(l);
-      }
-      col.style.position = 'relative';
-      col.appendChild(ov);
+    /* Pills mode: the same three rows, but each day is its own discrete
+       capsule \u2014 no gradient, no day-boundary lines needed since the gap
+       between pills already marks the day. Tapping one pill shows that
+       day's sentence beneath it. */
+    function pillRow(label, colorFor, textFor, tipFor) {
+      var wrap = document.createElement('div'); wrap.className = 'mdpillrow';
+      var lb = document.createElement('div'); lb.className = 'mdrowlabel'; lb.textContent = label;
+      wrap.appendChild(lb);
+      var row = document.createElement('div'); row.className = 'mdpills';
+      days.forEach(function (x) {
+        var p2 = document.createElement('button'); p2.className = 'mdpill';
+        p2.style.background = colorFor(x.d);
+        var t = document.createElement('span'); t.textContent = textFor(x.d); p2.appendChild(t);
+        var body = document.createElement('p'); body.className = 'mdpilltip'; body.style.display = 'none';
+        body.textContent = tipFor(x.d);
+        p2.appendChild(body);
+        p2.addEventListener('click', function () {
+          var open = body.style.display === 'none';
+          body.style.display = open ? 'block' : 'none';
+        });
+        row.appendChild(p2);
+      });
+      wrap.appendChild(row);
+      col.appendChild(wrap);
     }
+
+    var pillsMode = store.mdStyle === 'pills';
+
+    if (!pillsMode) {
+      strip(bgAcross(days, function (r) { return colorAt('feels', r.feels == null ? 60 : r.feels); }),
+            rangeFeels(days), function (d) { return feelsCard(d).tip; });
+      strip(bgAcross(days, function (r) {
+              var base = skyColor(r).match(/\d+/g).map(Number);
+              return css(blend(base, [92, 122, 176], Math.min(1, (r.pop || 0) / 100) * 0.65));
+            }), rangeSky(days), function (d) { return skyCard(d).tip; });
+      strip(bgAcross(days, function (r, h, d) {
+              var t = (lat == null) ? { up: [] } : moonTimes(d.date, state.tz, lat, lon);
+              var lit = Math.round(((1 - Math.cos(2 * Math.PI * (moonAge(d.date) / LUNATION))) / 2) * 100);
+              var isUp = t.up.length ? t.up[h] : false;
+              return css(isUp ? blend(NIGHT, [248, 249, 251], 0.25 + 0.7 * (lit / 100)) : NIGHT);
+            }), rangeMoon(days, state.tz, lat, lon), function (d) { return moonCard(d.date, state.tz, lat, lon).tip; });
+    } else {
+      pillRow('Feels Like',
+        function (d) { return colorAt('feels', (d.feelsMin + d.feelsMax) / 2); },
+        function (d) { return Math.round(d.feelsMin) + '\u2013' + Math.round(d.feelsMax) + DEG; },
+        function (d) { return feelsCard(d).tip; });
+      pillRow('Sky',
+        function (d) { return colorAt('sky', Math.min(100, d.cloudDay)); },
+        function (d) { return skyCard(d).bold.split(',')[0]; },
+        function (d) { return skyCard(d).tip; });
+      pillRow('Moon',
+        function (d) { return css(NIGHT); },
+        function (d) {
+          var c = moonCard(d.date, state.tz, lat, lon).caption;
+          return c ? c.split(' \u00B7 ')[0] : 'Moon';
+        },
+        function (d) { return moonCard(d.date, state.tz, lat, lon).tip; });
+    }
+
     host.appendChild(col);
   }
 
@@ -3429,14 +3516,8 @@
     var todoEl = on('todo') ? todoCard(weekItems) : null;
     if (todoEl) todoEl.className += ' todoblock';
 
-    var overlay = timeOverlay();
-    if (overlay) { col.style.position = 'relative'; col.appendChild(overlay); }
-    if (state.dayOffset === 0) {
-      col.style.position = 'relative';
-      var nowLine = document.createElement('div'); nowLine.className = 'nowover';
-      nowLine.style.left = (nowFraction() * 100).toFixed(2) + '%';
-      col.appendChild(nowLine);
-    }
+    // Lines are already drawn per card (see card()); only the label row
+    // is shared here.
     var axis = timeAxis();
     if (axis) col.appendChild(axis);
 
@@ -3628,6 +3709,20 @@
           r.checked = (store.tickHours || 0) === opt[0];
           r.addEventListener('change', function () {
             store.tickHours = opt[0]; saveStore(); renderHome();
+          });
+          var sp = document.createElement('span'); sp.textContent = opt[1];
+          row.appendChild(r); row.appendChild(sp); settingsPanel.appendChild(row);
+        });
+
+      var mh = document.createElement('h3'); mh.textContent = 'Multi-day style';
+      settingsPanel.appendChild(mh);
+      [['strip', 'Continuous strips'], ['pills', 'Pills, one per day']]
+        .forEach(function (opt) {
+          var row = document.createElement('label'); row.className = 'opt sub';
+          var r = document.createElement('input'); r.type = 'radio'; r.name = 'mdstyle';
+          r.checked = (store.mdStyle || 'strip') === opt[0];
+          r.addEventListener('change', function () {
+            store.mdStyle = opt[0]; saveStore(); renderHome();
           });
           var sp = document.createElement('span'); sp.textContent = opt[1];
           row.appendChild(r); row.appendChild(sp); settingsPanel.appendChild(row);
