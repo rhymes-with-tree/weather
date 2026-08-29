@@ -44,6 +44,8 @@
   .mdstrip{cursor:pointer;text-align:left;display:block;width:100%;}
   .mdexpand{margin-top:10px;padding-top:9px;border-top:1px solid rgba(22,35,47,.14);}
   .mdday{font-size:14px;line-height:1.4;margin:0 0 6px;}
+  .mdopen{display:inline-block;margin-top:4px;font-size:13.5px;color:var(--link);
+          text-decoration:none;font-weight:600;}
   .mdday:last-child{margin-bottom:0;}
   .mdday b{font-weight:700;}
 
@@ -51,17 +53,25 @@
   .mdpills{display:flex;gap:6px;flex-wrap:wrap;}
   .mdpill{flex:1 1 70px;min-width:64px;border:none;border-radius:12px;
           padding:9px 6px;font:inherit;font-size:13px;font-weight:700;
-          color:var(--ink);cursor:pointer;text-align:center;}
+          color:var(--ink);cursor:pointer;text-align:center;
+          box-shadow:inset 0 0 0 1px rgba(22,35,47,.12);}
   .mdpilltip{font-size:12.5px;font-weight:400;line-height:1.35;margin:6px 0 0;
              text-align:left;color:var(--ink);}
   @media (max-width:430px){ .mdpill{font-size:12px;padding:8px 5px;} }
-  .dayhead{display:flex;gap:var(--gap);margin-bottom:var(--gap);}
-  .dayseg{flex:1 1 0;min-width:0;border:none;font:inherit;color:var(--ink);
+  /* No flex gap: with a gap, each segment's true edge is not at i/N of
+     the row's width (gaps eat width unevenly as items shrink to fit),
+     which is why the day lines below drifted out of alignment with
+     these boundaries. Fixed percentage widths and a thin border instead
+     of a gap put every boundary at exactly i/N, matching dayLines(). */
+  .dayhead{display:flex;margin-bottom:var(--gap);}
+  .dayseg{flex:0 0 auto;min-width:0;border:none;border-right:2px solid var(--page);
+          font:inherit;color:var(--ink);
           border-radius:14px;min-height:var(--rowh);padding:6px 3px;cursor:pointer;
           display:flex;flex-direction:column;align-items:center;justify-content:center;
           line-height:1.15;overflow:hidden;}
   .dayseg .dsname{font-size:14px;font-weight:700;white-space:nowrap;}
   .dayseg .dsdate{font-size:12px;opacity:.75;margin-top:1px;}
+  .dayseg:last-child{border-right:none;}
   .dayseg.today{box-shadow:0 0 0 2px rgba(22,35,47,.45) inset;}
   @media (max-width:430px){
     .dayseg .dsname{font-size:12px;} .dayseg .dsdate{font-size:11px;}
@@ -176,7 +186,14 @@
        with a tile on the right instead of each being sized by its own
        rule. */
     .hourly{display:flex;flex-direction:column;gap:var(--gap);}
-    .hourly > .card{margin-bottom:0;flex:0 0 auto;min-height:var(--rowh);
+    /* Zero gap between the timeline cards. Their per-card lines are
+     contained, not overhung, so with no gap between boxes a line drawn
+     at the same x in consecutive cards touches exactly \u2014 reading as
+     one line down the page without needing a shared cross-card overlay
+     (which cannot keep text above it without also hiding it under the
+     next card's opaque background). Corners are squared here and
+     rounded only at the very top and bottom by roundEnds(). */
+  .hourly > .card{margin:0;border-radius:0;flex:0 0 auto;min-height:var(--rowh);
                     display:flex;flex-direction:column;justify-content:center;}
     .hourly > .card:not(.open){height:var(--rowh);}
     .hourly > .card.open{height:auto;}
@@ -1247,16 +1264,16 @@
     return { amEnd: amEnd, pmStart: pmStart };
   }
 
+  function dayNightColor(r, h, srF, ssF) {
+    var up = Math.max(0, Math.min(1, (h - (srF - 0.75)) / 1.5));
+    var down = Math.max(0, Math.min(1, ((ssF + 0.75) - h) / 1.5));
+    var t = up * down;
+    return css(t < 0.5 ? mix3(NIGHT, TWILIGHT, t * 2) : mix3(TWILIGHT, DAYLIT, (t - 0.5) * 2));
+  }
   function daylightCard(d, lat, lon, tz) {
     var srF = frac(d.sunriseISO), ssF = frac(d.sunsetISO);
     var mins = span(d.sunriseISO, d.sunsetISO);
-    var bg = bgDay(d, function (r, h) {
-      var up = Math.max(0, Math.min(1, (h - (srF - 0.75)) / 1.5));
-      var down = Math.max(0, Math.min(1, ((ssF + 0.75) - h) / 1.5));
-      var t = up * down;
-      var c = t < 0.5 ? mix3(NIGHT, TWILIGHT, t * 2) : mix3(TWILIGHT, DAYLIT, (t - 0.5) * 2);
-      return css(c);
-    });
+    var bg = bgDay(d, function (r, h) { return dayNightColor(r, h, srF, ssF); });
     var tip = hm(mins) + ' of daylight. Solar noon at ' + hr((srF + ssF) / 2) + '.';
     var golden = goldenHour(d, lat, lon, tzOffsetHours(d.date, tz));
     if (golden) {
@@ -3171,6 +3188,21 @@
     return ax;
   }
 
+  /* With zero gap between the timeline cards, only the outer corners of
+     the whole stack should be rounded \u2014 individually rounding every
+     card would leave a scalloped edge where flat cards meet. */
+  function roundEnds(container) {
+    var cards = [];
+    for (var i = 0; i < container.children.length; i++) {
+      if (container.children[i].className.indexOf('card') === 0
+          || / card /.test(' ' + container.children[i].className + ' ')) cards.push(container.children[i]);
+    }
+    if (!cards.length) return;
+    cards[0].style.borderTopLeftRadius = '15px'; cards[0].style.borderTopRightRadius = '15px';
+    var last = cards[cards.length - 1];
+    last.style.borderBottomLeftRadius = '15px'; last.style.borderBottomRightRadius = '15px';
+  }
+
   function skeleton(host, tall, short) {
     host.innerHTML = '';
     var c = document.createElement('div'); c.className = 'hourly';
@@ -3269,6 +3301,12 @@
     }
     return base;
   }
+  function rangeDaylight(days) {
+    var a2 = span(days[0].d.sunriseISO, days[0].d.sunsetISO);
+    var b2 = span(days[days.length - 1].d.sunriseISO, days[days.length - 1].d.sunsetISO);
+    if (Math.abs(a2 - b2) < 2) return hm(a2) + ' of daylight';
+    return hm(a2) + ' to ' + hm(b2) + ' of daylight';
+  }
   function rangeMoon(days, tz, lat, lon) {
     var a2 = moonCard(days[0].d.date, tz, lat, lon).caption;
     var b2 = moonCard(days[days.length - 1].d.date, tz, lat, lon).caption;
@@ -3289,19 +3327,42 @@
 
     var col = document.createElement('div'); col.className = 'hourly';
 
-    /* Day headers stay one box per day \u2014 the row you tap to jump into
-       that date's full single-day view. */
+    /* Day headers expand like every other row now, instead of being the
+       one tap that jumps away to a different page. The panel underneath
+       is the day's own digest \u2014 sunrise and sunset, then the same
+       sentences the Feels/Sky/Moon rows show for that date \u2014 so this
+       row answers "what is this whole day like" the way the others
+       answer "how does this one thing change across the week." Opening
+       the actual single-day page is still one tap away, just no longer
+       the default one. */
     var head = document.createElement('div'); head.className = 'dayhead';
+    var dayPanel = document.createElement('div'); dayPanel.className = 'mdexpand'; dayPanel.style.display = 'none';
+    var openDay = null;
+    function showDayPanel(x) {
+      dayPanel.innerHTML = '';
+      var f = feelsCard(x.d), sk = skyCard(x.d);
+      [['Sunrise and sunset', clock(x.d.sunriseISO) + ' \u2013 ' + clock(x.d.sunsetISO)],
+       ['Feels Like', f.tip], ['Sky', sk.tip]].forEach(function (row) {
+        var p2 = document.createElement('p'); p2.className = 'mdday';
+        var b5 = document.createElement('b'); b5.textContent = row[0] + ': ';
+        p2.appendChild(b5); p2.appendChild(document.createTextNode(row[1]));
+        dayPanel.appendChild(p2);
+      });
+      var open2 = document.createElement('a'); open2.className = 'mdopen'; open2.href = '#';
+      open2.textContent = 'Open ' + (x.off === 0 ? 'today' : labelFor(state.tz, x.off).split(',')[0]) + ' as a single day';
+      open2.addEventListener('click', function (e) {
+        e.preventDefault();
+        state.dayOffset = x.off; store.span = 1; saveStore();
+        buildDays(); buildSpan(); renderHome();
+      });
+      dayPanel.appendChild(open2);
+    }
     days.forEach(function (x) {
       var b3 = document.createElement('button');
       b3.className = 'dayseg' + (x.off === 0 ? ' today' : '');
+      b3.style.width = (100 / days.length).toFixed(4) + '%';
       var srF = frac(x.d.sunriseISO), ssF = frac(x.d.sunsetISO);
-      b3.style.background = bgDay(x.d, function (r, h) {
-        var up = Math.max(0, Math.min(1, (h - (srF - 0.75)) / 1.5));
-        var down = Math.max(0, Math.min(1, ((ssF + 0.75) - h) / 1.5));
-        var t = up * down;
-        return css(t < 0.5 ? mix3(NIGHT, TWILIGHT, t * 2) : mix3(TWILIGHT, DAYLIT, (t - 0.5) * 2));
-      });
+      b3.style.background = bgDay(x.d, function (r, h) { return dayNightColor(r, h, srF, ssF); });
       var nm = document.createElement('span'); nm.className = 'dsname';
       var wide = days.length <= 4;
       nm.textContent = wide
@@ -3310,13 +3371,18 @@
       var dt = document.createElement('span'); dt.className = 'dsdate';
       dt.textContent = (+x.d.date.slice(5, 7)) + '/' + (+x.d.date.slice(8, 10));
       b3.appendChild(nm); b3.appendChild(dt);
+      b3.setAttribute('aria-expanded', 'false');
       b3.addEventListener('click', function () {
-        state.dayOffset = x.off; store.span = 1; saveStore();
-        buildDays(); buildSpan(); renderHome();
+        var wasOpen = openDay === x.off && dayPanel.style.display !== 'none';
+        Array.prototype.forEach.call(head.children, function (c) { c.setAttribute('aria-expanded', 'false'); });
+        if (wasOpen) { dayPanel.style.display = 'none'; openDay = null; return; }
+        showDayPanel(x); dayPanel.style.display = 'block';
+        b3.setAttribute('aria-expanded', 'true'); openDay = x.off;
       });
       head.appendChild(b3);
     });
     col.appendChild(head);
+    col.appendChild(dayPanel);
 
     /* Day-boundary lines are drawn inside each strip's own .face, exactly
        like the hour lines on a single day \u2014 the only way to have them
@@ -3400,6 +3466,11 @@
               return css(blend(base, [92, 122, 176], Math.min(1, (r.pop || 0) / 100) * 0.65));
             }), rangeSky(days), function (d) { return skyCard(d).tip; });
       strip(bgAcross(days, function (r, h, d) {
+              var srF = frac(d.sunriseISO), ssF = frac(d.sunsetISO);
+              return dayNightColor(r, h, srF, ssF);
+            }), rangeDaylight(days),
+            function (d) { return daylightCard(d, lat, lon, state.tz).tip; });
+      strip(bgAcross(days, function (r, h, d) {
               var t = (lat == null) ? { up: [] } : moonTimes(d.date, state.tz, lat, lon);
               var lit = Math.round(((1 - Math.cos(2 * Math.PI * (moonAge(d.date) / LUNATION))) / 2) * 100);
               var isUp = t.up.length ? t.up[h] : false;
@@ -3414,14 +3485,23 @@
         function (d) { return colorAt('sky', Math.min(100, d.cloudDay)); },
         function (d) { return skyCard(d).bold.split(',')[0]; },
         function (d) { return skyCard(d).tip; });
+      pillRow('Sunrise and sunset',
+        function (d) { var srF = frac(d.sunriseISO), ssF = frac(d.sunsetISO);
+                        return dayNightColor((d.hours[12] || {}), 12, srF, ssF); },
+        function (d) { return clock(d.sunriseISO) + '\u2013' + clock(d.sunsetISO); },
+        function (d) { return daylightCard(d, lat, lon, state.tz).tip; });
       pillRow('Moon',
-        function (d) { return css(NIGHT); },
+        function (d) {
+          var lit2 = (1 - Math.cos(2 * Math.PI * (moonAge(d.date) / LUNATION))) / 2;
+          return css(blend(NIGHT, [248, 249, 251], 0.15 + 0.65 * lit2));
+        },
         function (d) {
           var c = moonCard(d.date, state.tz, lat, lon).caption;
           return c ? c.split(' \u00B7 ')[0] : 'Moon';
         },
         function (d) { return moonCard(d.date, state.tz, lat, lon).tip; });
     }
+    roundEnds(col);
 
     host.appendChild(col);
   }
@@ -3456,6 +3536,7 @@
     };
     var col = document.createElement('div'); col.className = 'hourly';
     hourlyOrder().forEach(function (id) { addCard(col, id, hourlyBuilders[id]); });
+    roundEnds(col);
 
     var grid = document.createElement('div'); grid.className = 'grid';
     var builders = {
