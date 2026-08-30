@@ -49,15 +49,22 @@
   .mdday:last-child{margin-bottom:0;}
   .mdday b{font-weight:700;}
 
+  /* Pills wrapping onto a second row broke the one thing a pill row is
+     for \u2014 lining a value up under its day. Fixed percentage width, no
+     wrap, no flex-basis guesswork: the same discipline as the day
+     header above it, so pill 3 in every row and day segment 3 are
+     the same physical column. */
   .mdpillrow{margin-bottom:12px;}
-  .mdpills{display:flex;gap:6px;flex-wrap:wrap;}
-  .mdpill{flex:1 1 70px;min-width:64px;border:none;border-radius:12px;
-          padding:9px 6px;font:inherit;font-size:13px;font-weight:700;
-          color:var(--ink);cursor:pointer;text-align:center;
-          box-shadow:inset 0 0 0 1px rgba(22,35,47,.12);}
+  .mdpills{display:flex;flex-wrap:nowrap;}
+  .mdpill{flex:0 0 auto;min-width:0;border:none;border-right:2px solid var(--page);
+          border-radius:0;padding:8px 3px;font:inherit;font-size:12px;font-weight:700;
+          color:var(--ink);cursor:pointer;text-align:center;overflow:hidden;
+          display:flex;flex-direction:column;gap:2px;line-height:1.15;}
+  .mdpills .mdpill:first-child{border-top-left-radius:12px;border-bottom-left-radius:12px;}
+  .mdpills .mdpill:last-child{border-top-right-radius:12px;border-bottom-right-radius:12px;border-right:none;}
   .mdpilltip{font-size:12.5px;font-weight:400;line-height:1.35;margin:6px 0 0;
              text-align:left;color:var(--ink);}
-  @media (max-width:430px){ .mdpill{font-size:12px;padding:8px 5px;} }
+  @media (max-width:430px){ .mdpill{font-size:10.5px;padding:7px 2px;} }
   /* No flex gap: with a gap, each segment's true edge is not at i/N of
      the row's width (gaps eat width unevenly as items shrink to fit),
      which is why the day lines below drifted out of alignment with
@@ -206,6 +213,27 @@
   }
   @media (max-width:370px){ .card{font-size:16px;padding:12px 14px;} .hdr .l2{font-size:21px;}
     .card.sm{font-size:13px;padding:9px 10px;} }
+
+  /* Phone, turned sideways. Two separate problems, both from the same
+     cause: none of the widths above were chosen with landscape phones
+     in mind, so the layout guesses wrong at exactly the widths a
+     landscape phone lands on.
+
+     Under 760px, .wrap is still capped at its portrait width (440px),
+     so a landscape phone just gets that same narrow column centered in
+     a lot of blank space.
+
+     760px and up is where most current phones' landscape width
+     actually lands (iPhone 14/15 standard: 844px; Pro Max: 926px), and
+     that is also the desktop breakpoint above, which puts #homeBody
+     into a two-column grid built for the to-do sidebar. Multi-day view
+     never has a to-do sidebar, so it was rendering into that layout's
+     left column only \u2014 about 58% of the width, with the other 42%
+     empty \u2014 instead of the one wide column it actually wants. */
+  @media (orientation:landscape) and (max-width:960px){
+    .wrap{max-width:100%;}
+    #homeBody.multiday{display:block;}
+  }
 
   /* ---- public build additions ---- */
   .bar{display:flex;align-items:center;justify-content:center;gap:14px;margin:0 0 10px;}
@@ -905,6 +933,11 @@
     rain:    [61, 63, 65],
     drizzle: [51, 53, 55]
   };
+  function precipKindOne(code) {
+    var order = ['hail', 'thunder', 'freezing', 'snow', 'showers', 'rain', 'drizzle'];
+    for (var i = 0; i < order.length; i++) if (WX[order[i]].indexOf(code) > -1) return order[i];
+    return null;
+  }
   function precipKind(codes) {
     var counts = {};
     codes.forEach(function (c) {
@@ -2281,6 +2314,31 @@
             : 'Salt corrodes fastest once it thaws, because the reaction needs liquid water \u2014 a cold salted week does less damage than the first warm day after it. This is the day a wash with an undercarriage rinse is worth the money.') };
   }
 
+  /* Distinct from the day's forecast headline on purpose: this reads
+     Open-Meteo's own current-conditions estimate, not the hourly/daily
+     rollup the Sky card is built from. Silent unless something is
+     actually falling right now \u2014 a clear "Right now: sunny" note would
+     just repeat what the Sky card's gradient already shows at the "now"
+     line, and the one time this needed to exist was precisely the case
+     the rollup could miss: real rain, no mention anywhere on the page. */
+  function nowCard(current, tz) {
+    if (!current) return null;
+    var kind = precipKindOne(current.weather_code);
+    var amt = Math.max(current.precipitation || 0, current.rain || 0,
+                        current.showers || 0, current.snowfall || 0);
+    if (!kind || amt <= 0) return null;
+    var noun = { hail: 'Hail', thunder: 'Thunderstorms', freezing: 'Freezing Rain',
+                 snow: 'Snow', showers: 'Showers', rain: 'Rain', drizzle: 'Drizzle' }[kind];
+    var t = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' })
+      .format(new Date(current.time));
+    return { bg: bgFlat('rain', 80), bold: noun + ' Right Now', plain: false,
+      tip: (current.temperature_2m != null ? Math.round(current.temperature_2m) + DEG + '. ' : '')
+         + 'As of ' + t + ' local time. This is Open-Meteo\u2019s current-conditions estimate, updated '
+         + 'roughly hourly \u2014 not live radar, but a separate reading from the day\u2019s forecast above, '
+         + 'which is why the two can disagree: the Sky card describes the whole day\u2019s shape, this describes '
+         + 'this one moment.' };
+  }
+
   function alertCard(al, tz) {
     var until = al.ends ? shortTime(al.ends, tz) : '';
     return { alert: true, bold: al.event, det: until ? ' (until ' + until + ')' : '',
@@ -2428,6 +2486,14 @@
       + '&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,'
       + 'apparent_temperature_min,precipitation_sum,snowfall_sum,precipitation_probability_max,'
       + 'uv_index_max,shortwave_radiation_sum,sunrise,sunset'
+      // The day's headline is built entirely from the hourly/daily
+      // forecast above, aggregated across all 24 hours \u2014 which is why
+      // a short, localized, or under-forecast shower can be genuinely
+      // happening outside while the headline still says "Mostly Sunny."
+      // This asks Open-Meteo for its own current-conditions estimate in
+      // the same request, so there is finally something to check that
+      // isn't a forecast rollup. Same request, no extra round trip.
+      + '&current=temperature_2m,precipitation,rain,showers,snowfall,weather_code,cloud_cover'
       + '&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch'
       + '&past_days=' + past + '&forecast_days=7';
   }
@@ -2463,6 +2529,7 @@
 
     Promise.all(jobs).then(function (r) {
       state.home = { wx: r[0], aq: r[1], alerts: r[2], kp: r[3], pollen: null, airGoogle: null,
+                     current: r[0].current || null,
                      water: null, virus: null, flag: null };
       state.tz = r[0].timezone || place.tz || 'America/Detroit';
       store.place = place;
@@ -3439,10 +3506,18 @@
       var lb = document.createElement('div'); lb.className = 'mdrowlabel'; lb.textContent = label;
       wrap.appendChild(lb);
       var row = document.createElement('div'); row.className = 'mdpills';
+      var pw = (100 / days.length).toFixed(4) + '%';
       days.forEach(function (x) {
         var p2 = document.createElement('button'); p2.className = 'mdpill';
+        p2.style.width = pw;
         p2.style.background = colorFor(x.d);
-        var t = document.createElement('span'); t.textContent = textFor(x.d); p2.appendChild(t);
+        // textFor may return one string or an array of lines \u2014 sunrise
+        // and sunset reads as two short lines rather than one that wraps
+        // wherever the column happens to be narrow.
+        var lines = [].concat(textFor(x.d));
+        lines.forEach(function (ln) {
+          var t = document.createElement('span'); t.textContent = ln; p2.appendChild(t);
+        });
         var body = document.createElement('p'); body.className = 'mdpilltip'; body.style.display = 'none';
         body.textContent = tipFor(x.d);
         p2.appendChild(body);
@@ -3488,7 +3563,7 @@
       pillRow('Sunrise and sunset',
         function (d) { var srF = frac(d.sunriseISO), ssF = frac(d.sunsetISO);
                         return dayNightColor((d.hours[12] || {}), 12, srF, ssF); },
-        function (d) { return clock(d.sunriseISO) + '\u2013' + clock(d.sunsetISO); },
+        function (d) { return [clock(d.sunriseISO), clock(d.sunsetISO)]; },
         function (d) { return daylightCard(d, lat, lon, state.tz).tip; });
       pillRow('Moon',
         function (d) {
@@ -3527,6 +3602,10 @@
     var alertHost = document.getElementById('alertBody');
     alertHost.innerHTML = '';
     (p.alerts || []).forEach(function (al) { alertHost.appendChild(card(alertCard(al, state.tz))); });
+    if (state.dayOffset === 0) {
+      var nc = nowCard(p.current, state.tz);
+      if (nc) alertHost.appendChild(card(nc));
+    }
 
     var hourlyBuilders = {
       feels:    function () { return feelsCard(d); },
