@@ -2347,12 +2347,16 @@
                  snow: 'Snow', showers: 'Showers', rain: 'Rain', drizzle: 'Drizzle' }[kind];
     var t = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' })
       .format(new Date(current.time));
-    return { bg: bgFlat('rain', 80), bold: noun + ' Right Now', plain: false,
-      tip: (current.temperature_2m != null ? Math.round(current.temperature_2m) + DEG + '. ' : '')
-         + 'As of ' + t + ' local time. This is Open-Meteo\u2019s current-conditions estimate, updated '
-         + 'roughly hourly \u2014 not live radar, but a separate reading from the day\u2019s forecast above, '
-         + 'which is why the two can disagree: the Sky card describes the whole day\u2019s shape, this describes '
-         + 'this one moment.' };
+    // alert:true, not sm: without it this fell through to the small-tile
+    // class, then got stretched full width in alertHost \u2014 the wrong
+    // size for the wrong reason. Same flag alertCard() uses, so a real
+    // weather alert and this sit at the same height and rhythm. The
+    // methodology paragraph moved to About, where the other "how this
+    // differs from the forecast" explanations already live \u2014 the tap
+    // only needs the two facts someone actually wants mid-glance.
+    return { alert: true, bold: noun + ' Right Now',
+      det: current.temperature_2m != null ? ' (' + Math.round(current.temperature_2m) + DEG + ')' : '',
+      tip: 'As of ' + t + ' local time.' };
   }
 
   function alertCard(al, tz) {
@@ -4134,6 +4138,7 @@
       ['Google Pollen and Air Quality', 'Only if you add your own key. Otherwise allergens come from a bloom calendar.']
     ]],
     ['How the less obvious ones work', [
+      ['\u201cRight now\u201d vs the Sky card', 'Two different readings from the same request. The Sky card is built from the hourly and daily forecast, rolled up across the whole day \u2014 what the model expects today to look like. \u201cRight now\u201d reads Open-Meteo\u2019s separate current-conditions estimate, updated roughly hourly rather than from live radar. The two can disagree, which is usually the point: a short or localized shower can be genuinely falling without moving the day\u2019s overall forecast enough to change the headline above.'],
       ['Migraine', 'Mostly barometric pressure: how far it moved over the past 24 hours, with falls weighted heavier than rises, plus the next twelve hours. Then temperature swing, warm and muggy air, bright glare on a clear day, and gusty wind. Scored out of 100.'],
       ['Arthritis', 'Falling pressure only \u2014 rises do not count. Then the damp-and-cool combination, which reads worse than either alone, plus rain, a large temperature swing, and heavy humidity. Settled warm dry weather subtracts from the score. Worth knowing: this is the most widely reported weather link and one of the least well supported. Several large studies found little or no association.'],
       ['Sunburn', 'Minimal erythemal dose for your skin type divided by the UV at solar noon. Fitzpatrick I burns in about a fifth of the time Fitzpatrick VI does. Longer is not the same as safe \u2014 pigment slows burning without stopping UV damage.'],
