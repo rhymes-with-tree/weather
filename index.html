@@ -64,6 +64,9 @@
   .mdpills .mdpill:last-child{border-top-right-radius:12px;border-bottom-right-radius:12px;border-right:none;}
   .mdpilltip{font-size:12.5px;font-weight:400;line-height:1.35;margin:6px 0 0;
              text-align:left;color:var(--ink);}
+  /* Always visible, no tap \u2014 for values that are just numbers. */
+  .mdsub{font-size:11.5px;font-weight:600;opacity:.75;margin-top:2px;}
+  .mdpill.withsub{cursor:default;}
   @media (max-width:430px){ .mdpill{font-size:10.5px;padding:7px 2px;} }
   /* No flex gap: with a gap, each segment's true edge is not at i/N of
      the row's width (gaps eat width unevenly as items shrink to fit),
@@ -1701,11 +1704,24 @@
       ? 'Full moon in ' + Math.round(toFull) + ' day' + (Math.round(toFull) === 1 ? '' : 's') + '.'
       : 'New moon in ' + Math.round(toNew) + ' day' + (Math.round(toNew) === 1 ? '' : 's') + '.';
 
+    // The tip is what multi-day's tap-to-expand reads from, and it never
+    // had the actual rise/set times in it \u2014 only split.left/right did,
+    // which only the single-day card face uses. Built once here so both
+    // surfaces read the same sentence instead of two different views of
+    // the same computation. right can be empty (moon up or down all
+    // day), in which case there is only one clause to say.
+    var riseSetText = '';
+    if (lat != null) {
+      var clause = function (pair2) { return pair2[0] + ' ' + pair2[1]; };
+      riseSetText = clause(left);
+      if (right[0]) riseSetText += ', ' + clause(right)[0].toLowerCase() + clause(right).slice(1);
+      riseSetText += '. ';
+    }
+
     return { timeline: true, bg: bg,
       split: { left: left, right: right },
       caption: lat == null ? null : name + ' \u00B7 ' + illum + '% lit',
-      tip: illum + '% illuminated, ' + Math.round(age) + ' days into the cycle. ' + next
-         + ' Rise and set are calculated for your latitude, not fetched.' };
+      tip: riseSetText + illum + '% illuminated, ' + Math.round(age) + ' days into the cycle. ' + next };
   }
 
   /* Solar longitude passes 0, 90, 180 and 270 degrees at the equinoxes
@@ -3406,10 +3422,14 @@
     var dayPanel = document.createElement('div'); dayPanel.className = 'mdexpand'; dayPanel.style.display = 'none';
     var openDay = null;
     function showDayPanel(x) {
+      // This is the sunrise/sunset row, not a digest of the whole day \u2014
+      // Feels Like and Sky already have their own rows below with their
+      // own taps. Just the three times this row is actually about.
       dayPanel.innerHTML = '';
-      var f = feelsCard(x.d), sk = skyCard(x.d);
-      [['Sunrise and sunset', clock(x.d.sunriseISO) + ' \u2013 ' + clock(x.d.sunsetISO)],
-       ['Feels Like', f.tip], ['Sky', sk.tip]].forEach(function (row) {
+      var srF = frac(x.d.sunriseISO), ssF = frac(x.d.sunsetISO);
+      [['Sunrise', clock(x.d.sunriseISO)],
+       ['Midday', hr((srF + ssF) / 2)],
+       ['Sunset', clock(x.d.sunsetISO)]].forEach(function (row) {
         var p2 = document.createElement('p'); p2.className = 'mdday';
         var b5 = document.createElement('b'); b5.textContent = row[0] + ': ';
         p2.appendChild(b5); p2.appendChild(document.createTextNode(row[1]));
@@ -3501,30 +3521,39 @@
        capsule \u2014 no gradient, no day-boundary lines needed since the gap
        between pills already marks the day. Tapping one pill shows that
        day's sentence beneath it. */
-    function pillRow(label, colorFor, textFor, tipFor) {
+    function pillRow(label, colorFor, textFor, tipFor, subFor) {
       var wrap = document.createElement('div'); wrap.className = 'mdpillrow';
       var lb = document.createElement('div'); lb.className = 'mdrowlabel'; lb.textContent = label;
       wrap.appendChild(lb);
       var row = document.createElement('div'); row.className = 'mdpills';
       var pw = (100 / days.length).toFixed(4) + '%';
       days.forEach(function (x) {
-        var p2 = document.createElement('button'); p2.className = 'mdpill';
+        var p2 = document.createElement('button'); p2.className = 'mdpill' + (subFor ? ' withsub' : '');
         p2.style.width = pw;
         p2.style.background = colorFor(x.d);
-        // textFor may return one string or an array of lines \u2014 sunrise
-        // and sunset reads as two short lines rather than one that wraps
-        // wherever the column happens to be narrow.
         var lines = [].concat(textFor(x.d));
         lines.forEach(function (ln) {
           var t = document.createElement('span'); t.textContent = ln; p2.appendChild(t);
         });
-        var body = document.createElement('p'); body.className = 'mdpilltip'; body.style.display = 'none';
-        body.textContent = tipFor(x.d);
-        p2.appendChild(body);
-        p2.addEventListener('click', function () {
-          var open = body.style.display === 'none';
-          body.style.display = open ? 'block' : 'none';
-        });
+        // A predictable value \u2014 just numbers, nothing to read \u2014 sits
+        // below the words with no tap needed. Feels Like's overnight and
+        // peak temps are exactly this: the tap is for prose, not for
+        // numbers someone can already see.
+        if (subFor) {
+          [].concat(subFor(x.d)).forEach(function (ln) {
+            var sub = document.createElement('span'); sub.className = 'mdsub'; sub.textContent = ln;
+            p2.appendChild(sub);
+          });
+        }
+        if (tipFor) {
+          var body = document.createElement('p'); body.className = 'mdpilltip'; body.style.display = 'none';
+          body.textContent = tipFor(x.d);
+          p2.appendChild(body);
+          p2.addEventListener('click', function () {
+            var open = body.style.display === 'none';
+            body.style.display = open ? 'block' : 'none';
+          });
+        }
         row.appendChild(p2);
       });
       wrap.appendChild(row);
@@ -3540,11 +3569,9 @@
               var base = skyColor(r).match(/\d+/g).map(Number);
               return css(blend(base, [92, 122, 176], Math.min(1, (r.pop || 0) / 100) * 0.65));
             }), rangeSky(days), function (d) { return skyCard(d).tip; });
-      strip(bgAcross(days, function (r, h, d) {
-              var srF = frac(d.sunriseISO), ssF = frac(d.sunsetISO);
-              return dayNightColor(r, h, srF, ssF);
-            }), rangeDaylight(days),
-            function (d) { return daylightCard(d, lat, lon, state.tz).tip; });
+      // No separate Daylight strip: the day-header row above is already
+      // a sunrise-to-sunset gradient with its own tap for the exact
+      // times, so a second row saying the same thing added nothing.
       strip(bgAcross(days, function (r, h, d) {
               var t = (lat == null) ? { up: [] } : moonTimes(d.date, state.tz, lat, lon);
               var lit = Math.round(((1 - Math.cos(2 * Math.PI * (moonAge(d.date) / LUNATION))) / 2) * 100);
@@ -3554,17 +3581,18 @@
     } else {
       pillRow('Feels Like',
         function (d) { return colorAt('feels', (d.feelsMin + d.feelsMax) / 2); },
-        function (d) { return Math.round(d.feelsMin) + '\u2013' + Math.round(d.feelsMax) + DEG; },
-        function (d) { return feelsCard(d).tip; });
+        function (d) { return feelsCard(d).bold; },
+        null,   // nothing worth a tap once the temps are already shown
+        function (d) {
+          return [Math.round(d.feelsMin) + '\u00B0 overnight',
+                  Math.round(d.feelsMax) + '\u00B0 ' + (d.feelsPeakHour != null ? '~' + hr(d.feelsPeakHour) : '')];
+        });
       pillRow('Sky',
         function (d) { return colorAt('sky', Math.min(100, d.cloudDay)); },
-        function (d) { return skyCard(d).bold.split(',')[0]; },
+        // Full statement, not truncated at the first comma \u2014 that was
+        // cutting the precipitation half off entirely.
+        function (d) { return skyCard(d).bold; },
         function (d) { return skyCard(d).tip; });
-      pillRow('Sunrise and sunset',
-        function (d) { var srF = frac(d.sunriseISO), ssF = frac(d.sunsetISO);
-                        return dayNightColor((d.hours[12] || {}), 12, srF, ssF); },
-        function (d) { return [clock(d.sunriseISO), clock(d.sunsetISO)]; },
-        function (d) { return daylightCard(d, lat, lon, state.tz).tip; });
       pillRow('Moon',
         function (d) {
           var lit2 = (1 - Math.cos(2 * Math.PI * (moonAge(d.date) / LUNATION))) / 2;
