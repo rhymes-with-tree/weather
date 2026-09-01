@@ -107,12 +107,14 @@
   /* A tappable card says so: a small chevron that rotates when open.
      Only appears on cards that actually have something behind them, so
      it never promises a tap that does nothing. */
-  /* Bottom right corner of the card rather than beside the words, which
-     is where it used to collide with a label that wrapped. */
-  .more{position:absolute;right:7px;bottom:5px;width:12px;height:12px;
-        opacity:.3;pointer-events:none;}
+  /* Top-right, same line as the text, sized and weighted like a normal
+     iOS/Android disclosure chevron rather than a decorative hint \u2014
+     visible at a glance, including while a card is open. */
+  .more{position:absolute;right:10px;top:14px;width:18px;height:18px;
+        opacity:.55;pointer-events:none;}
   .more svg{display:block;width:100%;height:100%;}
-  .card.open .more{transform:rotate(180deg);opacity:.45;}
+  .card.open .more{transform:rotate(180deg);opacity:.7;}
+  .card.sm .more{top:9px;right:7px;width:15px;height:15px;}
   /* Sunrise to the left, sunset to the right, so the card reads the way
      the day runs. Wraps to two lines rather than crushing on a narrow
      phone. */
@@ -122,6 +124,18 @@
   .face.split .end.right{text-align:right;margin-left:0;}
   .face.split .end b{display:block;}
   .caption{font-size:13.5px;opacity:.72;text-align:center;margin-top:5px;}
+  /* A small aligned table under the prose \u2014 time, then whatever else
+     (compass point, level, authority), then a label. First column stays
+     a fixed width so times line up down the list. */
+  .tiprows{margin-top:8px;}
+  .tiprow{display:flex;gap:8px;padding:2px 0;align-items:baseline;}
+  .tc{font-size:13.5px;}
+  .tc0{min-width:52px;font-weight:700;flex:0 0 auto;}
+  .tc1{min-width:24px;flex:0 0 auto;opacity:.65;font-weight:600;}
+  .tc2{flex:1 1 auto;}
+  .tcfull{flex:1 1 auto;font-weight:500;}
+  .tiprow.head .tc{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;
+                   opacity:.55;font-weight:700;}
   .credit{display:block;margin-top:8px;}
   .credit a{color:inherit;text-decoration:none;font:700 13px system-ui;border:none;}
   .mastmark{font-family:'Lobster',cursive;font-size:1.35em;font-weight:400;}
@@ -131,8 +145,8 @@
            background:var(--link);box-shadow:0 0 0 1px rgba(255,255,255,.6);}
   .card{border-radius:14px;padding:9px 16px;margin:0 0 var(--gap);width:100%;
         min-height:var(--rowh);display:flex;flex-direction:column;justify-content:center;
-        border:none;font:inherit;color:var(--ink);text-align:center;
-        font-size:17.5px;display:block;cursor:pointer;}
+        border:none;font:inherit;color:var(--ink);text-align:left;
+        font-size:17.5px;display:block;cursor:pointer;padding-right:34px;}
   .card.flat, .card.todo, .card.todo .todohead{cursor:default;}
   /* Compact tier. A card whose gradient runs midnight to midnight
      needs the width to be read across; a card that is one word does
@@ -147,8 +161,8 @@
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);margin-top:17px;
         grid-auto-rows:minmax(var(--rowh),auto);align-content:start;}
   .card.sm{min-height:var(--rowh);display:flex;flex-direction:column;
-           align-items:center;justify-content:center;text-align:center;
-           padding:8px 11px;font-size:14px;border-radius:12px;margin:0;width:auto;
+           align-items:flex-start;justify-content:center;text-align:left;
+           padding:8px 26px 8px 11px;font-size:14px;border-radius:12px;margin:0;width:auto;
            line-height:1.22;}
   /* Tapped open, a tile takes the full row so the detail has somewhere
      to go instead of straining the square. */
@@ -292,7 +306,8 @@
             color:var(--ink);opacity:.62;font-weight:700;margin-bottom:7px;}
   .card.todo ul + .todohead{margin-top:14px;padding-top:12px;
                             border-top:1px solid rgba(22,35,47,.13);}
-  .card.todo li.week{background:#EDF1F6;border-color:#D3DEEA;}
+  .weekline{font-size:14.5px;line-height:1.5;margin:4px 0;cursor:pointer;}
+  .weekdetail{display:block;font-size:13px;opacity:.75;margin-top:2px;font-weight:400;}
   .ord.sub{padding-left:18px;}
   .ord.sub span{opacity:.8;}
   .card.todo ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:7px 9px;}
@@ -875,9 +890,13 @@
       })(),
       tip: 'Feels like ' + Math.round(d.feelsMin) + DEG + ' overnight, ' + Math.round(d.feelsMax) + DEG
          + (d.feelsPeakHour != null ? ' around ' + hr(d.feelsPeakHour) : ' at its peak') + '.'
-         + ' Air temperature runs ' + Math.round(d.tMin) + DEG + ' to ' + Math.round(d.tMax) + DEG
-         + ', dew point peaks near ' + Math.round(dp) + DEG + '.'
-         + (skin ? ' ' + skin : '') };
+         + (skin ? ' ' + skin : ''),
+      rowsHead: ['', 'Feels Like', 'Air Temp'],
+      rows: [
+        ['Overnight', Math.round(d.feelsMin) + DEG, Math.round(d.tMin) + DEG],
+        [d.feelsPeakHour != null ? hr(d.feelsPeakHour) : 'Peak', Math.round(d.feelsMax) + DEG, Math.round(d.tMax) + DEG],
+        [hum || '', '', Math.round(dp) + DEG + ' Dew Point']
+      ] };
   }
 
   function burnCard(d) {
@@ -886,18 +905,17 @@
       tip: 'UV only reaches ' + uv.toFixed(1) + ' at solar noon. Nothing to protect against.' };
     var mins = Math.max(5, Math.round(sk.med / (uv * 1.5)));
     var face = mins >= 90 ? Math.round(mins / 60 * 10) / 10 + ' hr to Sunburn' : mins + ' min to Sunburn';
-    var tip = 'UV ' + uv.toFixed(1) + ' at solar noon, ' + hr(d.solarNoon)
-            + '. Unprotected, for skin that ' + sk.label.toLowerCase() + '. ';
-    tip += uv >= 8
-      ? 'Sunscreen before you leave, plus a hat, and shade in the middle of the day.'
-      : uv >= 6 ? 'Sunscreen before ' + burnStart(d) + ', and again after you swim or sweat.'
-      : 'Sunscreen past half an hour outside.';
+    var win = uvWindow(d);
+    var tip = 'UV ' + uv.toFixed(1) + ' at ' + hr(d.solarNoon) + ' (solar noon).';
+    if (win) tip += ' Sunburn risk ' + hr(win.start) + DASH + hr(win.end) + '.';
+    tip += ' ' + mins + ' min to sunburn for skin that ' + sk.label.toLowerCase() + '.';
     // Longer to burn is not the same as safe: pigment slows erythema but
     // does not stop UV damage, and skin cancer in darker skin is more
     // often found late.
     if (sk.id >= 4) {
       tip += ' A longer window is not the same as no risk \u2014 UV still ages and damages skin that rarely burns.';
     }
+    tip += ' Not your skin type? Change it in Settings.';
     return { bg: bgFlat('burn', uv), bold: face, tip: tip,
              // Without a tile, the minutes only survive if the pill
              // carries them \u2014 and they are the reason the skin setting
@@ -915,6 +933,18 @@
       if (r && r.uv >= 3) return hr(h);
     }
     return hr(d.solarNoon);
+  }
+  /* The hours UV stays at or above 3, the same threshold burnStart uses
+     \u2014 not just when it starts mattering but when it stops. Integer
+     hours only: that is the actual resolution of the forecast, and a
+     rounded half hour would be false precision the data does not have. */
+  function uvWindow(d) {
+    var start = null, end = null;
+    for (var h = 4; h <= 22; h++) {
+      var r = d.hours[h];
+      if (r && r.uv >= 3) { if (start == null) start = h; end = h; }
+    }
+    return start == null ? null : { start: start, end: end + 1 };
   }
 
   /* Cloud only. The old version let a weather code override the cloud
@@ -987,29 +1017,27 @@
       return css(blend(base, WETC, p));
     });
 
-    var tip = Math.round(d.cloudDay) + '% average cloud cover through daylight.'
-            + (wAM !== wPM ? ' ' + wAM + ' in the morning, ' + wPM.toLowerCase() + ' by afternoon.' : '');
+    var tip = Math.round(d.cloudDay) + '% average cloud cover through daylight.';
     if (kind) {
-      tip += ' ' + v + '% chance at its highest';
-      tip += d.rainRun ? ', likeliest ' + hr(d.rainRun.a) + DASH + hr(d.rainRun.b + 1)
-                       + ', though it can turn up outside that stretch.' : ', scattered with no clear window.';
-      if (d.snowToday >= 0.2) tip += ' ' + Math.round(d.snowToday * 10) / 10 + '\u2033 of snow expected.';
-      else if (d.rainSum >= 0.05) tip += ' About ' + d.rainSum.toFixed(2) + '\u2033 in total.';
+      tip = (d.rainRun ? hr(d.rainRun.a) + DASH + hr(d.rainRun.b + 1) + ': ' : '')
+          + v + '% chance of ' + noun + (d.rainRun ? '' : ', scattered with no clear window')
+          + (d.snowToday >= 0.2 ? ', about ' + Math.round(d.snowToday * 10) / 10 + '\u2033 total'
+             : d.rainSum >= 0.05 ? ', about ' + d.rainSum.toFixed(2) + '\u2033 total' : '') + '.';
     }
 
-    var ev = [];
+    var ev = [], evC = [];
     for (var e = d.sunset + 1; e <= d.sunset + 4; e++) {
       var er = d.hours[e % 24];
-      if (er) ev.push(er.cloud == null ? 50 : er.cloud);
+      if (er) { ev.push(er.cloud == null ? 50 : er.cloud); evC.push(er.code); }
     }
     var evCloud = ev.length ? avg(ev) : null;
+    var evWord = ev.length ? skyWord(evCloud, evC) : null;
     var lit = Math.round(((1 - Math.cos(2 * Math.PI * (moonAge(d.date) / LUNATION))) / 2) * 100);
-    if (evCloud != null) {
-      tip += evCloud >= 60 ? ' Evening sky stays cloudy, so not a stargazing night.'
-           : evCloud >= 30 ? ' Evening sky is broken cloud \u2014 patchy stargazing at best.'
-           : lit >= 60 ? ' Clear evening, but a ' + lit + '% moon will wash out the faint stars.'
-           : ' Clear evening and only a ' + lit + '% moon \u2014 a good night for stargazing.';
-    }
+    var starNote = evCloud == null ? null
+      : evCloud >= 60 ? 'stargazing limited by cloud'
+      : evCloud >= 30 ? 'patchy stargazing at best'
+      : lit >= 60 ? 'stargazing limited by moonlight'
+      : 'good night for stargazing';
 
     var gear = null, when = 'out', rank = 30;
     if (kind === 'hail') { gear = 'Park under cover if you can'; rank = 5; when = 'day';
@@ -1030,6 +1058,11 @@
     }
 
     return { timeline: true, bg: bg, bold: face, tip: tip,
+      rows: [
+        ['Morning', '', wAM],
+        ['Afternoon', '', wPM],
+        ['Evening', '', evWord ? (evWord + (starNote ? '; ' + starNote : '')) : (starNote || '')]
+      ],
       todo: gear, todoWhen: when, todoRank: rank,
       todo2: (evCloud != null && evCloud < 30 && lit < 60)
         ? { text: 'Go stargazing', when: 'night', rank: 90, outdoor: true } : null };
@@ -1070,6 +1103,19 @@
     }
     tip += src === 'google' ? ' Google Air Quality, 500 m grid.' : ' Copernicus CAMS, ~45 km grid.';
 
+    // The EPA's own six categories, not an invented severity scale.
+    // Sensitive Groups is not a separate column running the whole
+    // table \u2014 it is one specific band the EPA names for exactly that
+    // audience. An arrow marks whichever band today's reading falls in.
+    var bands = [[0, 50, 'Good'], [51, 100, 'Moderate'],
+                 [101, 150, 'Unhealthy for Sensitive Groups'], [151, 200, 'Unhealthy'],
+                 [201, 300, 'Very Unhealthy'], [301, Infinity, 'Hazardous']];
+    var bandRows = bands.map(function (b) {
+      var here = a >= b[0] && a <= b[1];
+      var range = b[1] === Infinity ? b[0] + '+' : b[0] + '\u2013' + b[1];
+      return [(here ? '\u2192 ' : '') + range, b[2]];
+    });
+
     var out = [];
     if (sens) {
       if (a > 50)  out.push({ text: 'Keep your rescue inhaler nearby', when: 'out', rank: 6 });
@@ -1089,7 +1135,9 @@
       if (a > 200) out.push({ text: 'Stay inside, air purifier on if you have one', when: 'day', rank: 2, blocksOutdoor: true });
     }
 
-    return { bg: bgFlat('aqi', a), bold: word, tip: tip, todos: out };
+    tip += ' Change your sensitive-group status in Settings.';
+    return { bg: bgFlat('aqi', a), bold: word, tip: tip, todos: out,
+             rowsHead: ['AQI', ''], rows: bandRows };
   }
 
   var CALENDARS = {
@@ -1155,8 +1203,8 @@
         return { bg: bgFlat('risk', sc),
           todo: sc >= 35 ? 'Antihistamine before you leave' : null, todoWhen: 'out', todoRank: 35,
           bold: plants.length ? level(sc) + ' Allergies' : 'No Pollen in Season',
-          tip: (plants.length ? listJoin(plants) + '. ' : '')
-             + 'Pollen index ' + idx + ' out of 5, from the Google Pollen API. ' + advice(sc) };
+          tip: idx + ' out of 5 on Pollen Index.',
+          rows: plants.length ? [[listJoin(plants)]] : [] };
       }
     }
     if (pollen && pollen.error) return { plain: true, bold: 'Allergens Unavailable', tip: pollen.error };
@@ -1174,8 +1222,10 @@
     return { bg: bgFlat('risk', sc2),
       bold: level(sc2) + ' Allergies',
       todo: sc2 >= 35 ? 'Antihistamine before you leave' : null, todoWhen: 'out', todoRank: 35,
-      tip: listJoin(names.map(cap)) + '. Scored ' + sc2 + ' out of 100, from a bloom calendar for the '
-         + cal.name + ' rather than any pollen data. ' + advice(sc2) };
+      // Modelled, not measured \u2014 that distinction is substantive, not
+      // just prose, so it stays even though the rest got shorter.
+      tip: sc2 + ' out of 100, from a bloom calendar for the ' + cal.name + ' rather than any pollen data.',
+      rows: [[listJoin(names.map(cap))]] };
   }
 
   function migraineScore(d) {
@@ -1261,9 +1311,14 @@
 
     var word = w < 60 ? 'Dangerously Cold Water' : w < 68 ? 'Cold Water'
              : w < 74 ? 'Bracing Water' : 'Pleasant Water';
-    var tip = w + DEG + (waveFt != null ? ', waves ' + waveFt + ' ft' : '') + '. ';
-    if (w < 65) tip = 'Cold enough for cold-water shock \u2014 get in slowly, never jump. ' + tip;
-    return { bg: bgFlat('water', w), bold: word, tip: tip + provenance,
+    // Provenance first (where the reading is from), the number second \u2014
+    // wave height only appears when the source actually reports it. A
+    // shoreline gauge, which is what most readings turn out to be, never
+    // has wave data, so making that up would be worse than leaving it out.
+    var reading = w + DEG + (waveFt != null ? ' and ' + waveFt + ' ft waves' : '') + '.';
+    var shockNote = w < 65 ? ' Cold enough for cold-water shock \u2014 get in slowly, never jump.' : '';
+    return { bg: bgFlat('water', w), bold: word, tip: provenance,
+             rows: [[reading + shockNote]],
              todo: (w >= 70 && on('swim')) ? 'Go for a swim' : null, todoWhen: 'day', todoRank: 95, todoOutdoor: true };
   }
 
@@ -1286,6 +1341,30 @@
                      + Math.cos(rad * lat) * Math.cos(rad * decl) * Math.cos(rad * hourAngle));
     return e / rad;
   }
+  /* Verified against two textbook references before use: solar noon at
+     the equinox reads due south (177\u2013180\u00b0 depending on exact date),
+     and equinox sunrise reads due east (90.1\u00b0). */
+  function compassPoint(deg) {
+    var pts = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    return pts[Math.round(((deg % 360) + 360) % 360 / 45) % 8];
+  }
+  function solarAzimuth(lat, lon, dateStr, hourLocal, tzOff) {
+    var rad = Math.PI / 180;
+    var y = +dateStr.slice(0, 4), m = +dateStr.slice(5, 7), dd = +dateStr.slice(8, 10);
+    var dayOfYear = Math.floor((Date.UTC(y, m - 1, dd) - Date.UTC(y, 0, 0)) / 86400000);
+    var decl = 23.44 * Math.sin(rad * (360 / 365) * (dayOfYear - 81));
+    var utcHour = hourLocal - tzOff;
+    var b = rad * (360 / 365) * (dayOfYear - 81);
+    var eqTime = 9.87 * Math.sin(2 * b) - 7.53 * Math.cos(b) - 1.5 * Math.sin(b);
+    var solarTime = utcHour * 60 + 4 * lon + eqTime;
+    var H = (solarTime / 4) - 180;
+    var latR = lat * rad, declR = decl * rad, HR = H * rad;
+    var alt = Math.asin(Math.sin(latR) * Math.sin(declR) + Math.cos(latR) * Math.cos(declR) * Math.cos(HR));
+    var yA = -Math.sin(HR) * Math.cos(declR);
+    var xA = (Math.sin(declR) - Math.sin(latR) * Math.sin(alt)) / Math.cos(latR);
+    return ((Math.atan2(yA, xA) / rad) + 360) % 360;
+  }
+
   function goldenHour(d, lat, lon, tzOff) {
     if (lat == null) return null;
     var sr = d.sunrise, ss = d.sunset;   // derive() names them sunrise/sunset
@@ -1310,24 +1389,43 @@
     var srF = frac(d.sunriseISO), ssF = frac(d.sunsetISO);
     var mins = span(d.sunriseISO, d.sunsetISO);
     var bg = bgDay(d, function (r, h) { return dayNightColor(r, h, srF, ssF); });
-    var tip = hm(mins) + ' of daylight. Solar noon at ' + hr((srF + ssF) / 2) + '.';
-    var golden = goldenHour(d, lat, lon, tzOffsetHours(d.date, tz));
-    if (golden) {
-      var bits = [];
-      if (golden.amEnd != null) bits.push('early light until ' + hr(golden.amEnd));
-      if (golden.pmStart != null) bits.push('golden light from ' + hr(golden.pmStart));
-      tip += ' Golden hour: ' + bits.join(', and ') + '.';
-    }
+    var tzOff = tzOffsetHours(d.date, tz);
+
+    var lenLine = hm(mins) + ' of daylight';
     if (d.prevSunriseISO) {
       var delta = mins - span(d.prevSunriseISO, d.prevSunsetISO);
       if (delta !== 0) {
-        tip += ' That is ' + Math.abs(delta) + ' minute' + (Math.abs(delta) === 1 ? '' : 's')
-             + (delta > 0 ? ' longer' : ' shorter') + ' than the day before.';
+        lenLine += '; ' + Math.abs(delta) + ' minute' + (Math.abs(delta) === 1 ? '' : 's')
+                 + (delta > 0 ? ' longer' : ' shorter') + ' than the day before.';
+      } else {
+        lenLine += '.';
       }
+    } else {
+      lenLine += '.';
     }
+
+    // Each row of the tap is one event, aligned the same way the face
+    // is: time on the left, compass point and label sharing the right.
+    var rows = [];
+    if (lat != null) {
+      rows.push([hr(srF), compassPoint(solarAzimuth(lat, lon, d.date, srF, tzOff)), 'Sunrise']);
+    } else {
+      rows.push([hr(srF), '', 'Sunrise']);
+    }
+    var golden = goldenHour(d, lat, lon, tzOff);
+    if (golden && golden.amEnd != null) rows.push([hr(golden.amEnd), '', 'Golden Hour Ends']);
+    rows.push([hr((srF + ssF) / 2), '', 'Solar Noon']);
+    if (golden && golden.pmStart != null) rows.push([hr(golden.pmStart), '', 'Golden Hour Starts']);
+    if (lat != null) {
+      rows.push([hr(ssF), compassPoint(solarAzimuth(lat, lon, d.date, ssF, tzOff)), 'Sunset']);
+    } else {
+      rows.push([hr(ssF), '', 'Sunset']);
+    }
+
     return { timeline: true, bg: bg,
-      split: { left: ['Sunrise', clock(d.sunriseISO)], right: ['Sunset', clock(d.sunsetISO)] },
-      tip: tip };
+      split: { left: [hr(srF) + ' Sunrise'], right: [hr(ssF) + ' Sunset'] },
+      rows: rows,
+      tip: lenLine };
   }
 
   /* Moon phase is arithmetic, not an API call: the synodic month is
@@ -1390,6 +1488,18 @@
     return Math.sin(lat * R) * Math.sin(pos.dec * R)
          + Math.cos(lat * R) * Math.cos(pos.dec * R) * Math.cos(tau * R);
   }
+  /* Verified separately: the moon's highest point of the day (transit)
+     reads due south, same physical fact as solar noon. */
+  function moonAzimuthAt(y, m, d, hourLocal, tzOff, lat, lon) {
+    var mjd = mjdOf(y, m, d, hourLocal - tzOff);
+    var T = (mjd - 51544.5) / 36525, pos = moonEq(T);
+    var tau = 15 * (lmst(mjd, lon) - pos.ra), R = Math.PI / 180;
+    var alt = Math.asin(Math.sin(lat * R) * Math.sin(pos.dec * R)
+                       + Math.cos(lat * R) * Math.cos(pos.dec * R) * Math.cos(tau * R));
+    var yA = -Math.sin(tau * R) * Math.cos(pos.dec * R);
+    var xA = (Math.sin(pos.dec * R) - Math.sin(lat * R) * Math.sin(alt)) / Math.cos(lat * R);
+    return ((Math.atan2(yA, xA) / R) + 360) % 360;
+  }
   function tzOffsetHours(dateStr, tz) {
     try {
       var d = new Date(dateStr + 'T12:00:00Z');
@@ -1436,64 +1546,49 @@
      reads as an instruction to lower one. */
   function flagCard(f) {
     if (!f) return null;
-    var parts = [], link = null;
-    if (f.statutory) {
-      parts.push(f.statutory.why + ', by federal law, until ' + f.statutory.until + '.');
-    }
+    // One row per active order, reason then authority, rather than run-on
+    // prose \u2014 a day can genuinely have more than one order in effect
+    // (a statutory date and a presidential proclamation at once), and a
+    // list makes that legible where a paragraph did not.
+    var rows = [], link = null;
+    if (f.statutory) rows.push([f.statutory.why, 'Federal Law']);
     if (f.federal) {
-      parts.push('Presidential proclamation: ' + f.federal.title.trim()
-               + (f.federal.signed ? ' Signed ' + f.federal.signed + '.' : ''));
+      rows.push([f.federal.title.trim().replace(/\.$/, ''), 'Presidential Proclamation']);
       link = { href: f.federal.url, text: 'Read the proclamation' };
     }
     if (f.state) {
-      /* Mast reports the effective status for a state, which includes
-         federal orders \u2014 a presidential proclamation lowers flags in
-         every state. Reading the authority tells us which it is, rather
-         than assuming anything from Mast is a governor's doing. */
       var auth = f.state.authority || '';
       var federalAuthority = /president|white house|\bu\.?s\.?\b|federal/i.test(auth);
-      if (federalAuthority) {
-        // Skip if the Federal Register already reported the same thing.
-        if (!f.federal) {
-          parts.push('Presidential order: ' + f.state.title
-                   + (auth ? ' (' + auth + ')' : '') + '.');
-        }
-      } else {
-        parts.push((auth ? auth + ': ' : 'State order in effect: ') + f.state.title + '.');
+      // Skip if the Federal Register already reported the same order.
+      if (!federalAuthority || !f.federal) {
+        rows.push([f.state.title, auth || 'State Order']);
       }
       if (!link && f.state.url) link = { href: f.state.url, text: 'Official source' };
     }
-    if (!parts.length) return null;
+    if (!rows.length) return null;
+    var tip = rows.length === 1 ? rows[0][0] + '.' : rows.length + ' orders in effect today.';
     if (!f.state && !(store.keys && store.keys.mast)) {
-      parts.push('Federal orders only. Governors issue their own, and those need a Mast key in Settings.');
-    }
-    if (!f.federal && !f.state) {
-      parts.push('Proclamations reach the Federal Register a day or more after signing, so a very recent order may not be here yet.');
+      tip += ' If state flags are not showing up, follow the API Key instructions in Settings.';
     }
     return { bg: bgFlat('risk', 55), bold: 'Why is the Flag at Half-Staff?',
-             tip: parts.join(' '), link: link };
+             tip: tip, rows: rows.map(function (r) { return [r[0] + ' (' + r[1] + ')']; }),
+             link: link };
   }
 
   function virusCard(v) {
     if (!v || !v.items || !v.items.length) return null;
     var worst = v.items[0];
-    // Below moderate there is nothing to say and nothing to do, so the
-    // tile stays away rather than reporting an absence.
     if (worst.rank < 50) return null;
     var cap1 = function (t) { return t.charAt(0).toUpperCase() + t.slice(1); };
     var pair2 = (v.items.length > 1 && v.items[1].rank >= 50 && v.items[1].level === worst.level)
       ? worst.virus + ' and ' + v.items[1].virus : worst.virus;
-    var face = worst.rank >= 78 ? 'Lots of ' + pair2 + ' Going Around'
-             : worst.rank >= 50 ? 'Some ' + pair2 + ' Going Around'
-             : worst.rank >= 25 ? 'Not Much ' + pair2 + ' Going Around'
-             : 'Little Going Around';
+    var face = cap1(worst.level) + ' ' + pair2;
 
-    var tip = v.items.map(function (i) { return i.virus + ' ' + i.level; }).join(', ')
-            + ' in ' + v.state + ' wastewater'
-            + (v.week ? ', week of ' + String(v.week).slice(0, 10) : '') + '. ';
-    tip += 'Wastewater picks up infections before people test or see a doctor, including ones with no symptoms. '
-         + 'It describes your state, not your street, and says nothing about your own risk. '
-         + 'From CDC National Wastewater Surveillance System.';
+    var tip = (v.week ? String(v.week).slice(0, 10) + ' ' : '')
+            + v.state + ' (state) wastewater surveillance:';
+    // Every virus tracked, not just the worst one or two \u2014 a moderate
+    // reading on something else is still worth seeing at a glance.
+    var rows = v.items.map(function (i) { return [i.virus + ' (' + cap1(i.level) + ')']; });
 
     var todos = [];
     if (worst.rank >= 78) {
@@ -1502,7 +1597,7 @@
     } else if (worst.rank >= 50) {
       todos.push({ text: 'Wash hands more than usual', when: 'day', rank: 22 });
     }
-    return { bg: bgFlat('risk', worst.rank), bold: face, tip: tip, todos: todos };
+    return { bg: bgFlat('risk', worst.rank), bold: face, tip: tip, rows: rows, todos: todos };
   }
 
   /* Hand-maintained from NASA/Espenak eclipse predictions, public
@@ -1651,12 +1746,14 @@
     }
 
     var face2 = e.type + ' Solar Eclipse ' + (e.dateUTC === dateStrIn(tz, 0) ? 'Today' : 'This Week');
-    var tip2 = 'Greatest eclipse around ' + localTime + ' local time. ' + e.region + '. '
-             + 'Whether it reaches your exact location depends on the path, which this cannot calculate \u2014 '
-             + 'check timeanddate.com/eclipse or NASA\u2019s eclipse pages for your coordinates. '
-             + 'Never look at the sun without eclipse glasses, even during a partial phase.';
-    return { bg: bgFlat('burn', 6), bold: face2, tip: tip2,
-             link: { href: 'https://www.timeanddate.com/eclipse/', text: 'Check exact visibility' } };
+    return { bg: bgFlat('burn', 6), bold: face2,
+             tip: 'Greatest eclipse around ' + localTime + ' local time \u2014 this app does not tell you '
+                + 'if it will be visible in your location.',
+             // Kept even though it is not in the trimmed version elsewhere:
+             // an eclipse card is exactly the place someone looks up at the
+             // sun, so the eye-safety line stays regardless of length.
+             rows: [['Never look at the sun without eclipse glasses, even during a partial phase.']],
+             link: { href: 'https://www.timeanddate.com/eclipse/', text: 'Check timeanddate.com/eclipse for details' } };
   }
 
   function moonCard(dateStr, tz, lat, lon) {
@@ -1669,6 +1766,8 @@
 
     var t = (lat == null) ? { rise: null, set: null, up: [] }
                           : moonTimes(dateStr, tz || 'UTC', lat, lon);
+    var tzOff = lat == null ? 0 : tzOffsetHours(dateStr, tz);
+    var y = +dateStr.slice(0, 4), m = +dateStr.slice(5, 7), dd = +dateStr.slice(8, 10);
 
     // The card is the night: dark where the moon is down, brightening
     // with how much of it is lit where it is up.
@@ -1680,48 +1779,30 @@
       return css(c) + ' ' + ((h / 23) * 100).toFixed(1) + '%';
     }).join(',') + ')';
 
-    var left, right;
-    if (lat == null) {
-      // No location yet, so rise and set cannot be worked out at all.
-      left = [name, illum + '% lit']; right = ['', ''];
-    } else {
-      var riseBox = t.rise != null ? ['Moonrise', hr(t.rise)] : null;
-      var setBox  = t.set  != null ? ['Moonset', hr(t.set)]   : null;
-      // Whichever happens first goes on the left, so the card reads the
-      // way the night runs. Past first quarter the moon sets before it
-      // rises again, and showing rise-then-set implied otherwise.
-      if (riseBox && setBox) {
-        if (t.set < t.rise) { left = setBox; right = riseBox; }
-        else { left = riseBox; right = setBox; }
-      } else if (riseBox) { left = riseBox; right = ['Moonset', 'after midnight']; }
-      else if (setBox)    { left = ['Moon', 'already up']; right = setBox; }
-      else { left = ['Moon', 'up all day']; right = ['', '']; }
-    }
-
+    // Just the phase on the face \u2014 rise, set and percent lit all moved
+    // into the tap, the same way Feels Like states a range but keeps the
+    // dew point and skin notes behind a tap rather than in the title.
     var toFull = ((14.765 - age) % LUNATION + LUNATION) % LUNATION;
     var toNew  = ((LUNATION - age) % LUNATION + LUNATION) % LUNATION;
     var next = toFull < toNew
-      ? 'Full moon in ' + Math.round(toFull) + ' day' + (Math.round(toFull) === 1 ? '' : 's') + '.'
-      : 'New moon in ' + Math.round(toNew) + ' day' + (Math.round(toNew) === 1 ? '' : 's') + '.';
+      ? Math.round(toFull) + ' day' + (Math.round(toFull) === 1 ? '' : 's') + ' until Full Moon'
+      : Math.round(toNew) + ' day' + (Math.round(toNew) === 1 ? '' : 's') + ' until New Moon';
 
-    // The tip is what multi-day's tap-to-expand reads from, and it never
-    // had the actual rise/set times in it \u2014 only split.left/right did,
-    // which only the single-day card face uses. Built once here so both
-    // surfaces read the same sentence instead of two different views of
-    // the same computation. right can be empty (moon up or down all
-    // day), in which case there is only one clause to say.
-    var riseSetText = '';
+    var rows = [];
     if (lat != null) {
-      var clause = function (pair2) { return pair2[0] + ' ' + pair2[1]; };
-      riseSetText = clause(left);
-      if (right[0]) riseSetText += ', ' + clause(right)[0].toLowerCase() + clause(right).slice(1);
-      riseSetText += '. ';
+      var events = [];
+      if (t.set != null) events.push({ h: t.set, cols: [hr(t.set), compassPoint(moonAzimuthAt(y, m, dd, t.set, tzOff, lat, lon)), 'Moonset'] });
+      if (t.rise != null) events.push({ h: t.rise, cols: [hr(t.rise), compassPoint(moonAzimuthAt(y, m, dd, t.rise, tzOff, lat, lon)), 'Moonrise'] });
+      // Whichever happens first in the night goes first in the list.
+      events.sort(function (a, b) { return a.h - b.h; });
+      events.forEach(function (e) { rows.push(e.cols); });
+      if (!events.length) rows.push(['', '', t.up.length && t.up[12] ? 'Up all day' : 'Down all day']);
     }
 
-    return { timeline: true, bg: bg,
-      split: { left: left, right: right },
-      caption: lat == null ? null : name + ' \u00B7 ' + illum + '% lit',
-      tip: riseSetText + illum + '% illuminated, ' + Math.round(age) + ' days into the cycle. ' + next };
+    return { timeline: true, bg: bg, bold: name,
+      caption: lat == null ? null : name,
+      rows: rows,
+      tip: next + '.' };
   }
 
   /* Solar longitude passes 0, 90, 180 and 270 degrees at the equinoxes
@@ -1986,16 +2067,15 @@
     var factor = mean > 1 ? gust / mean : 1;
     var word = gust < 8 ? 'Calm' : gust < 15 ? 'Light Wind' : gust < 25 ? 'Breezy'
              : gust < 38 ? 'Windy' : 'Strong Wind';
-    var steady = factor < 1.6 ? 'steady' : factor < 2.2 ? 'a bit gusty' : 'very gusty';
+    var steady = factor < 1.6 ? null : factor < 2.2 ? 'a Bit Gusty' : 'Very Gusty';
     var use = gust < 6 ? 'Too still for a kite or a sail.'
-            : (gust >= 8 && gust <= 22 && factor < 1.9) ? 'Good steady air for a kite or a small sail.'
+            : (gust >= 8 && gust <= 22 && factor < 1.9) ? 'Good steady air for a Kite or a Small Sail.'
             : gust > 30 ? 'Too much for recreational sailing, and a kite will not survive it.'
             : 'Flyable, but the gusts will fight you.';
-    return { bg: bgFlat('risk', Math.min(100, gust * 2.2)), bold: word,
+    return { bg: bgFlat('risk', Math.min(100, gust * 2.2)), bold: word + (steady ? '; ' + steady : ''),
       todo: (gust >= 8 && gust <= 22 && factor < 1.9) ? 'Fly a kite' : null,
       todoWhen: 'out', todoRank: 90, todoOutdoor: true,
-      tip: 'Averaging ' + Math.round(mean) + ' mph with gusts to ' + Math.round(gust)
-         + ' mph \u2014 ' + steady + '. ' + use };
+      rows: [[Math.round(mean) + ' mph average; ' + Math.round(gust) + ' mph gusts.'], [use]] };
   }
 
   /* The light-exposure card. Not a mood score: how much bright light
@@ -2056,16 +2136,17 @@
     var strong = kp.max >= 7;
     var word = strong && cloud < 40 ? 'Aurora Possible Tonight'
              : strong ? 'Aurora Active, Sky Cloudy' : 'Aurora Watch';
+    var goodOdds = strong && cloud < 40;
+    var lines = [];
+    if (goodOdds) lines.push(['Drive away from town lights, preferably north.']);
+    lines.push([kp.max.toFixed(1) + ' Kp tonight, 7+ needed on Planetary K index to see the Aurora this far south.']);
+    lines.push(['Evening clouds ' + Math.round(cloud) + '%, moon ' + lit + '% lit.']);
+    if (goodOdds) lines.push(['Look low on the northern horizon.']);
+    else lines.push(['Conditions are not there tonight, but the storm may hold for another day.']);
     return { bg: bgFlat('risk', Math.min(100, kp.max * 11)), bold: word,
-      todo: (strong && cloud < 40) ? 'Drive north and look up \u2014 aurora possible' : null,
+      todo: goodOdds ? 'Drive north and look up \u2014 aurora possible' : null,
       todoWhen: 'night', todoRank: 85, todoOutdoor: true,
-      tip: 'Planetary K index forecast to reach ' + kp.max.toFixed(1)
-         + '. Aurora usually needs Kp 7 or better to be seen this far south. '
-         + 'Evening cloud around ' + Math.round(cloud) + '%, moon ' + lit + '% lit. '
-         + (strong && cloud < 40
-            ? 'Worth driving north away from town lights and looking low on the northern horizon.'
-            : 'Conditions are not there tonight, but the storm may hold for another day.')
-         + ' From NOAA Space Weather Prediction Center.' };
+      rows: lines };
   }
 
   /* Which shoes. Rain, snow and ice were already in the data; mud and
@@ -3021,7 +3102,7 @@
 
   /* ================= render ================= */
   function card(row) {
-    var el = document.createElement(row.tip ? 'button' : 'div');
+    var el = document.createElement((row.tip || (row.rows && row.rows.length)) ? 'button' : 'div');
     el.className = 'card' + (row.tip ? '' : ' flat') + (row.plain ? ' plain' : '')
                  + (row.alert ? ' alert' : '')
                  + (row.timeline || row.alert ? '' : ' sm');
@@ -3050,7 +3131,7 @@
       var b = document.createElement('b'); b.textContent = row.bold; line.appendChild(b);
       if (row.det) { var s2 = document.createElement('span'); s2.className = 'det'; s2.textContent = row.det; line.appendChild(s2); }
     }
-    if (row.tip) {
+    if (row.tip || (row.rows && row.rows.length)) {
       var chev = document.createElement('span');
       chev.className = 'more';
       chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true">'
@@ -3084,8 +3165,8 @@
       cap2.textContent = row.caption; el.appendChild(cap2);
     }
 
-    if (row.tip) {
-      var t = document.createElement('p'); t.className = 'tip'; t.textContent = row.tip; t.style.display = 'none';
+    if (row.tip || (row.rows && row.rows.length)) {
+      var t = document.createElement('p'); t.className = 'tip'; t.textContent = row.tip || ''; t.style.display = 'none';
       if (row.link && row.link.href) {
         t.appendChild(document.createTextNode(' '));
         var a2 = document.createElement('a');
@@ -3094,6 +3175,37 @@
         // Opening the link should not also close the card underneath it.
         a2.addEventListener('click', function (e) { e.stopPropagation(); });
         t.appendChild(a2);
+      }
+      // Structured facts (times, azimuths, per-item breakdowns) read
+      // better as short aligned lines than folded into one paragraph.
+      // Shared by every card that needs a small table under its prose,
+      // rather than each one hand-building its own.
+      if (row.rows && row.rows.length) {
+        var tbl = document.createElement('div'); tbl.className = 'tiprows';
+        if (row.rowsHead) {
+          var hr2 = document.createElement('div'); hr2.className = 'tiprow head';
+          row.rowsHead.forEach(function (c, ci) {
+            var hc = document.createElement('span'); hc.className = 'tc tc' + ci; hc.textContent = c;
+            hr2.appendChild(hc);
+          });
+          tbl.appendChild(hr2);
+        }
+        row.rows.forEach(function (cols) {
+          var tr = document.createElement('div'); tr.className = 'tiprow';
+          if (cols.length === 1) {
+            var full = document.createElement('span'); full.className = 'tc tcfull';
+            full.textContent = cols[0]; tr.appendChild(full);
+          } else {
+            cols.forEach(function (c, ci) {
+              var cell = document.createElement('span');
+              cell.className = 'tc tc' + ci;
+              cell.textContent = c;
+              tr.appendChild(cell);
+            });
+          }
+          tbl.appendChild(tr);
+        });
+        t.appendChild(tbl);
       }
       el.appendChild(t);
       el.setAttribute('aria-expanded', 'false');
@@ -3200,12 +3312,37 @@
       var h = document.createElement('div'); h.className = 'todohead';
       h.textContent = sectionName(sec);
       el.appendChild(h);
+
+      // Later this week reads as plain lines, not pills \u2014 these are
+      // forecasts to keep in mind, not today's actions to check off, so
+      // the tappable-chip treatment (and the fade-when-done behaviour
+      // that comes with it) does not fit the same way it does for a
+      // to-do. Still tappable, just to reveal the detail underneath.
+      if (sec === 'week') {
+        items.forEach(function (t) {
+          var row = document.createElement('p'); row.className = 'weekline';
+          row.textContent = t.text;
+          if (t.detail) {
+            row.setAttribute('role', 'button'); row.setAttribute('tabindex', '0');
+            var det = document.createElement('span'); det.className = 'weekdetail'; det.style.display = 'none';
+            det.textContent = t.detail;
+            var toggleWeek = function () { det.style.display = det.style.display === 'none' ? 'block' : 'none'; };
+            row.addEventListener('click', toggleWeek);
+            row.addEventListener('keydown', function (e) {
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleWeek(); }
+            });
+            row.appendChild(det);
+          }
+          el.appendChild(row);
+        });
+        return;
+      }
+
       var ul = document.createElement('ul');
       var seen = {};
       items.forEach(function (t) {
         if (seen[t.text]) return; seen[t.text] = 1;
         var li = document.createElement('li'); li.textContent = t.text;
-        if (sec === 'week') li.className = 'week';
         // Tapping something you have dealt with fades it rather than
         // removing it, so the list still reads as complete. Kept for
         // today only \u2014 tomorrow it is a new list.
@@ -3517,6 +3654,12 @@
         var open = body.style.display === 'none';
         body.style.display = open ? 'block' : 'none';
         el.setAttribute('aria-expanded', open ? 'true' : 'false');
+        // The single-day cards use this same .open class to let a card
+        // grow past its fixed --rowh height (see .hourly > .card:not(.open)
+        // in the stylesheet). This strip never opted in, so the expanded
+        // text rendered anyway, stayed clipped at the old fixed height,
+        // and overflowed outside its own box on top of everything below it.
+        el.className = open ? el.className + ' open' : el.className.replace(/ open/g, '');
       });
       col.appendChild(el);
     }
