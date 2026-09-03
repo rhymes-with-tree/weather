@@ -340,6 +340,8 @@
   .disc{font-size:12px;color:#7C8996;line-height:1.55;margin:16px 4px 0;
         border-top:1px solid var(--line);padding-top:12px;}
   .disc b{color:var(--mid);}
+  .disc.xercesnote{border-top:none;margin-top:6px;padding-top:0;}
+  .disc.xercesnote a{color:#7C8996;text-decoration:underline;}
 
 </style>
 </head>
@@ -370,6 +372,7 @@
   <div id="homeBody"></div>
 
   <p class="disc" id="disclaimer"></p>
+  <p class="disc xercesnote" id="xercesNote" style="display:none"></p>
 </div>
 
 <script>
@@ -413,6 +416,7 @@
     { id: 'wind',      name: 'Wind',              note: 'Kite and sailing notes in the tap' },
     { id: 'aurora',    name: 'Aurora',            note: 'Only during a geomagnetic storm' },
     { id: 'eclipse',   name: 'Eclipse',           note: 'Only on an eclipse day' },
+    { id: 'bird',      name: 'Bird Migration',    note: 'A Lights Out reminder in migration season, links to BirdCast' },
     // to-do list only
     { id: 'mask',      name: 'Masking',           note: 'Suggests a mask when the air or the viruses are bad' },
     { id: 'swim',      name: 'Swimming',          note: 'Suggests a swim, and flags good swimming days ahead' },
@@ -429,6 +433,12 @@
     { id: 'rust',      name: 'Road Salt/Rust',    note: 'When to wash your car to avoid rust' },
     { id: 'shoe',      name: 'Shoes',             note: 'The best way to step outside' },
     { id: 'frost',     name: 'Windshield Frost',  note: 'How long will you need to scrape the windshield?' },
+    { id: 'garden',    name: 'Water the Garden',  note: 'Uses the same soil moisture as mowing' },
+    { id: 'ice',       name: 'Ice Safety',        note: 'A recent-cold nudge, not an ice-thickness reading' },
+    { id: 'tick',      name: 'Ticks',             note: 'Season and temperature based, not a live risk map' },
+    { id: 'power',     name: 'Power Outage Risk', note: 'Ice or high wind \u2014 reuses the wind and sky data' },
+    { id: 'firefly',   name: 'Firefly Season',    note: 'A dusk-lighting reminder, June through August' },
+    { id: 'leaves',    name: 'Pollinator Habitat',note: 'A fall reminder to leave leaf litter and stems' },
     { id: 'todo',      name: 'To-do list' }
   ];
   function cardMeta(id) {
@@ -573,8 +583,6 @@
   }
   function css(c) { return 'rgb(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ')'; }
   function grad(a, b) { return 'linear-gradient(100deg,' + a + ',' + b + ')'; }
-  function bgRange(r, lo, hi) { return grad(colorAt(r, lo), colorAt(r, hi)); }
-  function bgFrom(r, v)       { return grad(colorAt(r, RAMP[r][0][0]), colorAt(r, v)); }
   function bgAt(r, v, sp)     { return grad(colorAt(r, v - sp), colorAt(r, v + sp)); }
   /* A tile shows one number, so its width is not an axis and a gradient
      across it means nothing. Day cards keep their gradients because
@@ -785,6 +793,22 @@
         }
         return streak;
       })(),
+      // Same shape as greyStreak, for ice safety: how many days in a row
+      // (today included) have stayed at or below freezing all day. Real
+      // ice-thickness math needs freezing-degree-days accumulated over
+      // the whole season, which this app cannot see \u2014 it only has a
+      // few days of history, same limit greyStreak runs into. This is a
+      // much smaller, honest signal: recent cold, not a thickness guess.
+      freezeStreak: (function () {
+        var streak = 0;
+        for (var back = 0; back < 4; back++) {
+          var target = D.time[di - back];
+          if (!target) break;
+          var hiT = D.temperature_2m_max[di - back];
+          if (hiT != null && hiT <= 32) streak++; else break;
+        }
+        return streak;
+      })(),
       // Ground state, for the shoe call. Soil moisture is volumetric
       // (roughly 0.10 bone dry to 0.45 saturated) and is not offered by
       // every model, so everything downstream tolerates a null.
@@ -903,7 +927,7 @@
           out.push({ text: 'Dress in Layers \u2014 ' + Math.round(swing) + DEG + ' swing',
                      when: 'out', rank: 11 });
         }
-        if (dp >= 75) out.push({ text: 'Heat Risk \u2014 ' + Math.round(dp) + DEG + ' dew point', when: 'out', rank: 8 });
+        if (dp >= 75) out.push({ text: 'Heat Risk \u2014 ' + Math.round(dp) + DEG + ' dew point', when: 'day', rank: 8 });
         if (d.feelsMax >= 85) out.push({ text: 'Water Bottle', when: 'out', rank: 9 });
         if (d.feelsMax > 92) out.push({ text: 'Seek Shade \u2014 midday', when: 'day', rank: 9 });
         if (swing >= 20 && d.feelsMin < 55) {
@@ -954,19 +978,11 @@
              todoWhen: 'out', todoRank: 30 };
   }
 
-  /* The hour UV first crosses 3 is when protection starts to matter,
-     which beats a flat "before noon". */
-  function burnStart(d) {
-    for (var h = 4; h <= 14; h++) {
-      var r = d.hours[h];
-      if (r && r.uv >= 3) return hr(h);
-    }
-    return hr(d.solarNoon);
-  }
-  /* The hours UV stays at or above 3, the same threshold burnStart uses
-     \u2014 not just when it starts mattering but when it stops. Integer
-     hours only: that is the actual resolution of the forecast, and a
-     rounded half hour would be false precision the data does not have. */
+  /* The hours UV stays at or above 3, the same threshold that matters
+     for sunburn \u2014 not just when it starts mattering but when it stops.
+     Integer hours only: that is the actual resolution of the forecast,
+     and a rounded half hour would be false precision the data does not
+     have. */
   function uvWindow(d) {
     var start = null, end = null;
     for (var h = 4; h <= 22; h++) {
@@ -1156,7 +1172,6 @@
     var aqiDet = 'AQI ' + Math.round(a);
     if (sens) {
       if (a > 50)  out.push({ text: 'Inhaler Nearby \u2014 ' + aqiDet, when: 'out', rank: 6 });
-      if (a > 50)  out.push({ text: 'Pre-Dose Inhaler \u2014 before heading out', when: 'out', rank: 7 });
       if (a > 100 && on('mask')) out.push({ text: 'Mask \u2014 ' + aqiDet, when: 'out', rank: 5 });
       if (a > 100) out.push({ text: 'Windows Shut \u2014 ' + aqiDet, when: 'day', rank: 6 });
       // Escalating tier: only the worst applicable outdoor-exertion
@@ -1173,11 +1188,17 @@
       if (a > 100) out.push({ text: 'Windows Shut \u2014 ' + aqiDet, when: 'day', rank: 6 });
       if (a > 200) out.push({ text: 'Stay Inside \u2014 ' + aqiDet + ', purifier on', when: 'day', rank: 2, blocksOutdoor: true });
       else if (a > 150) out.push({ text: 'Skip Exercise Outside \u2014 ' + aqiDet, when: 'day', rank: 8, blocksOutdoor: true });
-      else if (a > 100) out.push({ text: 'Shorten Hard Effort \u2014 ' + aqiDet, when: 'day', rank: 12 });
+      else if (a > 100) out.push({ text: 'Shorten Your Workout \u2014 ' + aqiDet, when: 'day', rank: 12 });
     }
 
     tip += ' Change your sensitive-group status in Settings.';
-    return { bg: bgFlat('aqi', a), bold: word, tip: tip, todos: out,
+    // Today's reading already covers current smoke \u2014 this is only for
+    // the one real gap: whether more is coming. NOAA's HRRR-Smoke model
+    // is the actual forecast, but it only publishes as raster imagery,
+    // not something a static page can call, so a link stands in for it.
+    var smokeLink = (domKey === 'pm25' && a > 75)
+      ? { href: 'https://fire.airnow.gov/', text: 'Check the smoke outlook at fire.airnow.gov' } : null;
+    return { bg: bgFlat('aqi', a), bold: word, tip: tip, todos: out, link: smokeLink,
              rowsHead: ['AQI', ''], rows: bandRows, hiRow: hiRow };
   }
 
@@ -1261,11 +1282,6 @@
   }
 
   function allergyCard(d, pollen, cal) {
-    var advice = function (s) {
-      return s >= 65 ? 'Antihistamine before you go out, not after. Shower and change clothes when you get home, and keep windows shut.'
-           : s >= 35 ? 'Worth taking the antihistamine on schedule, and rinsing off after real time outside.'
-           : 'Low pressure on this front today.';
-    };
     var level = function (s) { return s >= 65 ? 'High' : s >= 35 ? 'Moderate' : 'Low'; };
 
     var settingsHint = ' Not your allergies? Change it in Settings.';
@@ -1285,8 +1301,18 @@
         // \u2014 different from nothing being in season at all, and worth
         // saying differently.
         var filtered = plantsAll.length > 0 && plants.length === 0;
+        // The pollen index/severity is already visible right on this
+        // tile's own face \u2014 no need for a redundant awareness pill the
+        // way pill-only cards need one. Meds are a neutral carry item,
+        // not an instruction on when to take anything. Rinsing off is
+        // mechanical, not medical, so it stays a plain habit reminder.
         return { bg: bgFlat('risk', sc),
-          todo: sc >= 35 ? 'Antihistamine \u2014 ' + idx + '/5 pollen index' : null, todoWhen: 'out', todoRank: 35,
+          todos: (function () {
+            var out = [];
+            if (sc >= 35) out.push({ text: 'Allergy Meds', when: 'out', rank: 35 });
+            if (sc >= 65) out.push({ text: 'Rinse Off \u2014 shower, change clothes after', when: 'day', rank: 36 });
+            return out;
+          })(),
           bold: filtered ? 'Nothing You Track' : plants.length ? level(sc) + ' Allergies' : 'No Pollen in Season',
           tip: (filtered ? 'Pollen is out there, just not a category you track.' : idx + ' out of 5 on Pollen Index.')
              + settingsHint,
@@ -1311,7 +1337,12 @@
     var sc2 = Math.round(Math.max(0, Math.min(1, s2)) * 100);
     return { bg: bgFlat('risk', sc2),
       bold: level(sc2) + ' Allergies',
-      todo: sc2 >= 35 ? 'Antihistamine \u2014 ' + level(sc2).toLowerCase() + ' allergies' : null, todoWhen: 'out', todoRank: 35,
+      todos: (function () {
+        var out = [];
+        if (sc2 >= 35) out.push({ text: 'Allergy Meds', when: 'out', rank: 35 });
+        if (sc2 >= 65) out.push({ text: 'Rinse Off \u2014 shower, change clothes after', when: 'day', rank: 36 });
+        return out;
+      })(),
       // Modelled, not measured \u2014 that distinction is substantive, not
       // just prose, so it stays even though the rest got shorter.
       tip: sc2 + ' out of 100, from a bloom calendar for the ' + cal.name + ' rather than any pollen data.' + settingsHint,
@@ -1333,11 +1364,19 @@
 
   function migraineCard(d) {
     var r = migraineScore(d), s = r.s, why = r.why;
+    // Split on purpose: risk awareness is a planning call, not a
+    // medication instruction. Having meds within reach is a neutral
+    // item to bring \u2014 whether and when to actually take anything is
+    // not something a loosely-correlated weather trigger should say.
     return { bg: bgFlat('risk', s),
       bold: 'Migraine ' + (s >= 45 ? 'Likely' : s >= 24 ? 'Possible' : 'Unlikely'),
-      todo: s >= 45 ? 'Migraine Rescue Meds \u2014 risk ' + s
-          : s >= 24 ? 'Hydrate Early \u2014 risk ' + s : null,
-      todoWhen: 'day', todoRank: 25,
+      todos: (function () {
+        var out = [];
+        if (s >= 45) out.push({ text: 'Migraine Risk \u2014 ' + s + '/100', when: 'day', rank: 25 });
+        else if (s >= 24) out.push({ text: 'Hydrate Early \u2014 migraine risk ' + s + '/100', when: 'day', rank: 25 });
+        if (s >= 45) out.push({ text: 'Migraine Meds', when: 'out', rank: 25 });
+        return out;
+      })(),
       tip: cap(topOf(why) || 'pressure steady, no sharp swings') + '. '
          + (s >= 45 ? 'Front-load water, hold your sleep and meal times, sunglasses outdoors, abortive meds within reach.'
           : s >= 24 ? 'Hydrate early and do not skip meals.' : 'Atmospherically quiet.') };
@@ -1357,11 +1396,16 @@
 
   function arthritisCard(d) {
     var r = arthritisScore(d), s = r.s, why = r.why;
+    // Same split as migraine: flare risk informs planning, meds-on-hand
+    // is a neutral item, and the two don't need to be one instruction.
     return { bg: bgFlat('risk', s),
       bold: 'Arthritis Flare ' + (s >= 45 ? 'Likely' : s >= 24 ? 'Possible' : 'Unlikely'),
-      todo: s >= 45 ? 'Arthritis Meds \u2014 risk ' + s
-          : s >= 24 ? 'Extra Warm-Up \u2014 risk ' + s : null,
-      todoWhen: 'day', todoRank: 25,
+      todos: (function () {
+        var out = [];
+        if (s >= 45) out.push({ text: 'Arthritis Flare Risk \u2014 ' + s + '/100', when: 'day', rank: 25 });
+        if (s >= 45) out.push({ text: 'Arthritis Meds', when: 'out', rank: 25 });
+        return out;
+      })(),
       tip: cap(topOf(why) || 'settled, warm and dry') + '. '
          + (s >= 45 ? 'Heat on the worst joints before you move them, a longer warm-up, and push the physical parts of the day later rather than first thing.'
           : s >= 24 ? 'Extra warm-up time, and keep moving \u2014 sitting still is what tightens up.'
@@ -1508,8 +1552,8 @@
 
     return { timeline: true, bg: bg,
       split: { left: [hr(srF) + ' Sunrise'], right: [hr(ssF) + ' Sunset'] },
-      caption: lenLine,
-      rows: rows };
+      rows: rows,
+      tip: lenLine };
   }
 
   /* Moon phase is arithmetic, not an API call: the synodic month is
@@ -1932,6 +1976,23 @@
     function g(t) { for (var i = 0; i < p.length; i++) if (p[i].type === t) return p[i].value; }
     return g('year') + '-' + g('month') + '-' + g('day');
   }
+  /* US Daylight Saving Time is a fixed calendar rule (Energy Policy Act
+     of 2005): second Sunday in March, first Sunday in November. No API,
+     no astronomy \u2014 just a weekday lookup, and it only needs to cover
+     the US, which is this app's whole scope anyway. */
+  function nthSundayOfMonth(year, month, nth) {
+    var firstOfMonth = new Date(Date.UTC(year, month - 1, 1));
+    var firstSunday = 1 + ((7 - firstOfMonth.getUTCDay()) % 7);
+    return firstSunday + (nth - 1) * 7;
+  }
+  function dstLabel(dateStr) {
+    var y = parseInt(dateStr.slice(0, 4), 10);
+    var m = parseInt(dateStr.slice(5, 7), 10);
+    var day = parseInt(dateStr.slice(8, 10), 10);
+    if (m === 3 && day === nthSundayOfMonth(y, 3, 2)) return 'Clocks Spring Forward';
+    if (m === 11 && day === nthSundayOfMonth(y, 11, 1)) return 'Clocks Fall Back';
+    return null;
+  }
   /* The solstice is a note, not a card. Today it belongs with the day;
      within the coming week it belongs with the week. */
   function seasonPill(dateStr, tz, lat, offsetDays) {
@@ -2019,7 +2080,7 @@
                  ? [{ text: 'Frostbite Risk \u2014 bare skin', when: 'day', rank: 10 },
                     { text: 'Cover Up \u2014 face covered', when: 'out', rank: 8 }]
                  : [{ text: 'Hat & Gloves', when: 'out', rank: 12 }];
-               if (shovelRisk) out.push({ text: 'Pace Yourself \u2014 shovelling in this wind chill', when: 'out', rank: 7 });
+               if (shovelRisk) out.push({ text: 'Pace Yourself \u2014 shovelling in this wind chill', when: 'day', rank: 7 });
                return out;
              })() };
   }
@@ -2224,7 +2285,7 @@
   /* Aurora needs three things at once: a disturbed magnetosphere, a
      clear evening, and a dark-enough moon. At Great Lakes latitudes
      the Kp bar is high, so this fires rarely and means something. */
-  function auroraCard(d, kp) {
+  function auroraCard(d, kp, lat, lon) {
     if (!kp || kp.max < 5) return null;
     var ev = [];
     for (var e = d.sunset + 1; e <= d.sunset + 5; e++) {
@@ -2243,9 +2304,19 @@
     lines.push(['Evening clouds ' + Math.round(cloud) + '%, moon ' + lit + '% lit.']);
     if (goodOdds) lines.push(['Look low on the northern horizon.']);
     else lines.push(['Conditions are not there tonight, but the storm may hold for another day.']);
+    // No API for a real coordinate-level darkness reading (checked); a
+    // link stands in. Their own "Find closest dark site" tool is the
+    // useful part here, more than the map itself, but it is a click
+    // inside their page, not something addressable by URL \u2014 named in
+    // the text rather than assumed reachable directly.
+    var lpLink = (lat != null && lon != null)
+      ? { href: 'https://www.lightpollutionmap.info/#zoom=10.00&lat=' + lat.toFixed(4) + '&lon=' + lon.toFixed(4),
+          text: 'Check light pollution near you \u2014 try "Find closest dark site" there' }
+      : null;
     return { bg: bgFlat('risk', Math.min(100, kp.max * 11)), bold: word,
       todo: goodOdds ? 'Drive North \u2014 Kp ' + kp.max.toFixed(1) : null,
       todoWhen: 'night', todoRank: 85, todoOutdoor: true,
+      link: lpLink,
       rows: lines };
   }
 
@@ -2469,6 +2540,15 @@
     var dangerousHeat = d.feelsMax >= 88 && d.dewMax >= 70;
 
     var word, why;
+    var mayNote = '';
+    if (parseInt(d.date.slice(5, 7), 10) === 5) {
+      // Not a second pill arguing with the first \u2014 Xerces's own guidance
+      // isn't "never mow," it's "here's a tradeoff, your call," so it
+      // belongs inside whatever this card already says, not fighting it.
+      mayNote = ' It\u2019s also No Mow May \u2014 Xerces Society\u2019s push to leave lawns for '
+              + 'early-season bees. Not a strict rule; mow anyway if it\u2019s overgrown, '
+              + 'or split the difference with Low Mow Spring (every 2\u20133 weeks instead of weekly).';
+    }
     if (dangerousHeat && !soggy) {
       word = 'Too Hot and Humid to Mow Safely';
       why = 'Feels like ' + Math.round(d.feelsMax) + '\u00b0 with a dew point near ' + Math.round(d.dewMax) + '\u00b0. '
@@ -2489,14 +2569,14 @@
       word = 'Mow Before the Rain';
       why = Math.round(d.rainChance) + '% chance of rain'
           + (d.rainRun ? ', likeliest ' + hr(d.rainRun.a) + DASH + hr(d.rainRun.b + 1) : '')
-          + '. Ground is fine now, so the window is before it arrives rather than after.';
+          + '. Ground is fine now, so the window is before it arrives rather than after.' + mayNote;
     } else if (growingFast) {
       word = 'Growing Fast, Mow Soon';
       why = 'Soil near ' + Math.round(st) + DEG + ' with moisture in the sweet spot, so it is putting on real growth. '
-          + 'Ground is firm enough to cut today.';
+          + 'Ground is firm enough to cut today.' + mayNote;
     } else {
       word = 'Fine to Mow';
-      why = 'Ground is firm and nothing is falling. Growth is slow, so it can wait if you would rather.';
+      why = 'Ground is firm and nothing is falling. Growth is slow, so it can wait if you would rather.' + mayNote;
     }
     var score = dangerousHeat ? 80 : soggy ? 72 : dormant ? 20 : rainComing ? 48 : growingFast ? 40 : 14;
     // The pill checked rainComing/growingFast directly, not the word, so
@@ -2509,6 +2589,108 @@
           : growingFast ? 'Mow the Lawn' : null,
       todoWhen: 'day', todoRank: 65, todoOutdoor: true,
       tip: why + (d.soilDeep == null ? ' Soil moisture estimated from rainfall \u2014 no soil data for this location.' : '') };
+  }
+
+  /* No live per-location tick-risk feed exists; CDC/state health data is
+     retrospective annual case counts, not something to query for today.
+     The one real lever is temperature \u2014 ticks become active above
+     roughly 45\u00b0F and stay active through the season \u2014 so this is a
+     season-window rule, same shape as the mowing turf bands, not a
+     measurement. */
+  function tickCard(d) {
+    var m = parseInt(d.date.slice(5, 7), 10);
+    if (m < 3 || m > 11) return null;          // outside the realistic season, any latitude
+    if (d.tMax < 45) return null;
+    return { todo: 'Check for Ticks \u2014 after time outside', todoWhen: 'night', todoRank: 75 };
+  }
+
+  /* No new source \u2014 reuses the gust figure already pulled for the wind
+     card and the freezing-rain detection already used by the sky card.
+     Ice and high wind are the two dominant causes of outages, and both
+     are already sitting in this app's data; this just says so together. */
+  function powerCard(d) {
+    var gust = d.gustMax || d.windMax;
+    var icing = precipKind(d.codesDay || []) === 'freezing';
+    var highWind = gust >= 50;
+    if (!icing && !highWind) return null;
+    var text = icing && highWind ? 'Charge Devices \u2014 ice + ' + Math.round(gust) + ' mph gusts'
+             : icing ? 'Charge Devices \u2014 freezing rain today'
+             : 'Charge Devices \u2014 gusts to ' + Math.round(gust) + ' mph';
+    return { todo: text, todoWhen: 'day', todoRank: 15 };
+  }
+
+  /* Xerces Society guidance: fireflies need real darkness at dusk to
+     find mates, so outdoor lighting during their season works directly
+     against them. Rough season window for the temperate US \u2014 not
+     latitude-adjusted, same simplification the tick card makes. */
+  function fireflyCard(d) {
+    var m = parseInt(d.date.slice(5, 7), 10);
+    if (m < 6 || m > 8) return null;
+    if (d.tMin < 55) return null;   // fireflies need a warm night, not just the season
+    return { todo: 'Lights Off at Dusk \u2014 firefly season', todoWhen: 'night', todoRank: 88 };
+  }
+
+  /* Also Xerces Society, and also not a rigid rule: their own guidance
+     is "leave the leaves," but explicitly allows tidying \u2014 "a thin
+     layer of leaves is actually healthy for grass, but the leaves also
+     don't need to be left exactly where they fall." The specific,
+     actionable ask isn't "don't rake," it's "don't bag for the curb, and
+     don't shred with a mulching mower" \u2014 move them whole to garden beds
+     or under trees instead, where they still shelter overwintering
+     insects. Shredding is explicitly called out as nearly as harmful as
+     bagging: a mower destroys the eggs, caterpillars and cocoons living
+     in the leaves along with the leaves themselves. */
+  function leafLitterCard(d) {
+    var m = parseInt(d.date.slice(5, 7), 10);
+    if (m !== 10 && m !== 11) return null;
+    return { todo: 'Leave the Leaves \u2014 rake to beds, don\u2019t shred or bag', todoWhen: 'day', todoRank: 95 };
+  }
+
+  /* No usable API \u2014 checked directly with devtools, confirmed
+     CORS-blocked from a static page even though the real endpoint and
+     data shape are known. Link-out only, deep-linked to the user's own
+     coordinates rather than the homepage. Seasonally gated to when
+     BirdCast's live feed actually runs, so this never shows up asking
+     someone to turn off lights in January. A tile rather than a pure
+     pill \u2014 pills have no mechanism for a clickable link out. */
+  function birdCard(d, lat, lon) {
+    if (lat == null || lon == null) return null;
+    var m = parseInt(d.date.slice(5, 7), 10), day = parseInt(d.date.slice(8, 10), 10);
+    var spring = (m >= 3 && m <= 5) || (m === 6 && day <= 15);
+    var fall = (m >= 8 && m <= 10) || (m === 11 && day <= 15);
+    if (!spring && !fall) return null;
+    return { bg: bgFlat('sky', 35), bold: 'Bird Migration Season',
+      tip: 'Nocturnal migration runs nationwide through mid-' + (spring ? 'June' : 'November')
+         + '. Turning off non-essential outdoor lighting overnight cuts collision risk on the '
+         + 'heaviest migration nights.',
+      link: { href: 'https://alert.birdcast.org/?latLng=' + lat.toFixed(4) + ',' + lon.toFixed(4),
+               text: 'Check tonight\u2019s migration forecast' },
+      todo: 'Outside Lights Out \u2014 migration season', todoWhen: 'night', todoRank: 80 };
+  }
+
+  /* A real ice-thickness estimate needs freezing-degree-days summed
+     over the whole season \u2014 this app only sees a few days back, same
+     limit greyStreak runs into. So this stays a caution nudge tied to
+     a recent-cold streak, not a claim about inches of ice, and it
+     always points at checking locally rather than trusting a phone. */
+  function iceCard(d) {
+    if (d.freezeStreak < 3) return null;
+    return { todo: 'Check Ice Locally \u2014 ' + d.freezeStreak + ' days below freezing',
+             todoWhen: 'day', todoRank: 70 };
+  }
+
+  /* Reuses the same soil-moisture field the mow card pulls, rather than
+     inventing a second reading. Skips itself outright with no soil data
+     at all \u2014 unlike mowing, which has a rainfall fallback, a watering
+     call needs more precision than "it rained sometime this week." */
+  function gardenCard(d) {
+    var wet = d.soilDeep != null ? d.soilDeep : d.soilMoist;
+    if (wet == null) return null;
+    if (d.rainChance >= 50 || d.rainSum >= 0.1) return null;   // rain will do it
+    if (wet >= 0.22) return null;                              // already holding enough
+    var dry = wet < 0.12;
+    return { todo: dry ? 'Water the Garden \u2014 soil is dry' : 'Water the Garden \u2014 soil drying out',
+             todoWhen: 'day', todoRank: 60, todoOutdoor: true };
   }
 
   /* Road salt does its worst damage not while it is freezing but once
@@ -2526,7 +2708,7 @@
          + Math.round(d.tMax) + DEG + '. '
          + (washing
             ? d.rainSum.toFixed(2) + '\u2033 of rain will take some of it off, though rain does not reach the undercarriage where it matters most.'
-            : 'Salt corrodes fastest once it thaws, because the reaction needs liquid water \u2014 a cold salted week does less damage than the first warm day after it. This is the day a wash with an undercarriage rinse is worth the money.') };
+            : 'Salt corrodes fastest once it thaws, because the reaction needs liquid water \u2014 a cold salted week does less damage than the first warm day after it.') };
   }
 
   /* Distinct from the day's forecast headline on purpose: this reads
@@ -2654,9 +2836,10 @@
     store.blocks = o; saveStore(); buildSettings(); renderHome();
   }
 
-  var DEFAULT_TILE_ORDER = ['flag', 'air', 'allergy', 'virus', 'burn', 'light', 'water', 'pavement', 'wind', 'aurora', 'eclipse'];
+  var DEFAULT_TILE_ORDER = ['flag', 'air', 'allergy', 'virus', 'burn', 'light', 'water', 'pavement', 'wind', 'aurora', 'eclipse', 'bird'];
   var PILL_ONLY = ['frostbite','migraine','arthritis','frizz','bug',
-                   'shoe','frost','pipe','rust','mow','mold','fire','mask','swim'];
+                   'shoe','frost','pipe','rust','mow','mold','fire','mask','swim','garden','ice','tick',
+                   'power','firefly','leaves'];
   var DEFAULT_HOURLY_ORDER = ['feels', 'sky', 'daylight', 'moon'];
   function orderOf(which) {
     var def = which === 'hourly' ? DEFAULT_HOURLY_ORDER : DEFAULT_TILE_ORDER;
@@ -3587,11 +3770,6 @@
      milliseconds, but it means the multi-day summaries can never drift
      from what the single-day cards say, because they call the exact
      same code. */
-  function mdBar(fn) {
-    var stops = [];
-    for (var pct = 0; pct <= 100; pct += 20) stops.push(fn(pct / 100) + ' ' + pct + '%');
-    return 'linear-gradient(90deg,' + stops.join(',') + ')';
-  }
   /* One continuous strip per card, spanning the whole range, with a tick
      at each day boundary and the day names on a shared axis underneath.
      The point of a week view is seeing the shape of the week \u2014 the warm
@@ -3669,9 +3847,8 @@
     return hm(a2) + ' to ' + hm(b2) + ' of daylight';
   }
   function rangeMoon(days, tz, lat, lon) {
-    var a2 = moonCard(days[0].d.date, tz, lat, lon).caption;
-    var b2 = moonCard(days[days.length - 1].d.date, tz, lat, lon).caption;
-    var na = a2 ? a2.split(' \u00B7 ')[0] : '', nb = b2 ? b2.split(' \u00B7 ')[0] : '';
+    var na = moonCard(days[0].d.date, tz, lat, lon).bold;
+    var nb = moonCard(days[days.length - 1].d.date, tz, lat, lon).bold;
     if (!na) return '';
     if (na === nb) return na;
     return na + ' to ' + nb;
@@ -3680,6 +3857,8 @@
   function renderMultiDay(p, lat, lon, cal, span) {
     var host = document.getElementById('homeBody');
     host.innerHTML = ''; host.className = 'multiday';
+    var xn = document.getElementById('xercesNote');
+    if (xn) { xn.style.display = 'none'; xn.innerHTML = ''; }
     var days = [];
     for (var off = 0; off < span; off++) {
       try { days.push({ off: off, d: derive(p.wx, p.aq, state.tz, off) }); } catch (e) {}
@@ -3883,8 +4062,8 @@
           return css(blend(NIGHT, [248, 249, 251], 0.15 + 0.65 * lit2));
         },
         function (d) {
-          var c = moonCard(d.date, state.tz, lat, lon).caption;
-          return c ? c.split(' \u00B7 ')[0] : 'Moon';
+          var c = moonCard(d.date, state.tz, lat, lon).bold;
+          return c || 'Moon';
         },
         function (d) { return moonCard(d.date, state.tz, lat, lon).tip; });
     }
@@ -3942,6 +4121,13 @@
       shoe:      function () { return shoeCard(d); },
       rust:      function () { return rustCard(d); },
       mow:       function () { return mowCard(d, lat); },
+      garden:    function () { return gardenCard(d); },
+      ice:       function () { return iceCard(d); },
+      tick:      function () { return tickCard(d); },
+      power:     function () { return powerCard(d); },
+      firefly:   function () { return fireflyCard(d); },
+      leaves:    function () { return leafLitterCard(d); },
+      bird:      function () { return birdCard(d, lat, lon); },
       wind:      function () { return windCard(d); },
       frizz:     function () { return frizzCard(d); },
       mold:      function () { return moldCard(d); },
@@ -3952,7 +4138,7 @@
       air:       function () { return airCard(d, p.airGoogle); },
       light:     function () { return lightCard(d); },
       mask:      function () { return null; },   // a switch, not a card
-      aurora:    function () { return auroraCard(d, p.kp); },
+      aurora:    function () { return auroraCard(d, p.kp, lat, lon); },
       eclipse:   function () {
         var hits = eclipseOn(d.date, state.tz);
         return hits.length ? eclipseCard(hits[0], state.tz, lat, lon) : null;
@@ -3978,15 +4164,94 @@
 
     var todaySeason = seasonPill(d.date, state.tz, lat, 0);
     if (todaySeason) todos.push({ text: todaySeason + ' today', when: 'day', rank: 1 });
+    var todayDST = dstLabel(d.date);
+    if (todayDST) todos.push({ text: todayDST + ' \u2014 tonight', when: 'night', rank: 1 });
     var weekItems = aheadItems(p, state.tz, state.dayOffset);
+    // "Tomorrow Morning": anything whose useful window is the first part
+    // of the day gets a heads-up one day ahead, since by the time it
+    // would normally show up as "today" it's too late to plan around.
+    // Not a new section \u2014 just the most immediate entries in the
+    // existing week-ahead list, first in line. No separate toggle; each
+    // still respects its own card's on/off switch.
+    (function () {
+      var tm;
+      try { tm = derive(p.wx, p.aq, state.tz, state.dayOffset + 1); } catch (e) { return; }
+      var morningItems = [];
+      if (on('frost')) {
+        var fc = frostCard(tm);
+        if (fc) morningItems.push({ pill: fc.bold + ' \u2014 Tomorrow Morning',
+          detail: 'Frost expected overnight; scrape or defrost before driving tomorrow.' });
+      }
+      if (on('mow')) {
+        var mc = mowCard(tm, lat);
+        if (mc && mc.bold === 'Too Hot and Humid to Mow Safely') {
+          morningItems.push({ pill: 'Mow Early \u2014 Tomorrow Morning',
+            detail: 'Tomorrow turns too hot and humid to mow safely later in the day.' });
+        }
+      }
+      if (on('pavement')) {
+        var pc = pavementCard(tm);
+        if (pc && pc.bold !== 'Pavement Is Freezing') {
+          morningItems.push({ pill: 'Walk Dog Early \u2014 Tomorrow Morning',
+            detail: 'Pavement turns dangerous for paws later tomorrow \u2014 walk before it heats up.' });
+        }
+      }
+      if (on('light')) {
+        var lc = lightCard(tm);
+        if (lc && lc.todo && lc.todo.indexOf('Morning Light') === 0) {
+          morningItems.push({ pill: lc.todo + ' \u2014 Tomorrow',
+            detail: 'Tomorrow\u2019s clearest light window, so you can plan to be up for it.' });
+        }
+      }
+      weekItems.unshift.apply(weekItems, morningItems);
+    })();
     for (var so = 1; so <= 6; so++) {
       var sp = seasonPill(d.date, state.tz, lat, so);
       if (sp) { weekItems.push({ pill: sp + ' ' + dayName(dateStrIn(state.tz, so), state.tz, so),
                                  detail: sp + ' falls this week.' }); break; }
     }
+    for (var sd = 1; sd <= 6; sd++) {
+      var dl = dstLabel(dateStrIn(state.tz, sd));
+      if (dl) { var dstName = dayName(dateStrIn(state.tz, sd), state.tz, sd);
+                weekItems.push({ pill: dl + ' \u2014 ' + dstName,
+                                 detail: dl + ' overnight ' + dstName
+                                       + (dl.indexOf('Spring') > -1 ? ', losing an hour.' : ', gaining an hour.') });
+                break; }
+    }
 
     var todoEl = on('todo') ? todoCard(weekItems) : null;
     if (todoEl) todoEl.className += ' todoblock';
+
+    // A discreet footer link, shown only on days one of Xerces Society's
+    // pills is actually active \u2014 not tucked in About, where nobody
+    // opens it at the moment it would matter. Re-checks each card's own
+    // condition directly rather than scanning pill text, since the mow
+    // card's May context lives in its tip, which pill-only cards never
+    // render at all (see the mow/leaves/firefly cards themselves).
+    var xercesNote = document.getElementById('xercesNote');
+    var xercesLinks = [];
+    var mowResult = on('mow') ? mowCard(d, lat) : null;
+    if (mowResult && parseInt(d.date.slice(5, 7), 10) === 5
+        && mowResult.bold !== 'Too Hot and Humid to Mow Safely'
+        && mowResult.bold !== 'Too Wet to Mow' && mowResult.bold !== 'Grass Is Not Growing') {
+      xercesLinks.push({ text: 'No Mow May',
+        href: 'https://www.xerces.org/blog/no-mow-may-gateway-to-better-landscape-management-for-bees' });
+    }
+    if (on('leaves') && leafLitterCard(d)) {
+      xercesLinks.push({ text: 'Leave the Leaves', href: 'https://xerces.org/leave-the-leaves' });
+    }
+    if (on('firefly') && fireflyCard(d)) {
+      xercesLinks.push({ text: 'help fireflies', href: 'https://xerces.org/endangered-species/fireflies/how-you-can-help' });
+    }
+    if (xercesLinks.length) {
+      xercesNote.style.display = '';
+      xercesNote.innerHTML = 'Source: Xerces Society \u2014 ' + xercesLinks.map(function (l) {
+        return '<a href="' + l.href + '" target="_blank" rel="noopener">' + l.text + '</a>';
+      }).join(', ') + '.';
+    } else {
+      xercesNote.style.display = 'none';
+      xercesNote.innerHTML = '';
+    }
 
     // Lines are already drawn per card (see card()); only the label row
     // is shared here.
@@ -4545,5 +4810,9 @@
   } else { searchBox.style.display = 'block'; }
 })();
 </script>
+
+<!-- GoatCounter: privacy-friendly analytics, no cookies, no personal data. -->
+<script data-goatcounter="https://rhymes-with-tree.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>
