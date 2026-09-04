@@ -320,7 +320,24 @@
             color:var(--ink);opacity:.62;font-weight:700;margin-bottom:7px;}
   .card.todo ul + .todohead{margin-top:14px;padding-top:12px;
                             border-top:1px solid rgba(22,35,47,.13);}
-  .weekdetail{display:block;font-size:13px;opacity:.75;margin:6px 2px 0;font-weight:400;line-height:1.4;}
+  /* Later This Week: day-grouped notes, not pills \u2014 these are forecasts
+     to keep in mind, not actions with a done state, so they get their
+     own visual language instead of borrowing the to-do chip's implied
+     tap-to-check-off interaction, which they never actually had. */
+  .weekgroup{margin:12px 0 0;}
+  .weekgroup:first-child{margin-top:0;}
+  .weekday{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;
+           opacity:.55;font-weight:700;margin:0 2px 5px;}
+  .weeknote{position:relative;background:#FFF;border:1px solid var(--line);
+            border-radius:10px;padding:9px 30px 9px 12px;margin-bottom:6px;
+            cursor:pointer;}
+  .weeknote:last-child{margin-bottom:0;}
+  .weeknote:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
+  .weeknoteline{font-size:14.5px;font-weight:600;line-height:1.3;}
+  .weeknote .more{top:11px;right:9px;width:15px;height:15px;}
+  .weeknote.open .more{transform:rotate(180deg);}
+  .weeknotedetail{display:block;font-size:13px;opacity:.75;margin:6px 0 0;
+                  font-weight:400;line-height:1.4;}
   .ord.sub{padding-left:18px;}
   .ord.sub span{opacity:.8;}
   .card.todo ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:7px 9px;}
@@ -2526,9 +2543,8 @@
       if (!best || x.d.feelsMax > best.d.feelsMax) best = x;
     });
     if (!best) return null;
-    var name = dayName(best.d.date, tz, best.off);
-    return { pill: 'Good Swimming \u2014 ' + name,
-             detail: name + ' reaches ' + Math.round(best.d.feelsMax) + DEG
+    return { off: best.off, text: 'Good Swimming',
+             detail: dayName(best.d.date, tz, best.off) + ' reaches ' + Math.round(best.d.feelsMax) + DEG
                    + ' with the water around ' + t + DEG
                    + '. Water temperature moves slowly, so today\u2019s reading is a fair guide to the week.' };
   }
@@ -2553,10 +2569,9 @@
       var worst = null;
       days.forEach(function (x) { if (!worst || x[key].s > worst.v) worst = { v: x[key].s, x: x }; });
       if (worst && worst.v >= 45 && worst.v - todayScore >= 12) {
-        var name = dayName(worst.x.d.date, tz, worst.x.off);
         var driver = topOf(worst.x[key].why);
-        out.push({ pill: label + ' \u2014 ' + name,
-                   detail: name + ' scores ' + worst.v + ' out of 100 for ' + label.toLowerCase()
+        out.push({ off: worst.x.off, text: label,
+                   detail: dayName(worst.x.d.date, tz, worst.x.off) + ' scores ' + worst.v + ' out of 100 for ' + label.toLowerCase()
                          + ', against ' + todayScore + ' today'
                          + (driver ? ' \u2014 ' + driver.toLowerCase() : '') + '.' });
       }
@@ -2565,14 +2580,13 @@
     if (today.tMin > 34) {
       for (var i = 0; i < days.length; i++) {
         if (days[i].d.tMin <= 32) {
-          var n2 = dayName(days[i].d.date, tz, days[i].off);
           // Soil temperature separates the ground going over for the
           // first time from one more cold night on already-frozen
           // ground. Only three days of history, so never "first of the
           // season" \u2014 only the first in view.
           var frozenNow = today.soilMin != null && today.soilMin <= 32;
-          out.push({ pill: 'Overnight Freeze \u2014 ' + n2,
-                     detail: 'Low of ' + Math.round(days[i].d.tMin) + DEG + ' on ' + n2 + '. '
+          out.push({ off: days[i].off, text: 'Overnight Freeze',
+                     detail: 'Low of ' + Math.round(days[i].d.tMin) + DEG + '. '
                            + (frozenNow
                               ? 'The ground is already frozen, so this is one more cold night rather than a change.'
                               : 'The ground is still unfrozen'
@@ -2595,7 +2609,11 @@
         // millisecond difference, which drifts across a DST change.
         var off = dayOffsetOf(day, tz);
         if (off == null) return;
-        out.push({ pill: eclipseLabel(e, tz), detail: eclipseCard(e, tz, null, null).tip });
+        // eclipseLabel() bakes the day name into its own text, which
+        // this context doesn't want \u2014 the day header says that now \u2014
+        // so this rebuilds just the kind, not the full shared label.
+        var kindName = e.type + ' ' + (e.kind === 'lunar' ? 'Lunar' : 'Solar') + ' Eclipse';
+        out.push({ off: off, text: kindName, detail: eclipseCard(e, tz, null, null).tip });
       });
     }
 
@@ -2607,10 +2625,9 @@
     });
     var swing = drop || rise;
     if (swing) {
-      var n3 = dayName(swing.x.d.date, tz, swing.x.off);
-      out.push({ pill: (swing.diff < 0 ? 'Cools ' : 'Warms ') + Math.abs(Math.round(swing.diff)) + DEG + ' \u2014 by ' + n3,
+      out.push({ off: swing.x.off, text: (swing.diff < 0 ? 'Cools ' : 'Warms ') + Math.abs(Math.round(swing.diff)) + DEG,
                  detail: 'High goes from ' + Math.round(today.tMax) + DEG + ' today to '
-                       + Math.round(swing.x.d.tMax) + DEG + ' on ' + n3
+                       + Math.round(swing.x.d.tMax) + DEG
                        + '. A swing that size is its own trigger, separate from where it lands.' });
     }
     return out.slice(0, 4);
@@ -3762,7 +3779,7 @@
       if (!on('sec-' + sec)) return;
       var items;
       if (sec === 'week') {
-        items = (weekItems || []).map(function (w) { return { text: w.pill, detail: w.detail }; });
+        items = weekItems || [];
       } else {
         items = todos.filter(function (t) { return t.when === sec; })
                      .sort(function (a, b) { return a.rank - b.rank; })
@@ -3774,32 +3791,52 @@
       h.textContent = sectionName(sec);
       el.appendChild(h);
 
-      // Later this week keeps the same look as the other sections \u2014
-      // real pills in a flex row \u2014 rather than plain lines you click to
-      // expand. No done/fade state, since these are forecasts to keep
-      // in mind, not actions to check off; tapping still reveals detail,
-      // just underneath the whole row instead of growing the pill itself.
+      // Grouped by day, each item its own small expandable note \u2014 not a
+      // pill. These are forecasts to keep in mind, not actions with a
+      // done state, and the old chip styling implied an interaction
+      // (tap to check off) these never actually had.
       if (sec === 'week') {
-        var ulw = document.createElement('ul');
-        var detailBox = document.createElement('p'); detailBox.className = 'weekdetail'; detailBox.style.display = 'none';
-        items.forEach(function (t) {
-          var li = document.createElement('li'); fillPill(li, t.text);
-          if (t.detail) {
-            li.setAttribute('role', 'button'); li.setAttribute('tabindex', '0');
-            var toggleWeek = function () {
-              var open = detailBox.style.display !== 'none' && detailBox.textContent === t.detail;
-              if (open) { detailBox.style.display = 'none'; }
-              else { detailBox.textContent = t.detail; detailBox.style.display = 'block'; }
-            };
-            li.addEventListener('click', toggleWeek);
-            li.addEventListener('keydown', function (e) {
-              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleWeek(); }
-            });
-          }
-          ulw.appendChild(li);
+        var byDay = {}, order = [];
+        items.forEach(function (w) {
+          var off = w.off == null ? 0 : w.off;
+          if (!byDay[off]) { byDay[off] = []; order.push(off); }
+          byDay[off].push(w);
         });
-        el.appendChild(ulw);
-        el.appendChild(detailBox);
+        order.sort(function (a, b) { return a - b; });
+        order.forEach(function (off) {
+          var grp = document.createElement('div'); grp.className = 'weekgroup';
+          var dh = document.createElement('div'); dh.className = 'weekday';
+          dh.textContent = dayName(dateStrIn(state.tz, off), state.tz, off);
+          grp.appendChild(dh);
+          byDay[off].forEach(function (w) {
+            var note = document.createElement('div'); note.className = 'weeknote';
+            var line = document.createElement('div'); line.className = 'weeknoteline';
+            var b = document.createElement('b'); b.textContent = w.text; line.appendChild(b);
+            note.appendChild(line);
+            if (w.detail) {
+              var chev = document.createElement('span'); chev.className = 'more';
+              chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true">'
+                + '<path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" '
+                + 'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+              note.appendChild(chev);
+              var det = document.createElement('p'); det.className = 'weeknotedetail'; det.style.display = 'none';
+              det.textContent = w.detail;
+              note.appendChild(det);
+              note.setAttribute('role', 'button'); note.setAttribute('tabindex', '0');
+              var toggleNote = function () {
+                var open = det.style.display !== 'none';
+                det.style.display = open ? 'none' : 'block';
+                note.classList.toggle('open', !open);
+              };
+              note.addEventListener('click', toggleNote);
+              note.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleNote(); }
+              });
+            }
+            grp.appendChild(note);
+          });
+          el.appendChild(grp);
+        });
         return;
       }
 
@@ -4317,52 +4354,48 @@
     // "Tomorrow Morning": anything whose useful window is the first part
     // of the day gets a heads-up one day ahead, since by the time it
     // would normally show up as "today" it's too late to plan around.
-    // Not a new section \u2014 just the most immediate entries in the
-    // existing week-ahead list, first in line. No separate toggle; each
-    // still respects its own card's on/off switch.
+    // Grouped under "Tomorrow" like everything else now, so no special
+    // ordering trick needed \u2014 day-ascending grouping puts it first on
+    // its own. No separate toggle; each still respects its own card's
+    // on/off switch.
     (function () {
       var tm;
       try { tm = derive(p.wx, p.aq, state.tz, state.dayOffset + 1); } catch (e) { return; }
-      var morningItems = [];
       if (on('frost')) {
         var fc = frostCard(tm);
-        if (fc) morningItems.push({ pill: fc.bold + ' \u2014 Tomorrow Morning',
+        if (fc) weekItems.push({ off: 1, text: fc.bold,
           detail: 'Frost expected overnight; scrape or defrost before driving tomorrow.' });
       }
       if (on('mow')) {
         var mc = mowCard(tm, lat);
         if (mc && mc.bold === 'Too Hot and Humid to Mow Safely') {
-          morningItems.push({ pill: 'Mow Early \u2014 Tomorrow Morning',
+          weekItems.push({ off: 1, text: 'Mow Early',
             detail: 'Tomorrow turns too hot and humid to mow safely later in the day.' });
         }
       }
       if (on('pavement')) {
         var pc = pavementCard(tm);
         if (pc && pc.bold !== 'Pavement Is Freezing') {
-          morningItems.push({ pill: 'Walk Dog Early \u2014 Tomorrow Morning',
+          weekItems.push({ off: 1, text: 'Walk Dog Early',
             detail: 'Pavement turns dangerous for paws later tomorrow \u2014 walk before it heats up.' });
         }
       }
       if (on('light')) {
         var lc = lightCard(tm);
         if (lc && lc.todo && lc.todo.indexOf('Morning Light') === 0) {
-          morningItems.push({ pill: lc.todo + ' \u2014 Tomorrow',
+          weekItems.push({ off: 1, text: 'Morning Light',
             detail: 'Tomorrow\u2019s clearest light window, so you can plan to be up for it.' });
         }
       }
-      weekItems.unshift.apply(weekItems, morningItems);
     })();
     for (var so = 1; so <= 6; so++) {
       var sp = seasonPill(d.date, state.tz, lat, so);
-      if (sp) { weekItems.push({ pill: sp + ' ' + dayName(dateStrIn(state.tz, so), state.tz, so),
-                                 detail: sp + ' falls this week.' }); break; }
+      if (sp) { weekItems.push({ off: so, text: sp, detail: sp + ' falls this week.' }); break; }
     }
     for (var sd = 1; sd <= 6; sd++) {
       var dl = dstLabel(dateStrIn(state.tz, sd));
-      if (dl) { var dstName = dayName(dateStrIn(state.tz, sd), state.tz, sd);
-                weekItems.push({ pill: dl + ' \u2014 ' + dstName,
-                                 detail: dl + ' overnight ' + dstName
-                                       + (dl.indexOf('Spring') > -1 ? ', losing an hour.' : ', gaining an hour.') });
+      if (dl) { weekItems.push({ off: sd, text: dl,
+                 detail: dl + (dl.indexOf('Spring') > -1 ? ', losing an hour.' : ', gaining an hour.') });
                 break; }
     }
 
