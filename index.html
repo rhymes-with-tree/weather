@@ -2778,7 +2778,8 @@
     return { bg: bgFlat('sky', 35), bold: 'Bird Migration Season',
       tip: 'Nocturnal migration runs nationwide through mid-' + (spring ? 'June' : 'November')
          + '. Turning off non-essential outdoor lighting overnight cuts collision risk on the '
-         + 'heaviest migration nights.',
+         + 'heaviest migration nights. Want more \u2014 actual notable sightings near you, not just '
+         + 'the seasonal reminder? Add a free eBird key in Settings \u2192 API Key.',
       link: { href: 'https://alert.birdcast.org/?latLng=' + lat.toFixed(4) + ',' + lon.toFixed(4),
                text: 'Check tonight\u2019s migration forecast' },
       todo: 'Outside Lights Out \u2014 migration season', todoWhen: 'night', todoRank: 80 };
@@ -4873,10 +4874,11 @@
      somebody wrote by hand. */
   var ABOUT = [
     ['How to read this', [
-      ['Measured', 'Water temperature, viral levels in wastewater, and National Weather Service alerts are real observations. So is air quality, if you add a key.'],
+      ['Measured', 'Water temperature, viral levels in wastewater, and National Weather Service alerts are real observations. So are pollen, air quality, and notable bird sightings, if you add the relevant key.'],
       ['Forecast', 'Temperature, humidity, cloud, rain, wind, soil and UV come from weather models. As good as any forecast and no better.'],
       ['Calculated', 'Sunrise, sunset, moonrise, moonset, phase and the solstices are astronomy. They are exact and need no data source.'],
-      ['Rules written by hand', 'Migraine, arthritis, bugs, frizz, shoes, mowing, frost and the rest are heuristics built from commonly cited triggers. They are the weakest thing here. Every threshold is a number someone chose.']
+      ['Hand-maintained calendars', 'Eclipses and meteor showers come from NASA/Espenak and the American Meteor Society\u2019s own published predictions, not from anything this app computes. Good until the table needs a refresh \u2014 eclipses through 2032, meteor showers spot-checked yearly.'],
+      ['Rules written by hand', 'Migraine, arthritis, bugs, frizz, shoes, mowing, ticks and the rest are heuristics built from commonly cited triggers. They are the weakest thing here. Every threshold is a number someone chose.']
     ]],
     ['Sources', [
       ['Open-Meteo', 'Forecast, soil, marine and place search. Blends NOAA HRRR and GFS with ECMWF. Free, keyless, CC BY 4.0.'],
@@ -4885,25 +4887,37 @@
       ['NOAA CO-OPS and NDBC', 'Water temperature from a shoreline gauge or a buoy. NDBC does not allow browser requests, so in practice it is usually the CO-OPS gauge.'],
       ['CDC wastewater surveillance', 'Weekly viral activity levels for COVID, influenza A and RSV, by state.'],
       ['NOAA Space Weather Prediction Center', 'Planetary K index, for the aurora card.'],
-      ['Google Pollen and Air Quality', 'Only if you add your own key. Otherwise allergens come from a bloom calendar.']
+      ['Federal Register', 'Presidential half-staff proclamations. US public domain.'],
+      ['Mast', 'State half-staff orders, only with your own key. There is no single free source for fifty governors\u2019 individual orders, so this is the one paid dependency in the whole app \u2014 and it has a genuinely generous free tier.'],
+      ['NASA/Espenak', 'Eclipse predictions, hand-maintained through 2032.'],
+      ['American Meteor Society', 'Annual peak dates for the eight showers AMS itself calls major.'],
+      ['Google Pollen and Air Quality', 'Only if you add your own key. Otherwise allergens come from a bloom calendar.'],
+      ['eBird', 'Notable bird sightings nearby, only with your own key. "Notable" is eBird\u2019s own definition \u2014 locally or nationally rare, or a species out of season \u2014 not a judgment made here.'],
+      ['BirdCast (Cornell Lab of Ornithology)', 'Nightly migration forecasts, link-out only. Their API is confirmed CORS-blocked from a browser \u2014 tested directly against this app\u2019s own deployed address, not assumed \u2014 so the bird migration card links to their site instead of fetching it.'],
+      ['Xerces Society', 'Guidance behind the firefly and leaf-litter reminders. Not a live feed \u2014 seasonal rules, not data.']
     ]],
     ['How the less obvious ones work', [
       ['\u201cRight now\u201d vs the Sky card', 'Two different readings from the same request. The Sky card is built from the hourly and daily forecast, rolled up across the whole day \u2014 what the model expects today to look like. \u201cRight now\u201d reads Open-Meteo\u2019s separate current-conditions estimate, updated roughly hourly rather than from live radar. The two can disagree, which is usually the point: a short or localized shower can be genuinely falling without moving the day\u2019s overall forecast enough to change the headline above.'],
-      ['Migraine', 'Mostly barometric pressure: how far it moved over the past 24 hours, with falls weighted heavier than rises, plus the next twelve hours. Then temperature swing, warm and muggy air, bright glare on a clear day, and gusty wind. Scored out of 100.'],
+      ['Migraine', 'Mostly barometric pressure: how far it moved over the past 24 hours, with falls weighted heavier than rises, plus the next twelve hours. Then temperature swing, warm and muggy air, bright glare on a clear day, and gusty wind. Scored out of 100. A tile only past a threshold \u2014 quiet on an ordinary day rather than reporting "Unlikely" every morning.'],
       ['Arthritis', 'Falling pressure only \u2014 rises do not count. Then the damp-and-cool combination, which reads worse than either alone, plus rain, a large temperature swing, and heavy humidity. Settled warm dry weather subtracts from the score. Worth knowing: this is the most widely reported weather link and one of the least well supported. Several large studies found little or no association.'],
       ['Sunburn', 'Minimal erythemal dose for your skin type divided by the UV at solar noon. Fitzpatrick I burns in about a fifth of the time Fitzpatrick VI does. Longer is not the same as safe \u2014 pigment slows burning without stopping UV damage.'],
-      ['Frostbite', 'National Weather Service wind chill thresholds: about thirty minutes on bare skin at minus eighteen, ten at minus thirty-two, five at minus forty-eight. Those assume you are dry; wet clothing changes everything.'],
-      ['Hair frizz', 'Dew point. Above about sixty-six the air swells the hair shaft; below twenty it pulls moisture out and leaves it charged.'],
+      ['Frostbite', 'National Weather Service wind chill thresholds: about thirty minutes on bare skin at minus eighteen, ten at minus thirty-two, five at minus forty-eight. Those assume you are dry; wet clothing changes everything, and so does shovelling into a headwind \u2014 both get their own line rather than a footnote.'],
+      ['Hair frizz', 'Dew point, and it fails at both ends: above about sixty-six the air swells the hair shaft, below twenty it pulls moisture out and leaves it charged. There is a genuine calm middle where neither happens, which is the one tile here that stays quiet on a good day rather than an unremarkable one.'],
       ['Bug spray', 'Warm enough to fly, humid, little wind to keep them off, and standing water from recent rain. A cold night knocks the score back. There is no free mosquito data anywhere, so this is a rule of thumb rather than an observation.'],
       ['Which shoes', 'Rain, snow and ice come from the forecast. Mud comes from soil moisture and soil temperature \u2014 saturated and unfrozen ground stays soft on a dry day. Road salt is inferred from a cold snowy stretch followed by a dry one.'],
-      ['Mowing', 'Soil temperature and deeper soil moisture, not the top centimetre, which dries within hours of a shower. Cool-season grass north of about thirty-six degrees latitude, warm-season south of it \u2014 the same soil reading means opposite things in Michigan and Georgia.'],
+      ['Mowing', 'Soil temperature and deeper soil moisture, not the top centimetre, which dries within hours of a shower. Cool-season grass north of about thirty-six degrees latitude, warm-season south of it \u2014 the same soil reading means opposite things in Michigan and Georgia. Also checks for heat-exertion risk on its own, separate from whether the grass is actually growing, and notes No Mow May in May without ever refusing to say a lawn needs cutting.'],
       ['Allergens', 'Without a key, a bloom calendar for one of six US regions, adjusted for wind, humidity and recent rain. Modelled from the season, not counted. January reads quiet in Michigan and peak mountain cedar in Texas.'],
       ['Viruses about', 'Wastewater picks up infections before people test or see a doctor, including ones without symptoms. It describes a whole state, not a neighbourhood, and says nothing about your own risk.'],
       ['Moonrise and moonset', 'A low-precision lunar position converted to altitude for your latitude, then solved for the horizon crossings. Accurate to a couple of minutes.'],
-      ['Later this week', 'Scans the next six days for a migraine or arthritis score that is both high and clearly worse than today, the first overnight freeze, or a temperature swing worth planning around.']
+      ['Meteor showers', 'Only within two days of an actual peak \u2014 no daily "nothing tonight" entry. Cross-checked against that night\u2019s real cloud cover and moon brightness, same as the aurora card, so a technically-active shower under full cloud cover reads as such rather than pretending conditions are good.'],
+      ['Bird migration (Lights Out)', 'A seasonal reminder, not a live forecast \u2014 BirdCast\u2019s own migration-intensity data can\u2019t be pulled into a browser (see Sources), so this links to their forecast instead of guessing at it, active only when their live season actually runs.'],
+      ['Ice safety', 'A real ice-thickness estimate needs freezing-degree-days summed over a whole season; this app only has a few days of history to look back on. So this stays a recent-cold nudge \u2014 three or more days at or below freezing \u2014 not a claim about inches of ice, and it always points at checking locally rather than trusting a phone.'],
+      ['Ticks', 'No live per-location risk feed exists anywhere free. This is a season-window-plus-temperature rule, active roughly March through November above 45\u00b0F, the same shape as the mowing bands, not a measurement.'],
+      ['Fireflies and leaf litter', 'Both Xerces Society guidance, not a live feed. Outdoor lighting during firefly season (roughly June\u2013August) works against them, since they need real darkness to find mates. Leaf litter and hollow garden stems are where native bees and moths overwinter, so the fall reminder is to rake into beds rather than bag for the curb or shred with a mower \u2014 not to leave every leaf exactly where it falls.'],
+      ['Later this week', 'Scans the next six days for a migraine or arthritis score that is both high and clearly worse than today, the first overnight freeze, a temperature swing worth planning around, or an eclipse. A separate pass checks tomorrow specifically for anything whose window is early morning \u2014 frost, mowing before heat sets in, an early dog walk, a clear light window \u2014 since by the time that would show up as "today" it is already too late to plan around.']
     ]],
     ['Privacy', [
-      ['', 'There is no account, no server, no analytics and no cookies. Your settings, saved places and API keys live in this browser. Your coordinates go to the weather services above as part of each request, and nowhere else. One exception worth naming: if you add a Mast key, opening this panel loads one font from Google so the Mast credit renders in their wordmark. Nothing else on the page fetches anything from a third party.']
+      ['', 'There is no account and no server. Settings, saved places and API keys live in this browser. Your coordinates go to the weather services above as part of each request, and nowhere else. The site uses GoatCounter for basic visit counts \u2014 cookieless, no personal data, aggregate only, and it is the one thing here worth calling tracking even in the loosest sense of the word. One more exception: if you add a Mast key, opening this panel loads one font from Google so the Mast credit renders in their wordmark. Nothing else on the page fetches anything from a third party.']
     ]],
     ['Limits', [
       ['', 'US only: units are imperial, alerts and the air quality index are American, and the bloom calendars cover six US regions. Health cards are estimates, not medical advice, and no forecast can tell you how you will feel. Your own record of what sets a condition off is better evidence than any threshold in here.']
@@ -4938,8 +4952,14 @@
     live.textContent = 'Right now: allergens '
       + (h2.pollen && h2.pollen.days ? 'measured, from the Google Pollen API.' : 'from a bloom calendar, not measured.')
       + ' Air quality ' + (h2.airGoogle && h2.airGoogle.days ? 'from Google at 500 m.' : 'from Copernicus CAMS at about 45 km.')
-      + (h2.water ? ' Water temperature ' + (h2.water.kind === 'marine' ? 'modelled for open water.' : 'measured at ' + h2.water.station + '.') : '');
+      + (h2.water ? ' Water temperature ' + (h2.water.kind === 'marine' ? 'modelled for open water.' : 'measured at ' + h2.water.station + '.') : '')
+      + ' Notable birds ' + (store.keys && store.keys.ebird ? 'from your own eBird key.' : 'not shown \u2014 add a free eBird key in Settings to turn this on.');
     aboutPanel.appendChild(live);
+
+    var fb = document.createElement('p'); fb.className = 'lede';
+    fb.style.marginTop = '10px';
+    fb.innerHTML = 'Something wrong, or missing? <a href="https://tally.so/r/obj48V" target="_blank" rel="noopener">Short survey</a> \u2014 two minutes, no login.';
+    aboutPanel.appendChild(fb);
   }
 
   function toggle(btn, panel, build) {
