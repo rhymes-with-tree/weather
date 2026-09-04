@@ -320,24 +320,15 @@
             color:var(--ink);opacity:.62;font-weight:700;margin-bottom:7px;}
   .card.todo ul + .todohead{margin-top:14px;padding-top:12px;
                             border-top:1px solid rgba(22,35,47,.13);}
-  /* Later This Week: day-grouped notes, not pills \u2014 these are forecasts
-     to keep in mind, not actions with a done state, so they get their
-     own visual language instead of borrowing the to-do chip's implied
-     tap-to-check-off interaction, which they never actually had. */
+  /* Later This Week: day-grouped, always-visible text \u2014 not a pill.
+     These are forecasts to read, not actions with a done state or
+     detail worth hiding behind a tap; no chip shape, no toggle. */
   .weekgroup{margin:12px 0 0;}
   .weekgroup:first-child{margin-top:0;}
   .weekday{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;
            opacity:.55;font-weight:700;margin:0 2px 5px;}
-  .weeknote{position:relative;background:#FFF;border:1px solid var(--line);
-            border-radius:10px;padding:9px 30px 9px 12px;margin-bottom:6px;
-            cursor:pointer;}
+  .weeknote{font-size:14.5px;line-height:1.45;margin:0 2px 8px;}
   .weeknote:last-child{margin-bottom:0;}
-  .weeknote:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
-  .weeknoteline{font-size:14.5px;font-weight:600;line-height:1.3;}
-  .weeknote .more{top:11px;right:9px;width:15px;height:15px;}
-  .weeknote.open .more{transform:rotate(180deg);}
-  .weeknotedetail{display:block;font-size:13px;opacity:.75;margin:6px 0 0;
-                  font-weight:400;line-height:1.4;}
   .ord.sub{padding-left:18px;}
   .ord.sub span{opacity:.8;}
   .card.todo ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:7px 9px;}
@@ -3791,10 +3782,9 @@
       h.textContent = sectionName(sec);
       el.appendChild(h);
 
-      // Grouped by day, each item its own small expandable note \u2014 not a
-      // pill. These are forecasts to keep in mind, not actions with a
-      // done state, and the old chip styling implied an interaction
-      // (tap to check off) these never actually had.
+      // Grouped by day, always-visible text \u2014 not a pill, no tap
+      // needed. These are forecasts to read, not to check off or dig
+      // into; the whole point is reading them at a glance.
       if (sec === 'week') {
         var byDay = {}, order = [];
         items.forEach(function (w) {
@@ -3809,30 +3799,11 @@
           dh.textContent = dayName(dateStrIn(state.tz, off), state.tz, off);
           grp.appendChild(dh);
           byDay[off].forEach(function (w) {
-            var note = document.createElement('div'); note.className = 'weeknote';
-            var line = document.createElement('div'); line.className = 'weeknoteline';
-            var b = document.createElement('b'); b.textContent = w.text; line.appendChild(b);
-            note.appendChild(line);
-            if (w.detail) {
-              var chev = document.createElement('span'); chev.className = 'more';
-              chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true">'
-                + '<path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" '
-                + 'stroke-linecap="round" stroke-linejoin="round"/></svg>';
-              note.appendChild(chev);
-              var det = document.createElement('p'); det.className = 'weeknotedetail'; det.style.display = 'none';
-              det.textContent = w.detail;
-              note.appendChild(det);
-              note.setAttribute('role', 'button'); note.setAttribute('tabindex', '0');
-              var toggleNote = function () {
-                var open = det.style.display !== 'none';
-                det.style.display = open ? 'none' : 'block';
-                note.classList.toggle('open', !open);
-              };
-              note.addEventListener('click', toggleNote);
-              note.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleNote(); }
-              });
-            }
+            var note = document.createElement('p'); note.className = 'weeknote';
+            var b = document.createElement('b');
+            b.textContent = w.text + (/[.?!]$/.test(w.text) ? '' : '.');
+            note.appendChild(b);
+            if (w.detail) note.appendChild(document.createTextNode(' ' + w.detail));
             grp.appendChild(note);
           });
           el.appendChild(grp);
@@ -4383,7 +4354,8 @@
       if (on('light')) {
         var lc = lightCard(tm);
         if (lc && lc.todo && lc.todo.indexOf('Morning Light') === 0) {
-          weekItems.push({ off: 1, text: 'Morning Light',
+          var win = lc.todo.replace('Morning Light \u2014 ', '');
+          weekItems.push({ off: 1, text: 'Morning Light ' + win,
             detail: 'Tomorrow\u2019s clearest light window, so you can plan to be up for it.' });
         }
       }
