@@ -12,7 +12,7 @@
 <link rel="icon" href="data:,">
 <style>
   :root{ --page:#FFF; --ink:#16232F; --mid:#5B6B7A; --line:#E4E4E4; --link:#1B57C8;
-         --rowh:62px; --gap:7px; }
+         --rowh:62px; --tileh:52px; --gap:7px; }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;background:var(--page);color:var(--ink);}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
@@ -173,8 +173,8 @@
      row of water tiles swell to the height of the whole column. Only a
      card opened by tapping is allowed to grow. */
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);margin-top:17px;
-        grid-auto-rows:minmax(var(--rowh),auto);align-content:start;}
-  .card.sm{min-height:var(--rowh);display:flex;flex-direction:column;
+        grid-auto-rows:minmax(var(--tileh),auto);align-content:start;}
+  .card.sm{min-height:var(--tileh);display:flex;flex-direction:column;
            align-items:center;justify-content:center;text-align:center;
            padding:8px 26px 8px 11px;font-size:14px;border-radius:12px;margin:0;width:auto;
            line-height:1.22;}
@@ -205,7 +205,7 @@
      width their gradients need. */
   @media (min-width:760px){
     .wrap{max-width:1080px;}
-    :root{--rowh:74px;--gap:8px;}
+    :root{--rowh:74px;--tileh:60px;--gap:8px;}
     .card{padding:12px 18px;}
     .card.sm{padding:10px 12px;font-size:15px;}
     /* Left column is the day: four full-width cards, then the tiles
@@ -235,7 +235,7 @@
                     display:flex;flex-direction:column;justify-content:center;}
     .hourly > .card:not(.open){height:var(--rowh);}
     .hourly > .card.open{height:auto;}
-    .card.sm{aspect-ratio:auto;min-height:var(--rowh);font-size:15px;}
+    .card.sm{aspect-ratio:auto;min-height:var(--tileh);font-size:15px;}
     .grid{grid-template-columns:repeat(3,1fr);margin-top:0;}
     .card.sm.open{grid-column:span 3;min-height:0;}
   }
@@ -415,8 +415,10 @@
     { id: 'pavement',  name: 'Pavement and paws', note: 'A dog' },
     { id: 'wind',      name: 'Wind',              note: 'Kite and sailing notes in the tap' },
     { id: 'aurora',    name: 'Aurora',            note: 'Only during a geomagnetic storm' },
+    { id: 'meteor',    name: 'Meteor Showers',    note: 'Only near a major shower\u2019s peak, from AMS' },
     { id: 'eclipse',   name: 'Eclipse',           note: 'Only on an eclipse day' },
     { id: 'bird',      name: 'Bird Migration',    note: 'A Lights Out reminder in migration season, links to BirdCast' },
+    { id: 'ebird',     name: 'Notable Birds',     note: 'Needs your own eBird key \u2014 see Settings' },
     // to-do list only
     { id: 'mask',      name: 'Masking',           note: 'Suggests a mask when the air or the viruses are bad' },
     { id: 'swim',      name: 'Swimming',          note: 'Suggests a swim, and flags good swimming days ahead' },
@@ -1128,7 +1130,7 @@
     if (a == null) return null;
 
     var word = a <= 50 ? 'Good Air Quality' : a <= 100 ? 'Moderate Air Quality'
-             : a <= 150 ? (sens ? 'Unhealthy for You' : 'Unhealthy for Sensitive Groups')
+             : a <= 150 ? (sens ? 'Unhealthy Air Quality for You' : 'Unhealthy Air Quality for Sensitive Groups')
              : a <= 200 ? 'Unhealthy Air Quality'
              : a <= 300 ? 'Very Unhealthy Air Quality' : 'Hazardous Air Quality';
 
@@ -1309,8 +1311,8 @@
         return { bg: bgFlat('risk', sc),
           todos: (function () {
             var out = [];
-            if (sc >= 35) out.push({ text: 'Allergy Meds', when: 'out', rank: 35 });
-            if (sc >= 65) out.push({ text: 'Rinse Off \u2014 shower, change clothes after', when: 'day', rank: 36 });
+            if (sc >= 35) out.push({ text: 'Allergy Meds \u2014 pollen', when: 'out', rank: 35 });
+            if (sc >= 65) out.push({ text: 'Rinse Off \u2014 pollen, shower after', when: 'day', rank: 36 });
             return out;
           })(),
           bold: filtered ? 'Nothing You Track' : plants.length ? level(sc) + ' Allergies' : 'No Pollen in Season',
@@ -1339,8 +1341,8 @@
       bold: level(sc2) + ' Allergies',
       todos: (function () {
         var out = [];
-        if (sc2 >= 35) out.push({ text: 'Allergy Meds', when: 'out', rank: 35 });
-        if (sc2 >= 65) out.push({ text: 'Rinse Off \u2014 shower, change clothes after', when: 'day', rank: 36 });
+        if (sc2 >= 35) out.push({ text: 'Allergy Meds \u2014 pollen', when: 'out', rank: 35 });
+        if (sc2 >= 65) out.push({ text: 'Rinse Off \u2014 pollen, shower after', when: 'day', rank: 36 });
         return out;
       })(),
       // Modelled, not measured \u2014 that distinction is substantive, not
@@ -1364,22 +1366,27 @@
 
   function migraineCard(d) {
     var r = migraineScore(d), s = r.s, why = r.why;
-    // Split on purpose: risk awareness is a planning call, not a
-    // medication instruction. Having meds within reach is a neutral
-    // item to bring \u2014 whether and when to actually take anything is
-    // not something a loosely-correlated weather trigger should say.
+    if (s < 24) return null;   // quiet below this, same threshold the pill used to gate on
+    // A tile now, not a pill \u2014 risk level is a condition, not an
+    // action, and burying the reasoning and the band meaning inside a
+    // pill nobody could tap into was the actual mistake. Meds-on-hand
+    // stays a pill: that part is a neutral item to bring, and whether
+    // to actually take anything is not something this app should say.
+    var bands = [[0, 23, 'Unlikely'], [24, 44, 'Possible'], [45, 100, 'Likely']];
+    var hiRow = -1;
+    var bandRows = bands.map(function (b, i) {
+      if (s >= b[0] && s <= b[1]) hiRow = i;
+      return [b[0] + '\u2013' + b[1], b[2]];
+    });
     return { bg: bgFlat('risk', s),
-      bold: 'Migraine ' + (s >= 45 ? 'Likely' : s >= 24 ? 'Possible' : 'Unlikely'),
-      todos: (function () {
-        var out = [];
-        if (s >= 45) out.push({ text: 'Migraine Risk \u2014 ' + s + '/100', when: 'day', rank: 25 });
-        else if (s >= 24) out.push({ text: 'Hydrate Early \u2014 migraine risk ' + s + '/100', when: 'day', rank: 25 });
-        if (s >= 45) out.push({ text: 'Migraine Meds', when: 'out', rank: 25 });
-        return out;
-      })(),
+      bold: 'Migraine ' + (s >= 45 ? 'Likely' : 'Possible'),
+      todos: [ s >= 45
+        ? { text: 'Migraine Meds', when: 'out', rank: 25 }
+        : { text: 'Hydrate Early', when: 'day', rank: 25 } ],
       tip: cap(topOf(why) || 'pressure steady, no sharp swings') + '. '
          + (s >= 45 ? 'Front-load water, hold your sleep and meal times, sunglasses outdoors, abortive meds within reach.'
-          : s >= 24 ? 'Hydrate early and do not skip meals.' : 'Atmospherically quiet.') };
+                    : 'Hydrate early and do not skip meals.'),
+      rowsHead: ['Score', ''], rows: bandRows, hiRow: hiRow };
   }
 
   function arthritisScore(d) {
@@ -1396,20 +1403,23 @@
 
   function arthritisCard(d) {
     var r = arthritisScore(d), s = r.s, why = r.why;
-    // Same split as migraine: flare risk informs planning, meds-on-hand
-    // is a neutral item, and the two don't need to be one instruction.
+    if (s < 24) return null;   // quiet below this, same threshold the pill used to gate on
+    // Same move as migraine: a tile for the condition, a pill only for
+    // the actual item to bring, no checkbox pretending pure risk
+    // awareness is a task to complete.
+    var bands = [[0, 23, 'Unlikely'], [24, 44, 'Possible'], [45, 100, 'Likely']];
+    var hiRow = -1;
+    var bandRows = bands.map(function (b, i) {
+      if (s >= b[0] && s <= b[1]) hiRow = i;
+      return [b[0] + '\u2013' + b[1], b[2]];
+    });
     return { bg: bgFlat('risk', s),
-      bold: 'Arthritis Flare ' + (s >= 45 ? 'Likely' : s >= 24 ? 'Possible' : 'Unlikely'),
-      todos: (function () {
-        var out = [];
-        if (s >= 45) out.push({ text: 'Arthritis Flare Risk \u2014 ' + s + '/100', when: 'day', rank: 25 });
-        if (s >= 45) out.push({ text: 'Arthritis Meds', when: 'out', rank: 25 });
-        return out;
-      })(),
+      bold: 'Arthritis Flare ' + (s >= 45 ? 'Likely' : 'Possible'),
+      todos: s >= 45 ? [{ text: 'Arthritis Meds', when: 'out', rank: 25 }] : [],
       tip: cap(topOf(why) || 'settled, warm and dry') + '. '
          + (s >= 45 ? 'Heat on the worst joints before you move them, a longer warm-up, and push the physical parts of the day later rather than first thing.'
-          : s >= 24 ? 'Extra warm-up time, and keep moving \u2014 sitting still is what tightens up.'
-          : 'Nothing pushing on the joints today.') };
+                    : 'Extra warm-up time, and keep moving \u2014 sitting still is what tightens up.'),
+      rowsHead: ['Score', ''], rows: bandRows, hiRow: hiRow };
   }
 
   function waterCard(water, dateStr) {
@@ -2032,12 +2042,20 @@
     if (d.rainYesterday >= 0.1 || d.rainSum >= 0.1) { s += 18; why.push('recent rain leaves standing water'); }
     if (d.tMin < 42) { s -= 20; why.push('a cold night knocks them back'); }
     s = Math.max(0, Math.min(100, s));
-    var word = s >= 65 ? 'Bugs Are Brutal' : s >= 40 ? 'Bring Bug Spray' : s >= 20 ? 'A Few Bugs' : 'Bug-Free';
-    return { bg: bgFlat('risk', s), bold: word, todo: s >= 40 ? 'Bug Spray \u2014 worst at dawn & dusk' : null, todoWhen: 'out', todoRank: 40,
+    if (s < 40) return null;   // quiet below this, same threshold the pill used to gate on
+    // A tile now, same reasoning as Migraine/Arthritis/Frostbite: the
+    // score and the band it falls in were already being computed while
+    // pill-only, just never actually shown.
+    var word = s >= 65 ? 'Bugs Are Brutal' : 'Bring Bug Spray';
+    var bands = [[0, 19, 'Bug-Free'], [20, 39, 'A Few Bugs'], [40, 64, 'Bring Bug Spray'], [65, 100, 'Bugs Are Brutal']];
+    var hiRow = -1;
+    var bandRows = bands.map(function (b, i) { if (s >= b[0] && s <= b[1]) hiRow = i; return [b[0] + '\u2013' + b[1], b[2]]; });
+    return { bg: bgFlat('risk', s), bold: word,
+      todo: 'Bug Spray \u2014 worst at dawn & dusk', todoWhen: 'out', todoRank: 40,
       tip: (why.length ? cap(listJoin(why)) + '. ' : '')
-         + (s >= 40 ? 'Worst at dawn and dusk. Repellent on exposed skin, and long sleeves after sunset. '
-                    : 'You can probably skip the repellent. ')
-         + 'Estimated from temperature, dew point, wind and recent rain \u2014 there is no free mosquito data to check it against.' };
+         + 'Worst at dawn and dusk. Repellent on exposed skin, and long sleeves after sunset. '
+         + 'Estimated from temperature, dew point, wind and recent rain \u2014 there is no free mosquito data to check it against.',
+      rowsHead: ['Score', ''], rows: bandRows, hiRow: hiRow };
   }
 
   /* Frostbite, using apparent temperature as the wind chill. Times
@@ -2068,26 +2086,39 @@
     if (shovelRisk) {
       tip += ' Cold this sharp with wind on top of it tightens blood vessels and puts more load on the heart.';
     }
+    // Now a tile: this was already computing all this reasoning while
+    // pill-only, which meant none of it was ever actually visible \u2014
+    // only the pill's own short text was. The risk-flag pills are gone;
+    // the table below does that job now. Cover Up / Hat & Gloves /
+    // Pace Yourself stay pills, since those are genuine actions.
+    var hiRow = wc <= -48 ? 0 : wc <= -32 ? 1 : wc <= -18 ? 2 : wc <= 5 ? 3 : 4;
+    var bandRows = [
+      ['-48\u00b0 or colder', '5 min'],
+      ['-48\u00b0 to -33\u00b0', '10 min'],
+      ['-32\u00b0 to -19\u00b0', '30 min'],
+      ['-18\u00b0 to 5\u00b0', 'Slow risk'],
+      ['6\u00b0 or warmer', 'Unlikely']
+    ];
     return { bg: bgAt('feels', wc, 9), bold: word, tip: tip,
-             // The risk belongs with planning; what to put on belongs with
-             // walking out of the door.
              todos: (function () {
                var out = wc <= -18
-                 ? [{ text: 'Frostbite Risk \u2014 bare skin in ' + word.replace('Frostbite in ', ''),
-                      when: 'day', rank: 3 },
-                    { text: 'Cover Up \u2014 face, ears, hands', when: 'out', rank: 3 }]
+                 ? [{ text: 'Cover Up \u2014 face, ears, hands', when: 'out', rank: 3 }]
                  : wc <= 5
-                 ? [{ text: 'Frostbite Risk \u2014 bare skin', when: 'day', rank: 10 },
-                    { text: 'Cover Up \u2014 face covered', when: 'out', rank: 8 }]
+                 ? [{ text: 'Cover Up \u2014 face covered', when: 'out', rank: 8 }]
                  : [{ text: 'Hat & Gloves', when: 'out', rank: 12 }];
                if (shovelRisk) out.push({ text: 'Pace Yourself \u2014 shovelling in this wind chill', when: 'day', rank: 7 });
                return out;
-             })() };
+             })(),
+             rowsHead: ['Wind Chill', ''], rows: bandRows, hiRow: hiRow };
   }
 
   /* Frizz is a dew point story, and it fails at both ends: damp air
      swells the hair shaft, bone-dry air turns it to static. Same ramp
-     as Sweat, different consequence. */
+     as Sweat, different consequence. Tile only, no pill \u2014 unlike
+     Frostbite's Cover Up or Bugs' repellent, there is no separate
+     action here; the label already is the whole message. Quiet during
+     "Hair Behaves," the unremarkable middle where neither extreme
+     applies. */
   function frizzCard(d) {
     var dp = d.dewMax, w, why;
     if (dp < 20)      { w = 'Static & Flyaways'; why = 'Air this dry pulls moisture out of hair and leaves it charged.'; }
@@ -2096,12 +2127,18 @@
     else if (dp < 66) { w = 'Frizz Likely';      why = 'Enough moisture in the air to swell the hair shaft.'; }
     else              { w = 'Frizz Guaranteed';  why = 'Saturated air. Nothing is holding today.'; }
     if (d.rainChance >= 60 && dp >= 45) why += ' Rain on top of it will not help.';
+    if (dp >= 20 && dp < 45) return null;
+    var hiRow = dp < 20 ? 0 : dp < 45 ? 1 : dp < 56 ? 2 : dp < 66 ? 3 : 4;
+    var bandRows = [
+      ['Below 20\u00b0', 'Static & Flyaways'],
+      ['20\u00b0\u201344\u00b0', 'Hair Behaves'],
+      ['45\u00b0\u201355\u00b0', 'Slight Frizz'],
+      ['56\u00b0\u201365\u00b0', 'Frizz Likely'],
+      ['66\u00b0 and up', 'Frizz Guaranteed']
+    ];
     return { bg: bgAt('sweat', dp, 7), bold: w,
-      todo: dp >= 70 ? 'Frizz Likely \u2014 dew point ' + Math.round(dp) + DEG
-          : dp >= 62 ? 'Some Frizz \u2014 dew point ' + Math.round(dp) + DEG
-          : dp < 20 ? 'Static Hair \u2014 dew point ' + Math.round(dp) + DEG : null,
-      todoWhen: 'day', todoRank: 60,
-      tip: 'Dew point peaks near ' + Math.round(dp) + DEG + '. ' + why };
+      tip: 'Dew point peaks near ' + Math.round(dp) + DEG + '. ' + why,
+      rowsHead: ['Dew Point', ''], rows: bandRows, hiRow: hiRow };
   }
 
   /* Fire weather. The National Weather Service issues Red Flag
@@ -2320,6 +2357,77 @@
       rows: lines };
   }
 
+  /* Notable = locally or nationally rare, or a species out of season for
+     the area \u2014 eBird's own definition, not something guessed at here.
+     One species per row, de-duped in ebirdFor() already. A tile rather
+     than a pill: this is genuinely browsable content, not an action. */
+  function ebirdCard(list) {
+    if (!list || !list.length) return null;
+    return { bg: bgFlat('sky', 30),
+      bold: list.length === 1 ? 'Notable Bird Nearby' : list.length + ' Notable Birds Nearby',
+      tip: 'From eBird, within the last week and 25 km.',
+      rows: list.map(function (o) { return [o.name, o.loc]; }) };
+  }
+
+  /* Hand-maintained from the American Meteor Society's annual major-
+     shower list (amsmeteors.org), same shape as the eclipse table.
+     Peak dates shift by roughly a day year to year, so these are fixed
+     month/day pairs rather than computed \u2014 good to about \u00b11 day,
+     worth a spot-check against AMS if this ever looks off. Only the
+     eight showers AMS itself calls "major"; weaker ones like the
+     Taurids rarely clear ten meteors an hour and would just be noise.
+     Radiant directions assume the northern hemisphere, which is fine
+     given this app's US-only scope. */
+  var METEOR_SHOWERS = [
+    { name: 'Quadrantids',      m: 1,  d: 4,  zhr: 120, radiant: 'the northeast, near Bo\u00f6tes' },
+    { name: 'Lyrids',           m: 4,  d: 22, zhr: 18,  radiant: 'the east, near Lyra' },
+    { name: 'Eta Aquariids',    m: 5,  d: 6,  zhr: 50,  radiant: 'the southeast, near Aquarius' },
+    { name: 'Delta Aquariids',  m: 7,  d: 30, zhr: 25,  radiant: 'the south, near Aquarius' },
+    { name: 'Perseids',         m: 8,  d: 13, zhr: 100, radiant: 'the northeast, near Perseus' },
+    { name: 'Orionids',         m: 10, d: 22, zhr: 20,  radiant: 'the east, near Orion' },
+    { name: 'Leonids',          m: 11, d: 17, zhr: 15,  radiant: 'the east, near Leo' },
+    { name: 'Geminids',         m: 12, d: 14, zhr: 150, radiant: 'the east, near Gemini' }
+  ];
+  function meteorCard(d) {
+    var y = parseInt(d.date.slice(0, 4), 10);
+    var today = Date.parse(d.date + 'T12:00:00Z');
+    var best = null, bestDiff = Infinity;
+    METEOR_SHOWERS.forEach(function (s) {
+      [y - 1, y, y + 1].forEach(function (yy) {
+        var peak = Date.UTC(yy, s.m - 1, s.d, 12);
+        var diff = Math.round((today - peak) / 86400000);
+        if (Math.abs(diff) < Math.abs(bestDiff)) { bestDiff = diff; best = s; }
+      });
+    });
+    if (!best || Math.abs(bestDiff) > 2) return null;   // only show near the actual peak
+
+    var ev = [];
+    for (var e = d.sunset + 1; e <= d.sunset + 5; e++) {
+      var r = d.hours[e % 24];
+      if (r && r.cloud != null) ev.push(r.cloud);
+    }
+    var cloud = ev.length ? avg(ev) : 100;
+    var lit = Math.round(((1 - Math.cos(2 * Math.PI * (moonAge(d.date) / LUNATION))) / 2) * 100);
+    var clear = cloud < 40, darkMoon = lit < 40;
+    var goodOdds = clear && darkMoon;
+
+    var when = bestDiff === 0 ? 'Peaks tonight'
+             : bestDiff < 0 ? 'Peaks in ' + Math.abs(bestDiff) + ' day' + (Math.abs(bestDiff) === 1 ? '' : 's')
+             : 'Peaked ' + bestDiff + ' day' + (bestDiff === 1 ? '' : 's') + ' ago, still active';
+    var word = best.name + (goodOdds ? ': Good Viewing' : clear ? ': Moon Will Wash It Out' : ': Cloudy Tonight');
+
+    var lines = [];
+    lines.push([when + '. Up to ' + best.zhr + ' per hour under a perfectly dark sky \u2014 fewer from anywhere with light pollution.']);
+    lines.push(['Evening clouds ' + Math.round(cloud) + '%, moon ' + lit + '% lit.']);
+    lines.push(['Radiant rises in ' + best.radiant + '; meteors can streak anywhere in the sky, not just near it.']);
+
+    return { bg: bgFlat('risk', goodOdds ? 15 : 50), bold: word,
+      todo: goodOdds ? 'Watch for Meteors \u2014 ' + best.name : null,
+      todoWhen: 'night', todoRank: 87, todoOutdoor: true,
+      rows: lines };
+  }
+
+
   /* Which shoes. Rain, snow and ice were already in the data; mud and
      road salt were the gaps, and those are the two that cost you a
      cleaning job afterwards. Written as a recommendation, not a report
@@ -2382,7 +2490,7 @@
       todo: icy || freezeThaw ? 'Traction Footwear \u2014 icy'
           : (snowing || slush) ? 'Waterproof Boots \u2014 snow'
           : salty ? 'Skip Good Leather \u2014 salt on walks'
-          : muddy ? 'Washable Boots \u2014 muddy ground'
+          : muddy ? 'Shoes for Mud \u2014 muddy ground'
           : wet ? 'Waterproof Shoes \u2014 ' + Math.round(d.rainChance) + '% rain' : null,
       todoWhen: 'out', todoRank: (icy || freezeThaw) ? 12 : 45,
       tip: why + (d.soilMoist == null ? ' Ground wetness estimated from rainfall \u2014 no soil data for this location.' : '') };
@@ -2836,9 +2944,8 @@
     store.blocks = o; saveStore(); buildSettings(); renderHome();
   }
 
-  var DEFAULT_TILE_ORDER = ['flag', 'air', 'allergy', 'virus', 'burn', 'light', 'water', 'pavement', 'wind', 'aurora', 'eclipse', 'bird'];
-  var PILL_ONLY = ['frostbite','migraine','arthritis','frizz','bug',
-                   'shoe','frost','pipe','rust','mow','mold','fire','mask','swim','garden','ice','tick',
+  var DEFAULT_TILE_ORDER = ['flag', 'air', 'allergy', 'migraine', 'arthritis', 'frostbite', 'bug', 'frizz', 'virus', 'burn', 'light', 'water', 'pavement', 'wind', 'aurora', 'meteor', 'eclipse', 'bird', 'ebird'];
+  var PILL_ONLY = ['shoe','frost','pipe','rust','mow','mold','fire','mask','swim','garden','ice','tick',
                    'power','firefly','leaves'];
   var DEFAULT_HOURLY_ORDER = ['feels', 'sky', 'daylight', 'moon'];
   function orderOf(which) {
@@ -2932,7 +3039,7 @@
     Promise.all(jobs).then(function (r) {
       state.home = { wx: r[0], aq: r[1], alerts: r[2], kp: r[3], pollen: null, airGoogle: null,
                      current: r[0].current || null,
-                     water: null, virus: null, flag: null };
+                     water: null, virus: null, flag: null, ebird: null };
       state.tz = r[0].timezone || place.tz || 'America/Detroit';
       store.place = place;
       store.recents = [place].concat((store.recents || []).filter(function (x) {
@@ -2961,6 +3068,12 @@
         flagFor(place, dateStrIn(r[0].timezone || place.tz, 0)).then(function (ff) {
           if (!ff || !state.home || state.home.error) return;
           state.home.flag = ff; renderHome();
+        });
+      }
+      if (on('ebird') && store.keys.ebird) {
+        ebirdFor(place).then(function (bb) {
+          if (!bb || !state.home || state.home.error) return;
+          state.home.ebird = bb; renderHome();
         });
       }
     }).catch(function (e) {
@@ -3129,6 +3242,38 @@
       return { title: st.title,
                authority: (st.authority && !/^unknown$/i.test(st.authority)) ? st.authority : '',
                url: st.sourceUrl || st.url || '' };
+    }).catch(function () { return null; });
+  }
+
+  /* Confirmed against the real eBird v2 API docs and a live example
+     response, not inferred from the general v2 path pattern: GET
+     data/obs/geo/recent/notable, auth via an X-eBirdApiToken header
+     (that capitalization, confirmed from the docs, not the lowercase
+     version the collection-level description implies). Simple detail
+     (the default) gives comName/obsDt/locName/howMany, which is all
+     this needs \u2014 no reason to ask for the full detail's checklist and
+     observer fields. */
+  function ebirdFor(place) {
+    var k = (store.keys && store.keys.ebird) || '';
+    if (!k || place.lat == null) return Promise.resolve(null);
+    return fetch('https://api.ebird.org/v2/data/obs/geo/recent/notable?lat='
+      + place.lat.toFixed(2) + '&lng=' + place.lon.toFixed(2) + '&back=7&dist=25', {
+      headers: { 'X-eBirdApiToken': k }
+    }).then(function (r) {
+      if (!r.ok) return null;
+      return r.json();
+    }).then(function (list) {
+      if (!list || !list.length) return null;
+      // One entry per species \u2014 the feed lists every checklist that
+      // included a notable bird, so the same species turns up several
+      // times over a week without this.
+      var seen = {}, out = [];
+      list.forEach(function (o) {
+        if (!o.comName || seen[o.comName]) return;
+        seen[o.comName] = true;
+        out.push({ name: o.comName, loc: o.locName || '' });
+      });
+      return out.slice(0, 5);
     }).catch(function () { return null; });
   }
 
@@ -4128,6 +4273,7 @@
       firefly:   function () { return fireflyCard(d); },
       leaves:    function () { return leafLitterCard(d); },
       bird:      function () { return birdCard(d, lat, lon); },
+      ebird:     function () { return ebirdCard(p.ebird); },
       wind:      function () { return windCard(d); },
       frizz:     function () { return frizzCard(d); },
       mold:      function () { return moldCard(d); },
@@ -4139,6 +4285,7 @@
       light:     function () { return lightCard(d); },
       mask:      function () { return null; },   // a switch, not a card
       aurora:    function () { return auroraCard(d, p.kp, lat, lon); },
+      meteor:    function () { return meteorCard(d); },
       eclipse:   function () {
         var hits = eclipseOn(d.date, state.tz);
         return hits.length ? eclipseCard(hits[0], state.tz, lat, lon) : null;
@@ -4677,6 +4824,20 @@
       if (state.place) loadHome(state.place);
     });
     settingsPanel.appendChild(mi);
+
+    var eh = document.createElement('h3'); eh.textContent = 'eBird key, for notable birds nearby';
+    settingsPanel.appendChild(eh);
+    var el2 = document.createElement('p'); el2.className = 'lede';
+    el2.textContent = 'Optional. Without a key, no bird card at all \u2014 there is no fallback source for this one. eBird defines "notable" as locally or nationally rare, or a species out of season for the area. Free, keyless to sign up: create an eBird account, then request a key at ebird.org. Sign in with the same account you use for the Cornell Lab apps if you have one already.';
+    settingsPanel.appendChild(el2);
+    var ei = document.createElement('input'); ei.type = 'text';
+    ei.placeholder = 'Paste eBird key, or leave blank';
+    ei.value = (store.keys && store.keys.ebird) || '';
+    ei.addEventListener('change', function () {
+      store.keys.ebird = ei.value.trim(); saveStore();
+      if (state.place) loadHome(state.place);
+    });
+    settingsPanel.appendChild(ei);
   }
 
   function updateContrast() {
