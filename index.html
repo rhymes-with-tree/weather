@@ -323,7 +323,7 @@
   /* Later This Week: day-grouped, always-visible text \u2014 not a pill.
      These are forecasts to read, not actions with a done state or
      detail worth hiding behind a tap; no chip shape, no toggle. */
-  .weekgroup{margin:12px 0 0;}
+  .weekgroup{margin:12px 0 0;text-align:left;}
   .weekgroup:first-child{margin-top:0;}
   .weekday{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;
            opacity:.55;font-weight:700;margin:0 2px 5px;}
@@ -938,7 +938,7 @@
                      when: 'out', rank: 11 });
         }
         if (dp >= 75) out.push({ text: 'Heat Risk \u2014 ' + Math.round(dp) + DEG + ' dew point', when: 'day', rank: 8 });
-        if (d.feelsMax >= 85) out.push({ text: 'Water Bottle', when: 'out', rank: 9 });
+        if (d.feelsMax >= 85) out.push({ text: 'Water Bottle \u2014 ' + Math.round(d.feelsMax) + DEG, when: 'out', rank: 9 });
         if (d.feelsMax > 92) out.push({ text: 'Seek Shade \u2014 midday', when: 'day', rank: 9 });
         if (swing >= 20 && d.feelsMin < 55) {
           out.push({ text: 'Bring a Layer \u2014 ' + Math.round(d.feelsMin) + DEG + ' tonight',
@@ -4785,10 +4785,53 @@
   }
 
   function buildKeyTab() {
+    var mh = document.createElement('h3'); mh.textContent = 'Mast key, for state flag orders';
+    settingsPanel.appendChild(mh);
+    var ml = document.createElement('p'); ml.className = 'lede';
+    ml.textContent = 'The Flag at Half-Staff card works right out of the box for federal orders \u2014 presidential proclamations and the dates set by law. To also catch state-specific orders, you\u2019ll need a free API key from Mast, which maintains a reader for each state governor\u2019s office.';
+    settingsPanel.appendChild(ml);
+    var mCost = document.createElement('p'); mCost.className = 'lede';
+    mCost.textContent = 'The free tier allows 250 requests a month. This app uses up to four a day per state, cached for six hours, so that\u2019s a generous amount of headroom.';
+    settingsPanel.appendChild(mCost);
+    var mEase = document.createElement('p'); mEase.className = 'lede';
+    mEase.textContent = 'This is a great first API to try, since getting the key is genuinely simple: sign up at mast.today with just your email, no payment method required, and they\u2019ll email you the key directly. Copy and paste it below.';
+    settingsPanel.appendChild(mEase);
+    var mi = document.createElement('input'); mi.type = 'text';
+    mi.placeholder = 'Paste Mast key, or leave blank';
+    mi.value = (store.keys && store.keys.mast) || '';
+    mi.addEventListener('change', function () {
+      store.keys.mast = mi.value.trim(); saveStore();
+      try { localStorage.removeItem('morningbrief.flag.v1'); } catch (e) {}
+      if (state.place) loadHome(state.place);
+    });
+    settingsPanel.appendChild(mi);
+
+    var eh = document.createElement('h3'); eh.textContent = 'eBird key, for notable birds nearby';
+    settingsPanel.appendChild(eh);
+    var el2 = document.createElement('p'); el2.className = 'lede';
+    el2.textContent = 'The Notable Birds card only appears with a key. eBird defines "notable" as locally or nationally rare, or a species out of season for the area.';
+    settingsPanel.appendChild(el2);
+    var eEase = document.createElement('p'); eEase.className = 'lede';
+    eEase.textContent = 'Getting a key is free and simple: create an eBird account if you don\u2019t already have one (the same account works across all the Cornell Lab apps), then request a key at ebird.org/api/keygen. Copy and paste it below.';
+    settingsPanel.appendChild(eEase);
+    var ei = document.createElement('input'); ei.type = 'text';
+    ei.placeholder = 'Paste eBird key, or leave blank';
+    ei.value = (store.keys && store.keys.ebird) || '';
+    ei.addEventListener('change', function () {
+      store.keys.ebird = ei.value.trim(); saveStore();
+      if (state.place) loadHome(state.place);
+    });
+    settingsPanel.appendChild(ei);
+
+    var gh = document.createElement('h3'); gh.textContent = 'Google key, for measured pollen and fine-grid air quality';
+    settingsPanel.appendChild(gh);
     var lede = document.createElement('p'); lede.className = 'lede';
-    lede.textContent = 'Optional. Without a key, allergens come from a regional bloom calendar and air quality from Copernicus CAMS at about 45 km. A key replaces both with measured pollen naming the plants in season, and air quality on a 500 m grid.';
+    lede.textContent = 'The Allergens and Air Quality cards work right out of the box, using a regional bloom calendar and Copernicus CAMS data at about 45 km resolution. Adding a free Google key upgrades both: measured pollen that names the actual plants in season, and air quality on a much finer 500 m grid.';
     settingsPanel.appendChild(lede);
 
+    var stepsIntro = document.createElement('p'); stepsIntro.className = 'lede';
+    stepsIntro.textContent = 'This one takes a few more steps than the others above, since it goes through Google Cloud Console rather than a simple signup form:';
+    settingsPanel.appendChild(stepsIntro);
     var steps = [
       'Go to console.cloud.google.com and create a project.',
       'In APIs & Services, enable both the Pollen API and the Air Quality API.',
@@ -4803,7 +4846,7 @@
     settingsPanel.appendChild(ol);
 
     var cost = document.createElement('p'); cost.className = 'lede';
-    cost.textContent = 'Each API allows 5,000 free calls a month. This app uses a handful a day, cached for 30 minutes, so a personal bill should be zero. The key is stored in this browser only and is billed to whoever created it.';
+    cost.textContent = 'Each API allows 5,000 free calls a month, and this app only uses a handful a day, cached for 30 minutes \u2014 a personal bill should be zero. The key is stored only in this browser and billed to whoever created it.';
     settingsPanel.appendChild(cost);
 
     var input = document.createElement('input'); input.type = 'text';
@@ -4814,35 +4857,6 @@
       if (state.place) loadHome(state.place);
     });
     settingsPanel.appendChild(input);
-
-    var mh = document.createElement('h3'); mh.textContent = 'Mast key, for state flag orders';
-    settingsPanel.appendChild(mh);
-    var ml = document.createElement('p'); ml.className = 'lede';
-    ml.textContent = 'Optional. Without a key the flag card covers federal orders only \u2014 presidential proclamations and the dates set by law. Governors issue their own orders and there is no single source for them, so state coverage needs Mast, which maintains a reader for each state. The free tier is 250 requests a month; this app uses up to four a day, per state, cached for six hours. Sign up at mast.today.';
-    settingsPanel.appendChild(ml);
-    var mi = document.createElement('input'); mi.type = 'text';
-    mi.placeholder = 'Paste Mast key, or leave blank';
-    mi.value = (store.keys && store.keys.mast) || '';
-    mi.addEventListener('change', function () {
-      store.keys.mast = mi.value.trim(); saveStore();
-      try { localStorage.removeItem('morningbrief.flag.v1'); } catch (e) {}
-      if (state.place) loadHome(state.place);
-    });
-    settingsPanel.appendChild(mi);
-
-    var eh = document.createElement('h3'); eh.textContent = 'eBird key, for notable birds nearby';
-    settingsPanel.appendChild(eh);
-    var el2 = document.createElement('p'); el2.className = 'lede';
-    el2.textContent = 'Optional. Without a key, no bird card at all \u2014 there is no fallback source for this one. eBird defines "notable" as locally or nationally rare, or a species out of season for the area. Free, keyless to sign up: create an eBird account, then request a key at ebird.org. Sign in with the same account you use for the Cornell Lab apps if you have one already.';
-    settingsPanel.appendChild(el2);
-    var ei = document.createElement('input'); ei.type = 'text';
-    ei.placeholder = 'Paste eBird key, or leave blank';
-    ei.value = (store.keys && store.keys.ebird) || '';
-    ei.addEventListener('change', function () {
-      store.keys.ebird = ei.value.trim(); saveStore();
-      if (state.place) loadHome(state.place);
-    });
-    settingsPanel.appendChild(ei);
   }
 
   function updateContrast() {
