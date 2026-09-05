@@ -381,6 +381,7 @@
 
   <p class="disc" id="disclaimer"></p>
   <p class="disc xercesnote" id="xercesNote" style="display:none"></p>
+  <p class="disc xercesnote" id="surveyNote"></p>
 </div>
 
 <script>
@@ -4955,11 +4956,6 @@
       + (h2.water ? ' Water temperature ' + (h2.water.kind === 'marine' ? 'modelled for open water.' : 'measured at ' + h2.water.station + '.') : '')
       + ' Notable birds ' + (store.keys && store.keys.ebird ? 'from your own eBird key.' : 'not shown \u2014 add a free eBird key in Settings to turn this on.');
     aboutPanel.appendChild(live);
-
-    var fb = document.createElement('p'); fb.className = 'lede';
-    fb.style.marginTop = '10px';
-    fb.innerHTML = 'Something wrong, or missing? <a href="https://tally.so/r/obj48V" target="_blank" rel="noopener">Short survey</a> \u2014 two minutes, no login.';
-    aboutPanel.appendChild(fb);
   }
 
   function toggle(btn, panel, build) {
@@ -4980,6 +4976,9 @@
     + 'whether to seek care. For weather that could hurt you, the National Weather Service is the '
     + 'authority \u2014 not this page. Water conditions in particular change faster than any forecast: '
     + 'check local flags and signage before you swim.';
+
+  document.getElementById('surveyNote').innerHTML =
+    'Please take <a href="https://tally.so/r/obj48V" target="_blank" rel="noopener">this two minute survey</a>!';
 
   /* ================= start ================= */
   buildRamps();
