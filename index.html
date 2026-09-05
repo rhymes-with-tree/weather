@@ -199,7 +199,8 @@
   /* One emoji per tile, ahead of the label: a glance says which tile
      this is before the words are read, and the faces group the body
      conditions apart from the sky and ground ones. */
-  .face .emo{font-size:1.2em;margin-right:.3em;vertical-align:-.08em;}
+  .face .emo{font-size:1.2em;margin-right:.3em;vertical-align:-.08em;position:relative;z-index:1;}
+  .face .emo.r{margin-right:0;margin-left:.3em;}
   /* Tiles that are switched on but have nothing to say today line up
      here as grey ghosts, so a short grid reads as "quiet" rather than
      "turned off". Spans every column at any width. */
@@ -934,6 +935,9 @@
 
     return { timeline: true, bg: bgDay(d, function (r) { return colorAt('feels', r.feels == null ? 60 : r.feels); }),
       bold: face,
+      // Low end on the left, high end on the right, humidity riding with the high.
+      icons: [STATE_EMOJI.temp[lo] || '',
+              (hi !== lo ? STATE_EMOJI.temp[hi] || '' : '') + (hum ? STATE_EMOJI.hum[hum] || '' : '')],
       todos: (function () {
         var out = [];
         var swing = d.feelsMax - d.feelsMin;
@@ -973,7 +977,7 @@
 
   function burnCard(d) {
     var uv = d.uvNoon, sk = skin();
-    if (uv < 2) return { bg: bgFlat('burn', uv), bold: 'No Sunburn Risk',
+    if (uv < 2) return { bg: bgFlat('burn', uv), icon: '\ud83d\ude0e', bold: 'No Sunburn Risk',
       tip: 'UV only reaches ' + uv.toFixed(1) + ' at solar noon. Nothing to protect against.' };
     var mins = Math.max(5, Math.round(sk.med / (uv * 1.5)));
     var face = mins >= 90 ? Math.round(mins / 60 * 10) / 10 + ' hr to Sunburn' : mins + ' min to Sunburn';
@@ -990,6 +994,7 @@
     }
     lines.push(['Not your skin color/burn type? Change in Settings.']);
     return { bg: bgFlat('burn', uv), bold: face, rows: lines,
+             icon: uv < 3 ? '\ud83d\udd76\ufe0f' : uv < 6 ? '\ud83e\uddf4' : uv < 8 ? '\ud83e\udde2' : '\ud83d\udd25',
              // Without a tile, the minutes only survive if the pill
              // carries them \u2014 and they are the reason the skin setting
              // exists at all.
@@ -1124,6 +1129,10 @@
     }
 
     return { timeline: true, bg: bg, bold: face, tip: tip,
+      // Morning on the left; afternoon on the right, unless something is
+      // falling, in which case that is the part of the day worth showing.
+      icons: [STATE_EMOJI.sky[wAM] || '',
+              wet ? STATE_EMOJI.precip[kind] || '' : (wPM !== wAM ? STATE_EMOJI.sky[wPM] || '' : '')],
       rows: [
         ['Morning', '', wAM],
         ['Afternoon', '', wPM],
@@ -1144,7 +1153,7 @@
       advice = sens ? (g.lungAdvice || g.generalAdvice || '') : (g.generalAdvice || '');
       dom = g.dominant || '';
     } else if (gAir && gAir.error && d.aqiMax == null) {
-      return { plain: true, bold: 'Air Quality Unavailable', tip: gAir.error };
+      return { plain: true, icon: STATE_EMOJI.unavailable, bold: 'Air Quality Unavailable', tip: gAir.error };
     } else { a = d.aqiMax; }
     if (a == null) return null;
 
@@ -1220,6 +1229,7 @@
     var smokeLink = (domKey === 'pm25' && a > 75)
       ? { href: 'https://fire.airnow.gov/', text: 'Check the smoke outlook at fire.airnow.gov' } : null;
     return { bg: bgFlat('aqi', a), bold: word, tip: tip, todos: out, link: smokeLink,
+             icon: a <= 50 ? '\ud83d\ude0a' : a <= 100 ? '\ud83d\ude10' : a <= 150 ? '\ud83d\ude15' : a <= 200 ? '\ud83d\ude37' : a <= 300 ? '\ud83e\udd22' : '\u2620\ufe0f',
              rowsHead: ['AQI', ''], rows: bandRows, hiRow: hiRow };
   }
 
@@ -1335,19 +1345,20 @@
             return out;
           })(),
           bold: filtered ? 'Nothing You Track' : plants.length ? level(sc) + ' Allergies' : 'No Pollen in Season',
+          icon: filtered ? STATE_EMOJI.allergy.none : plants.length ? STATE_EMOJI.allergy[level(sc)] : STATE_EMOJI.allergy.season,
           tip: (filtered ? 'Pollen is out there, just not a category you track.' : idx + ' out of 5 on Pollen Index.')
              + settingsHint,
           rows: plants.length ? [[listJoin(plants)]] : [] };
       }
     }
-    if (pollen && pollen.error) return { plain: true, bold: 'Allergens Unavailable', tip: pollen.error };
+    if (pollen && pollen.error) return { plain: true, icon: STATE_EMOJI.unavailable, bold: 'Allergens Unavailable', tip: pollen.error };
 
     cal = cal || CALENDARS.great_lakes;
     var m = parseInt(d.date.slice(5, 7), 10), namesAll = cal.m[m];
     var names = namesAll.filter(function (n) { return allergyCatOn(n); });
-    if (!namesAll.length) return { bg: bgFlat('risk', 4), bold: 'Pollen Quiet',
+    if (!namesAll.length) return { bg: bgFlat('risk', 4), icon: STATE_EMOJI.allergy.quiet, bold: 'Pollen Quiet',
       tip: 'Little is in bloom this time of year.' };
-    if (!names.length) return { bg: bgFlat('risk', 4), bold: 'Nothing You Track',
+    if (!names.length) return { bg: bgFlat('risk', 4), icon: STATE_EMOJI.allergy.none, bold: 'Nothing You Track',
       tip: 'In bloom this month: ' + listJoin(namesAll.map(cap)) + ', but none of that is a category you track.'
          + settingsHint };
     var s2 = cal.s[m];
@@ -1358,6 +1369,7 @@
     var sc2 = Math.round(Math.max(0, Math.min(1, s2)) * 100);
     return { bg: bgFlat('risk', sc2),
       bold: level(sc2) + ' Allergies',
+      icon: STATE_EMOJI.allergy[level(sc2)],
       todos: (function () {
         var out = [];
         if (sc2 >= 35) out.push({ text: 'Allergy Meds \u2014 pollen', when: 'out', rank: 35 });
@@ -1399,6 +1411,7 @@
     });
     return { bg: bgFlat('risk', s),
       bold: 'Migraine ' + (s >= 45 ? 'Likely' : 'Possible'),
+      icon: s >= 45 ? '\ud83e\udd2f' : '\ud83e\udd15',
       todos: [ s >= 45
         ? { text: 'Migraine Meds', when: 'out', rank: 25 }
         : { text: 'Hydrate Early', when: 'day', rank: 25 } ],
@@ -1434,6 +1447,7 @@
     });
     return { bg: bgFlat('risk', s),
       bold: 'Arthritis Flare ' + (s >= 45 ? 'Likely' : 'Possible'),
+      icon: s >= 45 ? '\ud83d\ude23' : '\ud83e\uddb4',
       todos: s >= 45 ? [{ text: 'Arthritis Meds', when: 'out', rank: 25 }] : [],
       tip: cap(topOf(why) || 'settled, warm and dry') + '. '
          + (s >= 45 ? 'Heat on the worst joints before you move them, a longer warm-up, and push the physical parts of the day later rather than first thing.'
@@ -1450,7 +1464,7 @@
       tip = 'The nearest shoreline is ' + water.station + ', ' + water.miles + ' miles away.';
     } else if (water.kind === 'buoy') {
       if (!water.available) {
-        return { bold: 'Water Temperature Unavailable', plain: true,
+        return { bold: 'Water Temperature Unavailable', plain: true, icon: STATE_EMOJI.unavailable,
           tip: water.station + ' is not reporting. Buoys come out of the lake for the winter. Assume the water is cold.' };
       }
       w = water.waterF; waveFt = water.waveFt;
@@ -1458,7 +1472,7 @@
     } else {
       var day = water.days && water.days[dateStr];
       if (!day) {
-        return { bold: 'Water Temperature Unavailable', plain: true,
+        return { bold: 'Water Temperature Unavailable', plain: true, icon: STATE_EMOJI.unavailable,
           tip: 'No sea surface reading for that day.' };
       }
       w = day.waterF; waveFt = day.waveFt;
@@ -1469,6 +1483,7 @@
              : w < 74 ? 'Bracing Water' : 'Pleasant Water';
     var reading = w + DEG + (waveFt != null ? ' and ' + waveFt + ' ft waves' : '') + '.';
     return { bg: bgFlat('water', w), bold: word, tip: tip,
+             icon: w < 60 ? '\ud83e\uddca' : w < 68 ? '\ud83c\udf0a' : w < 74 ? '\ud83c\udfca' : '\ud83c\udfd6\ufe0f',
              rows: [[reading]],
              todo2: w < 65 ? { text: 'Ease Into Water \u2014 cold shock risk', when: 'out', rank: 15 } : null,
              todo: (w >= 70 && on('swim')) ? 'Go Swimming \u2014 ' + w + DEG : null, todoWhen: 'day', todoRank: 95, todoOutdoor: true };
@@ -1581,6 +1596,7 @@
 
     return { timeline: true, bg: bg,
       split: { left: [hr(srF) + ' Sunrise'], right: [hr(ssF) + ' Sunset'] },
+      icons: ['\ud83c\udf05', '\ud83c\udf07'],
       rows: rows,
       tip: lenLine };
   }
@@ -1768,7 +1784,8 @@
     } else if (worst.rank >= 50) {
       todos.push({ text: 'Wash Hands', when: 'day', rank: 22 });
     }
-    return { bg: bgFlat('risk', worst.rank), bold: face, tip: tip, rows: rows, todos: todos };
+    return { bg: bgFlat('risk', worst.rank), bold: face, tip: tip, rows: rows, todos: todos,
+             icon: worst.rank >= 95 ? '\ud83d\ude37' : worst.rank >= 78 ? '\ud83e\udd12' : '\ud83e\udda0' };
   }
 
   /* Times are the instant of greatest eclipse, UTC.
@@ -1890,7 +1907,7 @@
     // time because the shading is faint enough that the exact minute is
     // not worth claiming \u2014 the whole event is a soft, easy-to-miss dimming.
     if (e.kind === 'lunar' && !e.greatest) {
-      return { bg: bgFlat('risk', 15), bold: 'Penumbral Lunar Eclipse Today',
+      return { bg: bgFlat('risk', 15), icon: '\ud83c\udf16', bold: 'Penumbral Lunar Eclipse Today',
         tip: 'A subtle shading across part of the moon, not the dramatic red of a total eclipse. '
            + 'Easy to miss even when the sky is clear. Visible in general from ' + e.region + '.' };
     }
@@ -1911,11 +1928,11 @@
         ? 'The moon is above your horizon then, so it should be visible if the sky is clear.'
         : 'The moon is below your horizon at that point, so this one is not visible from here.';
       tip += ' Visible in general from ' + e.region + '.';
-      return { bg: bgFlat('risk', up ? 60 : 20), bold: face, tip: tip };
+      return { bg: bgFlat('risk', up ? 60 : 20), icon: '\ud83c\udf15', bold: face, tip: tip };
     }
 
     var face2 = e.type + ' Solar Eclipse ' + (e.dateUTC === dateStrIn(tz, 0) ? 'Today' : 'This Week');
-    return { bg: bgFlat('burn', 6), bold: face2,
+    return { bg: bgFlat('burn', 6), icon: '\ud83c\udf11', bold: face2,
              tip: 'Greatest eclipse around ' + localTime + ' local time \u2014 this app does not tell you '
                 + 'if it will be visible in your location.',
              // Kept even though it is not in the trimmed version elsewhere:
@@ -1969,6 +1986,9 @@
     }
 
     return { timeline: true, bg: bg, bold: name,
+      // Tonight's phase on the left; on the right, the phase the tip
+      // says it is heading for, so waxing and waning read at a glance.
+      icons: [STATE_EMOJI.moon[name] || '', STATE_EMOJI.moon[toFull < toNew ? 'Full Moon' : 'New Moon']],
       rows: rows,
       tip: next + '.' };
   }
@@ -2070,6 +2090,7 @@
     var hiRow = -1;
     var bandRows = bands.map(function (b, i) { if (s >= b[0] && s <= b[1]) hiRow = i; return [b[0] + '\u2013' + b[1], b[2]]; });
     return { bg: bgFlat('risk', s), bold: word,
+      icon: s >= 65 ? '\ud83d\ude16' : '\ud83e\udd9f',
       todo: 'Bug Spray \u2014 worst at dawn & dusk', todoWhen: 'out', todoRank: 40,
       tip: (why.length ? cap(listJoin(why)) + '. ' : '')
          + 'Worst at dawn and dusk. Repellent on exposed skin, and long sleeves after sunset. '
@@ -2119,6 +2140,7 @@
       ['6\u00b0 or warmer', 'Unlikely']
     ];
     return { bg: bgAt('feels', wc, 9), bold: word, tip: tip,
+      icon: ['\u2620\ufe0f', '\ud83e\udd76', '\ud83e\udde4', '\ud83e\udde3', '\ud83d\ude42'][hiRow],   // same rows as the table below
              todos: (function () {
                var out = wc <= -18
                  ? [{ text: 'Cover Up \u2014 face, ears, hands', when: 'out', rank: 3 }]
@@ -2156,6 +2178,7 @@
       ['66\u00b0 and up', 'Frizz Guaranteed']
     ];
     return { bg: bgAt('sweat', dp, 7), bold: w,
+      icon: ['\u26a1', '\ud83d\udc81', '\ud83d\udc87', '\ud83e\uddf6', '\ud83e\udd81'][hiRow],   // same rows as the table below
       tip: 'Dew point peaks near ' + Math.round(dp) + DEG + '. ' + why,
       rowsHead: ['Dew Point', ''], rows: bandRows, hiRow: hiRow };
   }
@@ -2264,13 +2287,14 @@
     if (!hot && !cold) return null;
 
     if (cold) {
-      return { bg: bgFlat('feels', d.feelsMin), bold: 'Pavement Is Freezing',
+      return { bg: bgFlat('feels', d.feelsMin), icon: '\ud83e\uddca', bold: 'Pavement Is Freezing',
         todo: 'Short Dog Walk \u2014 rinse paws after', todoWhen: 'day', todoRank: 55,
         tip: 'Wind chill near ' + Math.round(d.feelsMin) + DEG
            + '. Ice and road salt split pads at this range. Keep walks short, and rinse paws afterwards.' };
     }
     return { bg: bgFlat('risk', Math.min(100, (surface - 110) * 3)),
       bold: surface >= 140 ? 'Pavement Burns Paws' : 'Hot Pavement',
+      icon: surface >= 140 ? '\ud83d\udd25' : '\ud83d\udc3e',
       todo: 'Walk Dog Early or Late \u2014 ' + Math.round(surface) + DEG + ' pavement', todoWhen: 'day', todoRank: 55,
       tip: Math.round(surface) + DEG + ' Pavement. This is not safe for paws. Stay on grass, walk early '
          + 'or after sunset, and test the pavement with the back of your hand for 7 seconds before going for a walk.' };
@@ -2290,6 +2314,7 @@
             : gust > 30 ? 'Too much for recreational sailing, and a kite will not survive it.'
             : 'A kite or small sail can handle it, but the gusts will fight you.';
     return { bg: bgFlat('risk', Math.min(100, gust * 2.2)), bold: word + (steady ? '; ' + steady : ''),
+      icon: gust < 8 ? '\ud83c\udf43' : gust < 15 ? '\ud83c\udf90' : gust < 25 ? '\ud83d\udca8' : gust < 38 ? '\ud83c\udf2c\ufe0f' : '\ud83c\udf2a\ufe0f',   // same steps as word
       todo: (gust >= 8 && gust <= 22 && factor < 1.9) ? 'Fly a Kite \u2014 ' + Math.round(mean) + ' mph' : null,
       todoWhen: 'out', todoRank: 90, todoOutdoor: true,
       rows: [[Math.round(mean) + ' mph average; ' + Math.round(gust) + ' mph gusts.'], [use]] };
@@ -2329,6 +2354,7 @@
          : half(startH) + DASH + half(endH) + ' is the clearest morning stretch.')
       : 'No clear morning window today \u2014 take whatever the middle of the day offers.';
     return { bg: bgFlat('sky', Math.min(100, d.cloudDay)), bold: word,
+      icon: d.cloudDay >= 80 ? '\ud83d\udd05' : d.cloudDay >= 55 ? '\ud83d\udd06' : d.cloudDay >= 25 ? '\ud83c\udf24\ufe0f' : '\u2600\ufe0f',
              rows: [
                ['Roughly ' + hm(mins) + ' of usable outdoor light.'],
                [stretchLine]
@@ -2370,6 +2396,7 @@
           text: 'Check light pollution near you \u2014 try "Find closest dark site" there' }
       : null;
     return { bg: bgFlat('risk', Math.min(100, kp.max * 11)), bold: word,
+      icon: goodOdds ? '\ud83c\udf0c' : strong ? '\u2601\ufe0f' : '\ud83d\udc40',
       todo: goodOdds ? 'Drive North \u2014 Kp ' + kp.max.toFixed(1) : null,
       todoWhen: 'night', todoRank: 85, todoOutdoor: true,
       link: lpLink,
@@ -2441,6 +2468,7 @@
     lines.push(['Radiant rises in ' + best.radiant + '; meteors can streak anywhere in the sky, not just near it.']);
 
     return { bg: bgFlat('risk', goodOdds ? 15 : 50), bold: word,
+      icon: goodOdds ? '\ud83c\udf20' : clear ? '\ud83c\udf15' : '\u2601\ufe0f',
       todo: goodOdds ? 'Watch for Meteors \u2014 ' + best.name : null,
       todoWhen: 'night', todoRank: 87, todoOutdoor: true,
       rows: lines };
@@ -2863,14 +2891,14 @@
     // methodology paragraph moved to About, where the other "how this
     // differs from the forecast" explanations already live \u2014 the tap
     // only needs the two facts someone actually wants mid-glance.
-    return { alert: true, bold: noun + ' Right Now',
+    return { alert: true, bold: noun + ' Right Now', icon: STATE_EMOJI.precip[kind] || '',
       det: current.temperature_2m != null ? ' (' + Math.round(current.temperature_2m) + DEG + ')' : '',
       tip: 'As of ' + t + ' local time.' };
   }
 
   function alertCard(al, tz) {
     var until = al.ends ? shortTime(al.ends, tz) : '';
-    return { alert: true, bold: al.event, det: until ? ' (until ' + until + ')' : '',
+    return { alert: true, icon: '\u26a0\ufe0f', bold: al.event, det: until ? ' (until ' + until + ')' : '',
              tip: al.headline || null };
   }
 
@@ -2965,17 +2993,34 @@
   }
 
   var DEFAULT_TILE_ORDER = ['flag', 'air', 'allergy', 'migraine', 'arthritis', 'frostbite', 'bug', 'frizz', 'virus', 'burn', 'light', 'water', 'pavement', 'wind', 'aurora', 'meteor', 'eclipse', 'bird', 'ebird'];
-  /* One emoji per tile. Faces for things the weather does to a body,
-     objects and sky for things it does to the world; the same glyph
-     is used on the tile, in Settings, and greyed in the quiet row, so
-     the three places teach each other. Tiles only \u2014 the four
-     across-the-day cards carry their meaning in their gradients. */
+  /* One identity emoji per tile: Settings and the quiet row use it,
+     and a tile face falls back to it when a card has no state of its
+     own. Faces for things the weather does to a body, objects and sky
+     for things it does to the world. */
   var TILE_EMOJI = { flag: '\uD83C\uDFF4', air: '\uD83D\uDE37', allergy: '\uD83E\uDD27',
     migraine: '\uD83E\uDD15', arthritis: '\uD83E\uDDB4', frostbite: '\uD83E\uDD76',
     bug: '\uD83E\uDD9F', frizz: '\uD83E\uDD81', virus: '\uD83E\uDDA0', burn: '\uD83E\uDDF4',
     light: '\uD83D\uDD06', water: '\uD83C\uDF0A', pavement: '\uD83D\uDC3E', wind: '\uD83D\uDCA8',
     aurora: '\uD83C\uDF0C', meteor: '\uD83C\uDF20', eclipse: '\uD83C\uDF11', bird: '\uD83D\uDC26',
     ebird: '\uD83E\uDD9C' };
+  /* State emoji. A tile's glyph moves with what the tile says, so the
+     picture tells the story before the words do. The four across-the-day
+     cards carry one at each end of the label: where the day starts on
+     the left, where it is heading on the right. Everything keyed here
+     uses the same words the card puts on its face, so the two cannot
+     drift apart; a card with a numeric ladder picks from an array in
+     the builder itself, next to the thresholds it mirrors. */
+  var STATE_EMOJI = {
+    temp: { Frigid: '\ud83e\uddca', Freezing: '\ud83e\udd76', 'Very Cold': '\ud83e\udde3', Cold: '\ud83e\udde5', Cool: '\ud83c\udf43',
+            Comfortable: '\ud83d\ude42', Warm: '\ud83d\ude0e', Hot: '\ud83e\udd75', Sweltering: '\ud83d\udd25' },
+    hum: { 'Bone Dry': '\ud83c\udfdc\ufe0f', 'Very Dry': '\ud83c\udf35', Humid: '\ud83d\udca7', Muggy: '\ud83d\udca6', Oppressive: '\ud83e\udee0', 'Miserable Humidity': '\ud83d\ude35' },
+    sky: { Fog: '\ud83c\udf2b\ufe0f', Sunny: '\u2600\ufe0f', 'Mostly Sunny': '\ud83c\udf24\ufe0f', 'Partly Cloudy': '\u26c5', 'Mostly Cloudy': '\ud83c\udf25\ufe0f', Cloudy: '\u2601\ufe0f' },
+    precip: { hail: '\u26c8\ufe0f', thunder: '\ud83c\udf29\ufe0f', freezing: '\ud83c\udf28\ufe0f', snow: '\u2744\ufe0f', showers: '\ud83c\udf26\ufe0f', rain: '\ud83c\udf27\ufe0f', drizzle: '\u2614' },
+    moon: { 'New Moon': '\ud83c\udf11', 'Waxing Crescent': '\ud83c\udf12', 'First Quarter': '\ud83c\udf13', 'Waxing Gibbous': '\ud83c\udf14',
+            'Full Moon': '\ud83c\udf15', 'Waning Gibbous': '\ud83c\udf16', 'Last Quarter': '\ud83c\udf17', 'Waning Crescent': '\ud83c\udf18' },
+    allergy: { Low: '\ud83c\udf31', Moderate: '\ud83c\udf3c', High: '\ud83e\udd27', none: '\ud83d\ude42', season: '\ud83c\udf42', quiet: '\ud83c\udf3f' },
+    unavailable: '\u2754'
+  };
   var PILL_ONLY = ['shoe','frost','pipe','rust','mow','mold','fire','mask','swim','garden','ice','tick',
                    'power','firefly','leaves'];
   var DEFAULT_HOURLY_ORDER = ['feels', 'sky', 'daylight', 'moon'];
@@ -3578,6 +3623,10 @@
   }
 
   /* ================= render ================= */
+  function emoSpan(text, side) {
+    var es = document.createElement('span'); es.className = 'emo' + (side === 'r' ? ' r' : '');
+    es.setAttribute('aria-hidden', 'true'); es.textContent = text; return es;
+  }
   function card(row, id) {
     var el = document.createElement((row.tip || (row.rows && row.rows.length)) ? 'button' : 'div');
     el.className = 'card' + (row.tip ? '' : ' flat') + (row.plain ? ' plain' : '')
@@ -3591,6 +3640,9 @@
     if (row.split) {
       var lb = document.createElement('div'); lb.className = 'end left';
       row.split.left.forEach(function (t) { var e2 = document.createElement('b'); e2.textContent = t; lb.appendChild(e2); });
+      // Split faces put the pair at the two ends of the row, inside the
+      // first line of each side so they stay on the same line as the time.
+      if (row.icons && row.icons[0] && lb.firstChild) lb.firstChild.insertBefore(emoSpan(row.icons[0]), lb.firstChild.firstChild);
       line.appendChild(lb);
       // A middle column, so the phase sits dead centre between the two
       // times rather than centred on whatever space is left over.
@@ -3603,15 +3655,16 @@
       line.appendChild(mid);
       var rb = document.createElement('div'); rb.className = 'end right';
       row.split.right.forEach(function (t) { var e4 = document.createElement('b'); e4.textContent = t; rb.appendChild(e4); });
+      if (row.icons && row.icons[1] && rb.firstChild) rb.firstChild.appendChild(emoSpan(row.icons[1], 'r'));
       line.appendChild(rb);
     } else {
-      var emo = id && TILE_EMOJI[id];
-      if (emo) {
-        var es = document.createElement('span'); es.className = 'emo';
-        es.setAttribute('aria-hidden', 'true'); es.textContent = emo; line.appendChild(es);
-      }
+      // A card's own state emoji wins; a tile with none falls back to its
+      // identity glyph. Across-the-day cards pass a pair, one per end.
+      var icons = row.icons || [row.icon || (id && TILE_EMOJI[id]) || '', ''];
+      if (icons[0]) line.appendChild(emoSpan(icons[0]));
       var b = document.createElement('b'); b.textContent = row.bold; line.appendChild(b);
       if (row.det) { var s2 = document.createElement('span'); s2.className = 'det'; s2.textContent = row.det; line.appendChild(s2); }
+      if (icons[1]) line.appendChild(emoSpan(icons[1], 'r'));
     }
     if (row.tip || (row.rows && row.rows.length)) {
       var chev = document.createElement('span');
