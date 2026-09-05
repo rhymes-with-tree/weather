@@ -196,6 +196,16 @@
   .linkcard a{color:var(--link);font-weight:700;font-size:17px;text-decoration:underline;}
   .skel{background:#F1EFEA;height:48px;}
   .card.sm.skel{height:38px;}
+  /* One emoji per tile, ahead of the label: a glance says which tile
+     this is before the words are read, and the faces group the body
+     conditions apart from the sky and ground ones. */
+  .face .emo{font-size:1.2em;margin-right:.3em;vertical-align:-.08em;}
+  /* Tiles that are switched on but have nothing to say today line up
+     here as grey ghosts, so a short grid reads as "quiet" rather than
+     "turned off". Spans every column at any width. */
+  .quiet{grid-column:1 / -1;display:flex;flex-wrap:wrap;justify-content:center;
+         align-items:center;gap:4px 12px;padding:6px 10px;font-size:20px;line-height:1;}
+  .quiet span{filter:grayscale(1);opacity:.4;cursor:help;}
   .busy{opacity:.45;}
   .foot{font-size:11.5px;color:#8A97A3;line-height:1.5;margin:14px 4px 0;}
   /* Phone stays as it was: one column, tiles two across. From tablet
@@ -2955,6 +2965,17 @@
   }
 
   var DEFAULT_TILE_ORDER = ['flag', 'air', 'allergy', 'migraine', 'arthritis', 'frostbite', 'bug', 'frizz', 'virus', 'burn', 'light', 'water', 'pavement', 'wind', 'aurora', 'meteor', 'eclipse', 'bird', 'ebird'];
+  /* One emoji per tile. Faces for things the weather does to a body,
+     objects and sky for things it does to the world; the same glyph
+     is used on the tile, in Settings, and greyed in the quiet row, so
+     the three places teach each other. Tiles only \u2014 the four
+     across-the-day cards carry their meaning in their gradients. */
+  var TILE_EMOJI = { flag: '\uD83C\uDFF4', air: '\uD83D\uDE37', allergy: '\uD83E\uDD27',
+    migraine: '\uD83E\uDD15', arthritis: '\uD83E\uDDB4', frostbite: '\uD83E\uDD76',
+    bug: '\uD83E\uDD9F', frizz: '\uD83E\uDD81', virus: '\uD83E\uDDA0', burn: '\uD83E\uDDF4',
+    light: '\uD83D\uDD06', water: '\uD83C\uDF0A', pavement: '\uD83D\uDC3E', wind: '\uD83D\uDCA8',
+    aurora: '\uD83C\uDF0C', meteor: '\uD83C\uDF20', eclipse: '\uD83C\uDF11', bird: '\uD83D\uDC26',
+    ebird: '\uD83E\uDD9C' };
   var PILL_ONLY = ['shoe','frost','pipe','rust','mow','mold','fire','mask','swim','garden','ice','tick',
                    'power','firefly','leaves'];
   var DEFAULT_HOURLY_ORDER = ['feels', 'sky', 'daylight', 'moon'];
@@ -3557,7 +3578,7 @@
   }
 
   /* ================= render ================= */
-  function card(row) {
+  function card(row, id) {
     var el = document.createElement((row.tip || (row.rows && row.rows.length)) ? 'button' : 'div');
     el.className = 'card' + (row.tip ? '' : ' flat') + (row.plain ? ' plain' : '')
                  + (row.alert ? ' alert' : '')
@@ -3584,6 +3605,11 @@
       row.split.right.forEach(function (t) { var e4 = document.createElement('b'); e4.textContent = t; rb.appendChild(e4); });
       line.appendChild(rb);
     } else {
+      var emo = id && TILE_EMOJI[id];
+      if (emo) {
+        var es = document.createElement('span'); es.className = 'emo';
+        es.setAttribute('aria-hidden', 'true'); es.textContent = emo; line.appendChild(es);
+      }
       var b = document.createElement('b'); b.textContent = row.bold; line.appendChild(b);
       if (row.det) { var s2 = document.createElement('span'); s2.className = 'det'; s2.textContent = row.det; line.appendChild(s2); }
     }
@@ -3702,18 +3728,33 @@
   }
 
   function addCard(host, id, build) {
-    if (id && !on(id)) return;
+    if (id && !on(id)) return false;
     try {
       var row = build();
-      if (!row) return;
+      if (!row) return false;
       collectTodos(row);
-      host.appendChild(card(row));
+      host.appendChild(card(row, id));
     } catch (e) {
       var el = document.createElement('div');
       el.className = 'card flat plain';
       el.textContent = 'This card failed: ' + ((e && e.message) || e);
       host.appendChild(el);
     }
+    return true;
+  }
+  /* The ghost row: one greyed emoji per tile that is switched on but
+     had nothing to report, so a short grid reads as a quiet day rather
+     than a broken or switched-off one. Hover or focus names the tile. */
+  function quietRow(ids) {
+    var row = document.createElement('div'); row.className = 'quiet';
+    row.setAttribute('role', 'list'); row.setAttribute('aria-label', 'Quiet today');
+    ids.forEach(function (id) {
+      var s = document.createElement('span'); s.textContent = TILE_EMOJI[id];
+      var label = cardMeta(id).name + ' \u2014 nothing to report today';
+      s.title = label; s.setAttribute('role', 'listitem'); s.setAttribute('aria-label', label);
+      row.appendChild(s);
+    });
+    return row;
   }
   /* A digest of what the other cards told you to do. Built from their
      own output rather than a second set of rules, so it can never
@@ -4305,7 +4346,17 @@
       flag:      function () { return flagCard(p.flag); },
       moon:      function () { return moonCard(d.date, state.tz, lat, lon); }
     };
-    tileOrder().forEach(function (id) { addCard(grid, id, builders[id]); });
+    // A tile that is on but returned nothing is quiet, not off: it goes
+    // in the ghost row so the gap is explained. Notable Birds with no
+    // key is neither \u2014 unconfigured \u2014 so it stays out of the row.
+    var quiet = [];
+    tileOrder().forEach(function (id) {
+      var shown = addCard(grid, id, builders[id]);
+      if (shown || !on(id) || !TILE_EMOJI[id]) return;
+      if (id === 'ebird' && !(store.keys && store.keys.ebird)) return;
+      quiet.push(id);
+    });
+    if (quiet.length) grid.appendChild(quietRow(quiet));
     // Pill-only cards are built now, so the to-do list is complete
     // before anything is placed.
     PILL_ONLY.forEach(function (id) { collectOnly(id, builders[id]); });
@@ -4574,7 +4625,8 @@
     box.addEventListener('change', function () {
       store.cards[id] = box.checked; saveStore(); buildSettings(); renderHome();
     });
-    var nm = document.createElement('span'); nm.textContent = meta.name;
+    var nm = document.createElement('span');
+    nm.textContent = (TILE_EMOJI[id] ? TILE_EMOJI[id] + ' ' : '') + meta.name;
     if (meta.note) { var sm = document.createElement('small'); sm.textContent = meta.note; nm.appendChild(sm); }
     var up = document.createElement('button'); up.textContent = '\u2191';
     up.setAttribute('aria-label', 'Move ' + meta.name + ' up'); up.disabled = i === 0;
