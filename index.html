@@ -3766,22 +3766,28 @@
   }
 
   /* Where the dragged card should land among its own siblings \u2014
-     hourly cards compare vertically only, tiles compare against the
-     nearest row first and then left/right within it, since a 2D grid
-     needs both. Not full FLIP-animated reflow: the dragged card follows
-     the pointer smoothly, but the siblings it passes over snap to their
-     new slot rather than sliding into it. A real animation pass is a
-     reasonable follow-up, not required for this to work correctly. */
+     computed once, on release, not live during the drag. The dragged
+     card floats under the pointer via a transform measured from where
+     the gesture started; reordering the DOM mid-drag would change that
+     card's natural position in the layout while the transform stayed
+     anchored to the old one, throwing the two out of sync with every
+     reorder \u2014 which is exactly the "chaotic, doesn't stay put" bug
+     this replaced. One clean placement at the end avoids it entirely. */
   function reflowSiblings(host, dragEl, which, clientX, clientY) {
     var sibs = Array.prototype.slice.call(host.children).filter(function (c) {
       return c !== dragEl && c.classList && c.classList.contains('card');
     });
     for (var i = 0; i < sibs.length; i++) {
       var r = sibs[i].getBoundingClientRect();
-      var before = which === 'hourly'
-        ? clientY < r.top + r.height / 2
-        : (clientY < r.top + r.height / 2 && clientX < r.left + r.width * 1.5)
-          || clientY < r.top;
+      var before;
+      if (which === 'hourly') {
+        before = clientY < r.top + r.height / 2;
+      } else {
+        // Reading order for a grid: above this tile's row, or in the
+        // same row and to its left.
+        var sameRow = clientY >= r.top && clientY < r.bottom;
+        before = clientY < r.top || (sameRow && clientX < r.left + r.width / 2);
+      }
       if (before) { host.insertBefore(dragEl, sibs[i]); return; }
     }
     host.appendChild(dragEl);
@@ -3849,7 +3855,6 @@
         if (!dragging) return;
         var dx = ev.clientX - startX, dy = ev.clientY - startY;
         el.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(1.04)';
-        reflowSiblings(host, el, which, ev.clientX, ev.clientY);
       }
       function onUp(ev) {
         dragging = false;
@@ -3859,6 +3864,7 @@
         el.removeEventListener('pointermove', onMove);
         el.removeEventListener('pointerup', onUp);
         el.removeEventListener('pointercancel', onUp);
+        reflowSiblings(host, el, which, ev.clientX, ev.clientY);
         commitOrder(host, which);
         updateRearrangeHint();
       }
