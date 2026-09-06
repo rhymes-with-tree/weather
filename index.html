@@ -3764,32 +3764,47 @@
     updateRearrangeHint();
   }
 
-  /* Where the dragged card should land among its own siblings \u2014
-     computed once, on release, not live during the drag. The dragged
-     card floats under the pointer via a transform measured from where
-     the gesture started; reordering the DOM mid-drag would change that
-     card's natural position in the layout while the transform stayed
-     anchored to the old one, throwing the two out of sync with every
-     reorder \u2014 which is exactly the "chaotic, doesn't stay put" bug
-     this replaced. One clean placement at the end avoids it entirely. */
+  /* Where the dragged card should land among its own siblings. This
+     runs live during the drag now, with the bug from the first attempt
+     actually fixed rather than avoided: back then, the dragged card's
+     on-screen position was "distance from where the gesture started" \u2014
+     a fixed number \u2014 so the moment a sibling reordered and changed the
+     dragged card's own natural position in the layout, that fixed
+     offset pointed at the wrong place and everything desynced. This
+     version recalculates the dragged card's transform from its actual
+     current natural position every time, so a mid-drag reorder can't
+     throw it off. Siblings that get displaced use the standard FLIP
+     technique (First, Last, Invert, Play) so they visibly slide into
+     their new slot instead of snapping. */
   function reflowSiblings(host, dragEl, which, clientX, clientY) {
     var sibs = Array.prototype.slice.call(host.children).filter(function (c) {
       return c !== dragEl && c.classList && c.classList.contains('card');
     });
+    var before = sibs.map(function (c) { return c.getBoundingClientRect(); });
+
+    var target = null;
     for (var i = 0; i < sibs.length; i++) {
-      var r = sibs[i].getBoundingClientRect();
-      var before;
-      if (which === 'hourly') {
-        before = clientY < r.top + r.height / 2;
-      } else {
-        // Reading order for a grid: above this tile's row, or in the
-        // same row and to its left.
-        var sameRow = clientY >= r.top && clientY < r.bottom;
-        before = clientY < r.top || (sameRow && clientX < r.left + r.width / 2);
-      }
-      if (before) { host.insertBefore(dragEl, sibs[i]); return; }
+      var r = before[i];
+      var isBefore = which === 'hourly'
+        ? clientY < r.top + r.height / 2
+        : (clientY < r.top) || (clientY < r.bottom && clientX < r.left + r.width / 2);
+      if (isBefore) { target = sibs[i]; break; }
     }
-    host.appendChild(dragEl);
+    var already = target ? target.previousSibling === dragEl : host.lastChild === dragEl;
+    if (already) return;
+    if (target) host.insertBefore(dragEl, target); else host.appendChild(dragEl);
+
+    sibs.forEach(function (c, i) {
+      var after = c.getBoundingClientRect();
+      var dx = before[i].left - after.left, dy = before[i].top - after.top;
+      if (!dx && !dy) return;
+      c.style.transition = 'none';
+      c.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+      requestAnimationFrame(function () {
+        c.style.transition = 'transform .18s ease';
+        c.style.transform = '';
+      });
+    });
   }
 
   function commitOrder(host, which) {
@@ -3835,7 +3850,12 @@
     el.addEventListener('pointerdown', function (e) {
       if (e.button != null && e.button !== 0) return;
       startX = e.clientX; startY = e.clientY;
-      timer = setTimeout(function () { beginDrag(e); }, 500);
+      // Once rearrange mode is already on, there's no more ambiguity
+      // between "tap to open" and "drag" \u2014 tap-to-open is already
+      // suppressed while it's active, so picking a card up can be
+      // instant instead of waiting through the same long-press again.
+      if (rearrange.active) beginDrag(e);
+      else timer = setTimeout(function () { beginDrag(e); }, 500);
     });
     el.addEventListener('pointermove', function (e) {
       if (timer && (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10)) cancelTimer();
@@ -3850,10 +3870,25 @@
       el.classList.add('dragging');
       try { el.setPointerCapture(e.pointerId); } catch (err) {}
 
+      // Where the pointer is within the card, captured once before any
+      // transform exists, so it stays correct as a fixed reference
+      // regardless of how the card's own natural position moves later.
+      var r0 = el.getBoundingClientRect();
+      var grabX = e.clientX - r0.left, grabY = e.clientY - r0.top;
+      var curDx = 0, curDy = 0;
+
       function onMove(ev) {
         if (!dragging) return;
-        var dx = ev.clientX - startX, dy = ev.clientY - startY;
-        el.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(1.04)';
+        // The card's natural (untransformed) position right now: its
+        // current box minus whatever transform is already applied to
+        // it, so a mid-drag reorder that changed that natural position
+        // gets picked up immediately rather than compounding an error.
+        var r = el.getBoundingClientRect();
+        var naturalLeft = r.left - curDx, naturalTop = r.top - curDy;
+        curDx = (ev.clientX - grabX) - naturalLeft;
+        curDy = (ev.clientY - grabY) - naturalTop;
+        el.style.transform = 'translate(' + curDx + 'px,' + curDy + 'px) scale(1.04)';
+        reflowSiblings(host, el, which, ev.clientX, ev.clientY);
       }
       function onUp(ev) {
         dragging = false;
@@ -3863,7 +3898,6 @@
         el.removeEventListener('pointermove', onMove);
         el.removeEventListener('pointerup', onUp);
         el.removeEventListener('pointercancel', onUp);
-        reflowSiblings(host, el, which, ev.clientX, ev.clientY);
         commitOrder(host, which);
         updateRearrangeHint();
       }
