@@ -348,12 +348,12 @@
   .tiphint{font-size:13px;color:var(--mid);text-align:center;margin:0 0 10px;}
   /* Rearrange mode: one long-press activates it wherever it starts, and
      it covers both the hourly cards and the tile grid together \u2014 no
-     reason for two different mechanisms to learn. Wiggle mirrors the
-     home-screen convention deliberately, since it's a gesture people
-     already know without being told. */
-  @keyframes wiggle{0%{transform:rotate(-1deg);}50%{transform:rotate(1deg);}100%{transform:rotate(-1deg);}}
-  .rearranging .card{animation:wiggle .26s ease-in-out infinite;touch-action:none;}
-  .rearranging .card.dragging{animation:none;}
+     reason for two different mechanisms to learn. No motion as the
+     mode indicator \u2014 tried the home-screen wiggle first and it read
+     as too much noise across a whole page of cards at once. A static
+     outline plus the dismiss badges and the Done bar carry the signal
+     instead. */
+  .rearranging .card{touch-action:none;outline:2px solid var(--link);outline-offset:-2px;}
   .card.dragging{z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.22);transform:scale(1.04);
                  transition:none !important;}
   .dismissBadge{display:none;position:absolute;top:-7px;left:-7px;width:22px;height:22px;
@@ -361,7 +361,6 @@
                 font-size:15px;line-height:18px;text-align:center;font-weight:700;
                 cursor:pointer;z-index:51;}
   .rearranging .dismissBadge{display:block;}
-  .rearranging .card{transition:transform .18s ease;}
   .rearrangeBar{display:flex;align-items:center;justify-content:space-between;
                 background:var(--page);position:sticky;top:0;z-index:40;padding:6px 0;}
   .rearrangeBar button{font:inherit;font-weight:700;color:var(--link);background:none;
