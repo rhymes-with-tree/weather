@@ -345,6 +345,26 @@
   .card.todo li.done .pillLead{font-weight:400;}
   .card.todo .tip{text-align:left;}
   .tiphint{font-size:13px;color:var(--mid);text-align:center;margin:0 0 10px;}
+  /* Rearrange mode: one long-press activates it wherever it starts, and
+     it covers both the hourly cards and the tile grid together \u2014 no
+     reason for two different mechanisms to learn. Wiggle mirrors the
+     home-screen convention deliberately, since it's a gesture people
+     already know without being told. */
+  @keyframes wiggle{0%{transform:rotate(-1deg);}50%{transform:rotate(1deg);}100%{transform:rotate(-1deg);}}
+  .rearranging .card{animation:wiggle .26s ease-in-out infinite;touch-action:none;}
+  .rearranging .card.dragging{animation:none;}
+  .card.dragging{z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.22);transform:scale(1.04);
+                 transition:none !important;}
+  .dismissBadge{display:none;position:absolute;top:-7px;left:-7px;width:22px;height:22px;
+                border-radius:50%;background:#E24;color:#FFF;border:2px solid var(--page);
+                font-size:15px;line-height:18px;text-align:center;font-weight:700;
+                cursor:pointer;z-index:51;}
+  .rearranging .dismissBadge{display:block;}
+  .rearranging .card{transition:transform .18s ease;}
+  .rearrangeBar{display:flex;align-items:center;justify-content:space-between;
+                background:var(--page);position:sticky;top:0;z-index:40;padding:6px 0;}
+  .rearrangeBar button{font:inherit;font-weight:700;color:var(--link);background:none;
+                       border:none;padding:6px 4px;cursor:pointer;}
   .disc{font-size:12px;color:#7C8996;line-height:1.55;margin:16px 4px 0;
         border-top:1px solid var(--line);padding-top:12px;}
   .disc b{color:var(--mid);}
@@ -379,9 +399,9 @@
   <div id="alertBody"></div>
   <div id="homeBody"></div>
 
-  <p class="disc" id="disclaimer"></p>
+  <p class="disc" id="surveyNote"></p>
+  <p class="disc xercesnote" id="disclaimer"></p>
   <p class="disc xercesnote" id="xercesNote" style="display:none"></p>
-  <p class="disc xercesnote" id="surveyNote"></p>
 </div>
 
 <script>
@@ -3667,6 +3687,7 @@
       el.appendChild(t);
       el.setAttribute('aria-expanded', 'false');
       el.addEventListener('click', function () {
+        if (rearrange.active) return;
         var open = t.style.display === 'none';
         t.style.display = open ? 'block' : 'none';
         el.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -3701,18 +3722,165 @@
     try { collectTodos(build()); } catch (e) { /* a broken pill is not worth a visible card */ }
   }
 
-  function addCard(host, id, build) {
+  /* Rearrange mode: one long-press on any hourly card or tile activates
+     it for both areas together \u2014 there's no reason to teach two
+     different gestures for what's conceptually the same action. The
+     mode itself is a flag, not a class added after the fact, because a
+     drag in progress can trigger a re-render (finishing a drag, or
+     dismissing a card) and the fresh containers need to come back
+     already wiggling rather than needing a second pass to reapply it. */
+  var rearrange = { active: false };
+
+  function updateRearrangeHint() {
+    var hint = document.getElementById('tipHint');
+    if (!hint) return;
+    if (rearrange.active) {
+      hint.style.display = '';
+      hint.className = 'rearrangeBar';
+      hint.innerHTML = '';
+      var span = document.createElement('span'); span.textContent = 'Drag to reorder, tap \u00d7 to hide.';
+      var done = document.createElement('button'); done.type = 'button'; done.textContent = 'Done';
+      done.addEventListener('click', exitRearrangeMode);
+      hint.appendChild(span); hint.appendChild(done);
+    } else {
+      hint.className = 'tiphint';
+      hint.textContent = 'Tap any card for the numbers behind it.';
+      hint.style.display = store.tapped ? 'none' : '';
+    }
+  }
+
+  function enterRearrangeMode() {
+    if (rearrange.active) return;
+    rearrange.active = true;
+    var h = document.querySelector('.hourly'), g = document.querySelector('.grid');
+    if (h) h.classList.add('rearranging');
+    if (g) g.classList.add('rearranging');
+    updateRearrangeHint();
+  }
+  function exitRearrangeMode() {
+    if (!rearrange.active) return;
+    rearrange.active = false;
+    renderHome();
+    updateRearrangeHint();
+  }
+
+  /* Where the dragged card should land among its own siblings \u2014
+     hourly cards compare vertically only, tiles compare against the
+     nearest row first and then left/right within it, since a 2D grid
+     needs both. Not full FLIP-animated reflow: the dragged card follows
+     the pointer smoothly, but the siblings it passes over snap to their
+     new slot rather than sliding into it. A real animation pass is a
+     reasonable follow-up, not required for this to work correctly. */
+  function reflowSiblings(host, dragEl, which, clientX, clientY) {
+    var sibs = Array.prototype.slice.call(host.children).filter(function (c) {
+      return c !== dragEl && c.classList && c.classList.contains('card');
+    });
+    for (var i = 0; i < sibs.length; i++) {
+      var r = sibs[i].getBoundingClientRect();
+      var before = which === 'hourly'
+        ? clientY < r.top + r.height / 2
+        : (clientY < r.top + r.height / 2 && clientX < r.left + r.width * 1.5)
+          || clientY < r.top;
+      if (before) { host.insertBefore(dragEl, sibs[i]); return; }
+    }
+    host.appendChild(dragEl);
+  }
+
+  function commitOrder(host, which) {
+    var ids = Array.prototype.slice.call(host.children)
+      .filter(function (c) { return c.classList && c.classList.contains('card') && c.dataset.cardId; })
+      .map(function (c) { return c.dataset.cardId; });
+    if (which === 'hourly') store.orderH = ids; else store.order = ids;
+    saveStore();
+    renderHome();
+  }
+
+  /* Long-press (500ms, cancelled by 10px of movement first) starts a
+     drag on whichever card it began on. Pointer Events rather than the
+     native HTML5 Drag and Drop API on purpose \u2014 that API is
+     unreliable on touchscreens; Pointer Events unify mouse, touch and
+     stylus into the one code path below. */
+  function wireRearrange(el, id, which, host) {
+    el.dataset.cardId = id;
+    el.dataset.which = which;
+
+    var meta = cardMeta(id);
+    if (!meta.always) {
+      var badge = document.createElement('span'); badge.className = 'dismissBadge'; badge.textContent = '\u00d7';
+      badge.setAttribute('role', 'button');
+      badge.setAttribute('aria-label', 'Hide ' + meta.name);
+      badge.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+      badge.addEventListener('click', function (e) {
+        e.stopPropagation();
+        store.cards[id] = false;
+        if (which === 'hourly') store.orderH = hourlyOrder().filter(function (x) { return x !== id; });
+        else store.order = tileOrder().filter(function (x) { return x !== id; });
+        saveStore();
+        renderHome();
+        updateRearrangeHint();
+      });
+      el.appendChild(badge);
+    }
+
+    var startX, startY, timer, dragging = false;
+
+    function cancelTimer() { if (timer) { clearTimeout(timer); timer = null; } }
+
+    el.addEventListener('pointerdown', function (e) {
+      if (e.button != null && e.button !== 0) return;
+      startX = e.clientX; startY = e.clientY;
+      timer = setTimeout(function () { beginDrag(e); }, 500);
+    });
+    el.addEventListener('pointermove', function (e) {
+      if (timer && (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10)) cancelTimer();
+    });
+    el.addEventListener('pointerup', cancelTimer);
+    el.addEventListener('pointercancel', cancelTimer);
+
+    function beginDrag(e) {
+      timer = null;
+      dragging = true;
+      enterRearrangeMode();
+      el.classList.add('dragging');
+      try { el.setPointerCapture(e.pointerId); } catch (err) {}
+
+      function onMove(ev) {
+        if (!dragging) return;
+        var dx = ev.clientX - startX, dy = ev.clientY - startY;
+        el.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(1.04)';
+        reflowSiblings(host, el, which, ev.clientX, ev.clientY);
+      }
+      function onUp(ev) {
+        dragging = false;
+        el.classList.remove('dragging');
+        el.style.transform = '';
+        try { el.releasePointerCapture(ev.pointerId); } catch (err) {}
+        el.removeEventListener('pointermove', onMove);
+        el.removeEventListener('pointerup', onUp);
+        el.removeEventListener('pointercancel', onUp);
+        commitOrder(host, which);
+        updateRearrangeHint();
+      }
+      el.addEventListener('pointermove', onMove);
+      el.addEventListener('pointerup', onUp);
+      el.addEventListener('pointercancel', onUp);
+    }
+  }
+
+  function addCard(host, id, build, which) {
     if (id && !on(id)) return;
     try {
       var row = build();
       if (!row) return;
       collectTodos(row);
-      host.appendChild(card(row));
-    } catch (e) {
-      var el = document.createElement('div');
-      el.className = 'card flat plain';
-      el.textContent = 'This card failed: ' + ((e && e.message) || e);
+      var el = card(row);
+      if (which) wireRearrange(el, id, which, host);
       host.appendChild(el);
+    } catch (e) {
+      var el2 = document.createElement('div');
+      el2.className = 'card flat plain';
+      el2.textContent = 'This card failed: ' + ((e && e.message) || e);
+      host.appendChild(el2);
     }
   }
   /* A digest of what the other cards told you to do. Built from their
@@ -4259,11 +4427,11 @@
       daylight: function () { return daylightCard(d, lat, lon, state.tz); },
       moon:     function () { return moonCard(d.date, state.tz, lat, lon); }
     };
-    var col = document.createElement('div'); col.className = 'hourly';
-    hourlyOrder().forEach(function (id) { addCard(col, id, hourlyBuilders[id]); });
+    var col = document.createElement('div'); col.className = 'hourly' + (rearrange.active ? ' rearranging' : '');
+    hourlyOrder().forEach(function (id) { addCard(col, id, hourlyBuilders[id], 'hourly'); });
     roundEnds(col);
 
-    var grid = document.createElement('div'); grid.className = 'grid';
+    var grid = document.createElement('div'); grid.className = 'grid' + (rearrange.active ? ' rearranging' : '');
     var builders = {
       light:     function () { return lightCard(d); },
       burn:      function () { return burnCard(d); },
@@ -4305,7 +4473,7 @@
       flag:      function () { return flagCard(p.flag); },
       moon:      function () { return moonCard(d.date, state.tz, lat, lon); }
     };
-    tileOrder().forEach(function (id) { addCard(grid, id, builders[id]); });
+    tileOrder().forEach(function (id) { addCard(grid, id, builders[id], 'tiles'); });
     // Pill-only cards are built now, so the to-do list is complete
     // before anything is placed.
     PILL_ONLY.forEach(function (id) { collectOnly(id, builders[id]); });
@@ -4543,16 +4711,27 @@
     settingsPanel.innerHTML = '';
     var tab = store.tab || 'cards';
     if (!TABS.some(function (t) { return t[0] === tab; })) tab = 'cards';
+    var isOpen = store.tabOpen !== false;
 
     var bar = document.createElement('div'); bar.className = 'tabs';
     TABS.forEach(function (t) {
       var b = document.createElement('button');
-      b.className = 'tab' + (tab === t[0] ? ' sel' : '');
+      b.className = 'tab' + (tab === t[0] && isOpen ? ' sel' : '');
       b.textContent = t[1];
-      b.addEventListener('click', function () { store.tab = t[0]; saveStore(); buildSettings(); });
+      b.addEventListener('click', function () {
+        // Tapping the tab that's already open collapses just its
+        // content, leaving the row of tab names in place \u2014 the
+        // confusion this fixes was people not realizing "Settings"
+        // itself is the only thing that closes the whole panel, and
+        // expecting a tab to be able to tuck itself away instead.
+        if (store.tab === t[0] && isOpen) { store.tabOpen = false; }
+        else { store.tab = t[0]; store.tabOpen = true; }
+        saveStore(); buildSettings();
+      });
       bar.appendChild(b);
     });
     settingsPanel.appendChild(bar);
+    if (!isOpen) return;
 
     if (tab === 'cards') listWithArrows(hourlyOrder(), 'hourly', 'Across the day');
     else if (tab === 'tiles') listWithArrows(tileOrder(), 'tiles', 'Tiles');
@@ -4588,6 +4767,9 @@
   }
 
   function listWithArrows(ids, which, heading) {
+    var tip = document.createElement('p'); tip.className = 'lede';
+    tip.textContent = 'Faster way to do this: press and hold any card on the main page to drag it into place or hide it directly, no need to come here at all.';
+    settingsPanel.appendChild(tip);
     var h = document.createElement('h3'); h.textContent = heading;
     settingsPanel.appendChild(h);
     ids.forEach(function (id, i, arr) { cardRow(id, i, arr, which); });
@@ -4966,7 +5148,8 @@
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
   }
-  toggle(document.getElementById('settingsBtn'), settingsPanel, buildSettings);
+  function openSettingsFresh() { store.tabOpen = true; buildSettings(); }
+  toggle(document.getElementById('settingsBtn'), settingsPanel, openSettingsFresh);
   toggle(document.getElementById('aboutBtn'), aboutPanel, buildAbout);
 
   document.getElementById('disclaimer').innerHTML =
