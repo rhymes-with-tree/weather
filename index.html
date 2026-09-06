@@ -272,6 +272,12 @@
   .bar button{background:none;border:none;font:inherit;font-size:14px;color:var(--mid);
               cursor:pointer;padding:4px 8px;border-bottom:1px dashed #C3CCD4;}
   .bar button:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
+  /* Same focus ring, extended to the Settings controls that never got
+     it \u2014 they were relying on whatever the browser draws by default,
+     which works but looks inconsistent with everywhere else this app
+     bothered to style it on purpose. */
+  .tab:focus-visible, .ord input:focus-visible, .ord button:focus-visible,
+  .opt input:focus-visible, .rearrangeBar button:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
   .panel{background:#F7F5F1;border:1px solid var(--line);border-radius:18px;
          padding:16px 18px;margin:0 0 12px;}
   .panel h2{font-size:17px;margin:0 0 4px;}
@@ -355,7 +361,9 @@
      instead. */
   .rearranging .card{touch-action:none;outline:2px solid var(--link);outline-offset:-2px;}
   .card.dragging{z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.22);transform:scale(1.04);
-                 transition:none !important;}
+                 transition:none !important;pointer-events:none;}
+  .cardPlaceholder{background:rgba(0,0,0,.05);border:2px dashed var(--line);
+                   box-shadow:none;margin:0 0 var(--gap);}
   .dismissBadge{display:none;position:absolute;top:-7px;left:-7px;width:22px;height:22px;
                 border-radius:50%;background:#E24;color:#FFF;border:2px solid var(--page);
                 font-size:15px;line-height:18px;text-align:center;font-weight:700;
@@ -3764,21 +3772,19 @@
     updateRearrangeHint();
   }
 
-  /* Where the dragged card should land among its own siblings. This
-     runs live during the drag now, with the bug from the first attempt
-     actually fixed rather than avoided: back then, the dragged card's
-     on-screen position was "distance from where the gesture started" \u2014
-     a fixed number \u2014 so the moment a sibling reordered and changed the
-     dragged card's own natural position in the layout, that fixed
-     offset pointed at the wrong place and everything desynced. This
-     version recalculates the dragged card's transform from its actual
-     current natural position every time, so a mid-drag reorder can't
-     throw it off. Siblings that get displaced use the standard FLIP
-     technique (First, Last, Invert, Play) so they visibly slide into
-     their new slot instead of snapping. */
-  function reflowSiblings(host, dragEl, which, clientX, clientY) {
+  /* Where a placeholder should land among the real siblings \u2014 the
+     placeholder, not the dragged card itself, is what gets reordered
+     live. That distinction is the actual fix for the chaos in the
+     previous attempt: the dragged card stayed in normal document flow
+     the whole time, so it kept reserving its own box-shaped space in
+     the layout \u2014 a gap that followed it around as the reflow logic
+     also moved it through the DOM, on top of the floating copy
+     following the pointer. Two things moving at once, fighting each
+     other. A plain in-flow placeholder standing in for it means the
+     real siblings only ever react to one thing. */
+  function reflowSiblings(host, placeholder, which, clientX, clientY) {
     var sibs = Array.prototype.slice.call(host.children).filter(function (c) {
-      return c !== dragEl && c.classList && c.classList.contains('card');
+      return c !== placeholder && c.classList && c.classList.contains('card');
     });
     var before = sibs.map(function (c) { return c.getBoundingClientRect(); });
 
@@ -3790,9 +3796,9 @@
         : (clientY < r.top) || (clientY < r.bottom && clientX < r.left + r.width / 2);
       if (isBefore) { target = sibs[i]; break; }
     }
-    var already = target ? target.previousSibling === dragEl : host.lastChild === dragEl;
+    var already = target ? target.previousSibling === placeholder : host.lastChild === placeholder;
     if (already) return;
-    if (target) host.insertBefore(dragEl, target); else host.appendChild(dragEl);
+    if (target) host.insertBefore(placeholder, target); else host.appendChild(placeholder);
 
     sibs.forEach(function (c, i) {
       var after = c.getBoundingClientRect();
@@ -3867,37 +3873,53 @@
       timer = null;
       dragging = true;
       enterRearrangeMode();
-      el.classList.add('dragging');
-      try { el.setPointerCapture(e.pointerId); } catch (err) {}
 
-      // Where the pointer is within the card, captured once before any
-      // transform exists, so it stays correct as a fixed reference
-      // regardless of how the card's own natural position moves later.
+      // Measured before anything moves, so the floating copy can be
+      // pinned exactly where the real card currently sits \u2014 no jump
+      // at the moment the drag starts.
       var r0 = el.getBoundingClientRect();
       var grabX = e.clientX - r0.left, grabY = e.clientY - r0.top;
-      var curDx = 0, curDy = 0;
+
+      // A plain stand-in, same footprint, left behind in the real
+      // card's spot. This is what the siblings react to; the real
+      // card is about to be taken out of flow entirely so it can
+      // float without leaving a gap that has to be tracked too.
+      var placeholder = document.createElement('div');
+      placeholder.className = 'card cardPlaceholder';
+      placeholder.dataset.cardId = id;
+      placeholder.style.width = r0.width + 'px';
+      placeholder.style.height = r0.height + 'px';
+      host.insertBefore(placeholder, el);
+
+      el.classList.add('dragging');
+      el.style.position = 'fixed';
+      el.style.left = r0.left + 'px';
+      el.style.top = r0.top + 'px';
+      el.style.width = r0.width + 'px';
+      el.style.margin = '0';
+      document.body.appendChild(el);
+      try { el.setPointerCapture(e.pointerId); } catch (err) {}
 
       function onMove(ev) {
         if (!dragging) return;
-        // The card's natural (untransformed) position right now: its
-        // current box minus whatever transform is already applied to
-        // it, so a mid-drag reorder that changed that natural position
-        // gets picked up immediately rather than compounding an error.
-        var r = el.getBoundingClientRect();
-        var naturalLeft = r.left - curDx, naturalTop = r.top - curDy;
-        curDx = (ev.clientX - grabX) - naturalLeft;
-        curDy = (ev.clientY - grabY) - naturalTop;
-        el.style.transform = 'translate(' + curDx + 'px,' + curDy + 'px) scale(1.04)';
-        reflowSiblings(host, el, which, ev.clientX, ev.clientY);
+        el.style.left = (ev.clientX - grabX) + 'px';
+        el.style.top = (ev.clientY - grabY) + 'px';
+        reflowSiblings(host, placeholder, which, ev.clientX, ev.clientY);
       }
       function onUp(ev) {
         dragging = false;
-        el.classList.remove('dragging');
-        el.style.transform = '';
         try { el.releasePointerCapture(ev.pointerId); } catch (err) {}
         el.removeEventListener('pointermove', onMove);
         el.removeEventListener('pointerup', onUp);
         el.removeEventListener('pointercancel', onUp);
+        // The placeholder's final spot among the real siblings is the
+        // answer; both stand-ins get discarded and a fresh render
+        // rebuilds everything from the order that gets saved here.
+        host.insertBefore(el, placeholder);
+        host.removeChild(placeholder);
+        el.classList.remove('dragging');
+        el.style.position = ''; el.style.left = ''; el.style.top = '';
+        el.style.width = ''; el.style.margin = '';
         commitOrder(host, which);
         updateRearrangeHint();
       }
