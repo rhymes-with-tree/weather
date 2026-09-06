@@ -27,14 +27,14 @@
          --rowh:62px; --tileh:52px; --gap:7px; }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]){
-      --page:#14171B; --ink:#E7E9EC; --mid:#98A2AD; --line:#33383E; --link:#7FB0FF;
-      --card2:#1D2126; --panel:#1A1D22; --panel2:#20242A; --input:#20242A;
+      --page:#14171B; --ink:#E7E9EC; --mid:#98A2AD; --line:#3D434B; --link:#7FB0FF;
+      --card2:#20242A; --panel:#1C2025; --panel2:#232830; --input:#2A2F38;
       --faint:#7C8895; --alertbg:#3A2323; --alertborder:#5A2E2E;
     }
   }
   :root[data-theme="dark"]{
-    --page:#14171B; --ink:#E7E9EC; --mid:#98A2AD; --line:#33383E; --link:#7FB0FF;
-    --card2:#1D2126; --panel:#1A1D22; --panel2:#20242A; --input:#20242A;
+    --page:#14171B; --ink:#E7E9EC; --mid:#98A2AD; --line:#3D434B; --link:#7FB0FF;
+    --card2:#20242A; --panel:#1C2025; --panel2:#232830; --input:#2A2F38;
     --faint:#7C8895; --alertbg:#3A2323; --alertborder:#5A2E2E;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -189,6 +189,25 @@
      unchanged pale backgrounds. Hardcoded, not a variable, since it
      must NOT follow the theme the way the rest of the page's text does. */
   .card.coloured{color:#16232F;}
+  /* Three independent legibility options, all optional. Color as an
+     accent strip: the strip is purely decorative, positioned over the
+     card's own padding rather than pushed by it, so it works
+     regardless of how much padding a given breakpoint uses. The body
+     underneath stays the normal neutral card surface \u2014 no .coloured,
+     so ordinary theme-adaptive ink applies, never the forced-dark text
+     an actually-colored card needs. */
+  .card.striped{background:var(--card2);padding-top:19px;}
+  .colorStrip{position:absolute;top:0;left:0;right:0;height:6px;
+              border-top-left-radius:inherit;border-top-right-radius:inherit;}
+  /* Neutral detail background: only meaningful on a still-colored
+     headline (a striped card's body is already neutral). Extends to
+     the card's own edges and rounds to match its bottom corners, so it
+     reads as the lower half of one card rather than a second box
+     dropped inside it. Color specificity beats .card.coloured's forced
+     dark text without relying on stylesheet order to decide the tie. */
+  .card.coloured .tip.neutralDetail{color:var(--ink);}
+  .tip.neutralDetail{background:var(--card2);margin:11px -16px -9px;
+                     padding:11px 16px 9px;border-radius:0 0 14px 14px;}
   /* Sunrise/sunset keep their own left/right alignment inside the split
      face even though cards centre by default \u2014 that split reads as the
      day running left to right, and centring either end would break it. */
@@ -385,7 +404,8 @@
   .card.todo ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:7px 9px;}
   .card.todo li{position:relative;background:var(--input);border:1px solid var(--line);
                 border-radius:999px;padding:5px 12px;cursor:pointer;
-                display:flex;flex-direction:column;align-items:center;gap:0;line-height:1.25;}
+                display:flex;flex-direction:column;align-items:center;gap:0;line-height:1.25;
+                -webkit-user-select:none;-webkit-touch-callout:none;user-select:none;}
   /* The word that matters, bold and full size. Whatever else the pill
      carries \u2014 a number, a reason \u2014 goes in .pillDetail instead, so the
      two never compete for the same glance. */
@@ -3714,9 +3734,26 @@
     el.className = 'card' + (row.tip ? '' : ' flat') + (row.plain ? ' plain' : '')
                  + (row.alert ? ' alert' : '')
                  + (row.timeline || row.alert ? '' : ' sm');
-    if (row.bg) { el.style.background = row.bg; el.classList.add('coloured'); }
-
     el.style.position = 'relative';
+    // Color as a thin accent strip instead of filling the whole card,
+    // two independent settings (daily cards vs. tiles) since someone
+    // might want one but not the other. The strip is purely
+    // decorative \u2014 the card body underneath stays the normal neutral
+    // surface, so text there is never fighting a colored background
+    // for contrast, and normal theme-adaptive ink applies rather than
+    // the forced-dark text colored cards need.
+    var stripMode = !!row.bg && !row.alert && (row.timeline ? store.stripHourly : store.stripTiles);
+    if (row.bg) {
+      if (stripMode) {
+        el.classList.add('striped');
+        var strip = document.createElement('div'); strip.className = 'colorStrip';
+        strip.style.background = row.bg;
+        el.appendChild(strip);
+      } else {
+        el.style.background = row.bg; el.classList.add('coloured');
+      }
+    }
+
     var line = document.createElement('div');
     line.className = 'face' + (row.split ? ' split' : '');
     if (row.split) {
@@ -3786,6 +3823,9 @@
 
     if (row.tip || (row.rows && row.rows.length)) {
       var t = document.createElement('p'); t.className = 'tip'; t.textContent = row.tip || ''; t.style.display = 'none';
+      // Only matters for a still-colored headline; a striped card's
+      // whole body is already neutral, so this would be a no-op there.
+      if (store.neutralDetail && row.bg && !stripMode) t.classList.add('neutralDetail');
       if (row.link && row.link.href) {
         t.appendChild(document.createTextNode(' '));
         var a2 = document.createElement('a');
@@ -4244,6 +4284,28 @@
         li.addEventListener('keydown', function (e) {
           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
         });
+        // Long-press to enter rearrange mode from here too, not just
+        // from a tile or hourly card \u2014 without this, a pill could
+        // only ever react to the mode once it was already on, never
+        // actually start it, which meant long-pressing a pill directly
+        // (the obvious thing to try, wanting to remove that pill) did
+        // nothing at all. No drag capability follows from this, only
+        // entry into the mode \u2014 pills are sorted by rank, not by
+        // hand, so there's nothing here to reorder.
+        (function () {
+          var pTimer = null, pStartX, pStartY;
+          function cancelPTimer() { if (pTimer) { clearTimeout(pTimer); pTimer = null; } }
+          li.addEventListener('pointerdown', function (e) {
+            if (e.button != null && e.button !== 0) return;
+            pStartX = e.clientX; pStartY = e.clientY;
+            pTimer = setTimeout(function () { pTimer = null; enterRearrangeMode(); }, 500);
+          });
+          li.addEventListener('pointermove', function (e) {
+            if (pTimer && (Math.abs(e.clientX - pStartX) > 10 || Math.abs(e.clientY - pStartY) > 10)) cancelPTimer();
+          });
+          li.addEventListener('pointerup', cancelPTimer);
+          li.addEventListener('pointercancel', cancelPTimer);
+        })();
         // Same dismiss badge as a tile, same underlying action \u2014 turn
         // the card that produced this pill off entirely. Removal only,
         // never reordering: pills are sorted by rank, not by hand, so
@@ -5233,6 +5295,27 @@
     var dmNote = document.createElement('p'); dmNote.className = 'lede';
     dmNote.textContent = 'The condition colors below (cold, fine, warm, dangerous) stay the same either way \u2014 only the page itself changes.';
     settingsPanel.appendChild(dmNote);
+
+    var lh = document.createElement('h3'); lh.textContent = 'Legibility';
+    settingsPanel.appendChild(lh);
+    [
+      ['neutralDetail', 'Neutral background when a card is expanded', 'Keeps the headline color, gives the detail underneath a plain background instead of continuing it.'],
+      ['stripHourly', 'Color as an accent strip on the daily cards', 'Feels Like, Sky, Sunrise and Sunset, and Moon. Color becomes a thin bar; the text sits on a plain background below it.'],
+      ['stripTiles', 'Color as an accent strip on tiles', 'Same treatment, for the grid of tiles below the daily cards.']
+    ].forEach(function (opt) {
+      var lRow = document.createElement('label'); lRow.className = 'opt';
+      var lBox = document.createElement('input'); lBox.type = 'checkbox';
+      lBox.checked = !!store[opt[0]];
+      lBox.addEventListener('change', function () {
+        store[opt[0]] = lBox.checked; saveStore(); renderHome();
+      });
+      var lSp = document.createElement('span'); lSp.textContent = opt[1];
+      lRow.appendChild(lBox); lRow.appendChild(lSp);
+      settingsPanel.appendChild(lRow);
+      var lNote = document.createElement('p'); lNote.className = 'lede';
+      lNote.textContent = opt[2];
+      settingsPanel.appendChild(lNote);
+    });
 
     var pr = document.createElement('div'); pr.className = 'presets';
     Object.keys(PRESETS).forEach(function (k) {
