@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="light dark">
 <title>Morning Brief</title>
 <meta name="description" content="A weather brief for the things weather actually does to you — sunburn, pollen, joints, migraines, bugs, mud, and whether the water is safe.">
 <meta property="og:title" content="Morning Brief">
@@ -11,15 +11,39 @@
 <meta property="og:type" content="website">
 <link rel="icon" href="data:,">
 <style>
+  /* Dark mode: risk-color gradients (AQI, migraine, etc.) are untouched
+     on purpose \u2014 they're already saturated enough to read fine on a
+     dark background, and touching them would mean re-tuning every
+     ramp anchor separately from the page chrome. Only the page chrome
+     itself \u2014 background, text, card surfaces, borders \u2014 has a dark
+     variant, via these semantic variables so a chrome color only needs
+     defining once, not once per rule that happens to use it. Default
+     follows the device's own light/dark setting; a manual choice in
+     Settings overrides that via [data-theme] and wins regardless of
+     what the device says. */
   :root{ --page:#FFF; --ink:#16232F; --mid:#5B6B7A; --line:#E4E4E4; --link:#1B57C8;
+         --card2:#F2F0EB; --panel:#F7F5F1; --panel2:#F3F0E8; --input:#FFF;
+         --faint:#8A97A3; --alertbg:#FBE9E9; --alertborder:#F1D2D2;
          --rowh:62px; --tileh:52px; --gap:7px; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]){
+      --page:#14171B; --ink:#E7E9EC; --mid:#98A2AD; --line:#33383E; --link:#7FB0FF;
+      --card2:#1D2126; --panel:#1A1D22; --panel2:#20242A; --input:#20242A;
+      --faint:#7C8895; --alertbg:#3A2323; --alertborder:#5A2E2E;
+    }
+  }
+  :root[data-theme="dark"]{
+    --page:#14171B; --ink:#E7E9EC; --mid:#98A2AD; --line:#33383E; --link:#7FB0FF;
+    --card2:#1D2126; --panel:#1A1D22; --panel2:#20242A; --input:#20242A;
+    --faint:#7C8895; --alertbg:#3A2323; --alertborder:#5A2E2E;
+  }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;background:var(--page);color:var(--ink);}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
        line-height:1.3;-webkit-font-smoothing:antialiased;padding:10px 11px 22px;}
   .wrap{max-width:440px;margin:0 auto;}
 
-  .hdr{background:#FFF;border:1px solid var(--line);border-radius:16px;
+  .hdr{background:var(--page);border:1px solid var(--line);border-radius:16px;
        padding:11px 16px 12px;text-align:center;margin:0 0 8px;}
   .hdr.section{margin-top:22px;}
   .hdr .l1{font-size:19px;color:var(--mid);margin-bottom:5px;}
@@ -189,16 +213,29 @@
   .row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
   .card b{font-weight:700;}
   .det{font-weight:400;opacity:.72;}
-  .alert{background:#FBE9E9;border:1px solid #F1D2D2;}
-  .plain{background:#F2F0EB;}
+  .alert{background:var(--alertbg);border:1px solid var(--alertborder);}
+  .plain{background:var(--card2);}
   .tip{font-size:14.5px;line-height:1.45;text-align:left;margin:11px 0 0;padding-top:10px;
        border-top:1px solid rgba(22,35,47,.16);opacity:.82;}
-  .linkcard{background:#F2F0EB;border-radius:15px;padding:14px;text-align:center;margin:0 0 8px;}
+  .linkcard{background:var(--card2);border-radius:15px;padding:14px;text-align:center;margin:0 0 8px;}
   .linkcard a{color:var(--link);font-weight:700;font-size:17px;text-decoration:underline;}
-  .skel{background:#F1EFEA;height:48px;}
+  .skel{background:var(--card2);height:48px;}
   .card.sm.skel{height:38px;}
+  /* One emoji per tile, ahead of the label: a glance says which tile
+     this is before the words are read, and the faces group the body
+     conditions apart from the sky and ground ones. A card's own state
+     emoji moves with what it says; a tile with no state of its own
+     falls back to its fixed identity glyph. */
+  .face .emo{font-size:1.2em;margin-right:.3em;vertical-align:-.08em;position:relative;z-index:1;}
+  .face .emo.r{margin-right:0;margin-left:.3em;}
+  /* Tiles that are switched on but have nothing to say today line up
+     here as grey ghosts, so a short grid reads as "quiet" rather than
+     "turned off". Spans every column at any width. */
+  .quiet{grid-column:1 / -1;display:flex;flex-wrap:wrap;justify-content:center;
+         align-items:center;gap:4px 12px;padding:6px 10px;font-size:20px;line-height:1;}
+  .quiet span{filter:grayscale(1);opacity:.4;cursor:help;}
   .busy{opacity:.45;}
-  .foot{font-size:11.5px;color:#8A97A3;line-height:1.5;margin:14px 4px 0;}
+  .foot{font-size:11.5px;color:var(--faint);line-height:1.5;margin:14px 4px 0;}
   /* Phone stays as it was: one column, tiles two across. From tablet
      width up, the hourly cards become a column of their own beside a
      three-across tile grid \u2014 the tiles carry one fact each, so they
@@ -278,7 +315,7 @@
      bothered to style it on purpose. */
   .tab:focus-visible, .ord input:focus-visible, .ord button:focus-visible,
   .opt input:focus-visible, .rearrangeBar button:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
-  .panel{background:#F7F5F1;border:1px solid var(--line);border-radius:18px;
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;
          padding:16px 18px;margin:0 0 12px;}
   .panel h2{font-size:17px;margin:0 0 4px;}
   .panel h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);
@@ -293,19 +330,19 @@
   .ord + .opt.sub{border-top:1px solid #EFECE4;}
   .opt span small{display:block;font-size:12.5px;color:var(--mid);line-height:1.35;margin-top:1px;}
   .panel input[type=text]{font:inherit;width:100%;padding:7px 9px;border:1px solid var(--line);
-                          border-radius:8px;background:#FFF;color:inherit;margin-top:4px;}
+                          border-radius:8px;background:var(--input);color:inherit;margin-top:4px;}
   .tabs{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 14px;
         border-bottom:1px solid var(--line);padding-bottom:9px;}
   .tab{background:none;border:1px solid transparent;border-radius:9px;padding:5px 10px;
        font:inherit;font-size:13.5px;color:var(--mid);cursor:pointer;white-space:nowrap;}
-  .tab:hover{background:#EFECE5;}
-  .tab.sel{background:#FFF;border-color:var(--line);color:var(--ink);font-weight:600;}
+  .tab:hover{background:var(--card2);}
+  .tab.sel{background:var(--input);border-color:var(--line);color:var(--ink);font-weight:600;}
   .steps{margin:4px 0 12px;padding-left:22px;font-size:13.5px;color:var(--mid);line-height:1.5;}
   .steps li{margin-bottom:6px;}
   .ord input[type=checkbox]{width:17px;height:17px;flex:0 0 auto;margin:0;}
   .ord span small{display:block;font-size:12.5px;color:var(--mid);line-height:1.35;margin-top:1px;}
   .presets{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 12px;}
-  .preset{background:#FFF;border:1px solid var(--line);border-radius:10px;padding:7px 10px;
+  .preset{background:var(--input);border:1px solid var(--line);border-radius:10px;padding:7px 10px;
           font:inherit;font-size:13.5px;cursor:pointer;display:flex;align-items:center;gap:8px;}
   .preset.sel{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);}
   .preset .sw{display:flex;gap:2px;}
@@ -313,15 +350,15 @@
   .contrast{margin-top:8px;padding-left:9px;border-left:2px solid #C9BFA9;}
   .contrast.ok{border-left-color:#7FA86B;}
   .contrast.bad{border-left-color:#C4703F;}
-  .reset{margin-top:10px;background:#FFF;border:1px solid var(--line);border-radius:9px;
+  .reset{margin-top:10px;background:var(--input);border:1px solid var(--line);border-radius:9px;
          padding:7px 12px;font:inherit;font-size:14px;cursor:pointer;}
   .ord{display:flex;align-items:center;gap:9px;padding:7px 0;font-size:14.5px;
        border-top:1px solid #E8E4DC;}
   .ord span{flex:1 1 auto;}
-  .ord button{background:#FFF;border:1px solid var(--line);border-radius:7px;width:30px;height:28px;
+  .ord button{background:var(--input);border:1px solid var(--line);border-radius:7px;width:30px;height:28px;
               font:inherit;font-size:15px;line-height:1;cursor:pointer;color:var(--ink);}
   .ord button:disabled{opacity:.32;cursor:default;}
-  .card.todo{background:#F3F0E8;border:1px solid var(--line);display:block;
+  .card.todo{background:var(--panel2);border:1px solid var(--line);display:block;
              padding:12px 15px 13px;min-height:0;margin-bottom:10px;}
   .todohead{font-size:12.5px;letter-spacing:.07em;text-transform:uppercase;
             color:var(--ink);opacity:.62;font-weight:700;margin-bottom:7px;}
@@ -339,7 +376,7 @@
   .ord.sub{padding-left:18px;}
   .ord.sub span{opacity:.8;}
   .card.todo ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:7px 9px;}
-  .card.todo li{background:#FFF;border:1px solid var(--line);
+  .card.todo li{position:relative;background:var(--input);border:1px solid var(--line);
                 border-radius:999px;padding:5px 12px;cursor:pointer;
                 display:flex;flex-direction:column;align-items:center;gap:0;line-height:1.25;}
   /* The word that matters, bold and full size. Whatever else the pill
@@ -373,11 +410,11 @@
                 background:var(--page);position:sticky;top:0;z-index:40;padding:6px 0;}
   .rearrangeBar button{font:inherit;font-weight:700;color:var(--link);background:none;
                        border:none;padding:6px 4px;cursor:pointer;}
-  .disc{font-size:12px;color:#7C8996;line-height:1.55;margin:16px 4px 0;
+  .disc{font-size:12px;color:var(--faint);line-height:1.55;margin:16px 4px 0;
         border-top:1px solid var(--line);padding-top:12px;}
   .disc b{color:var(--mid);}
   .disc.xercesnote{border-top:none;margin-top:6px;padding-top:0;}
-  .disc.xercesnote a{color:#7C8996;text-decoration:underline;}
+  .disc.xercesnote a{color:var(--faint);text-decoration:underline;}
 
 </style>
 </head>
@@ -486,6 +523,7 @@
   }
 
   function on(id) { return store.cards[id] !== false; }
+  function showEmoji() { return store.emoji !== false; }
 
   /* Fitzpatrick scale. It classifies how skin RESPONDS to sun rather
      than what colour it is, which is why each option is written as a
@@ -565,6 +603,15 @@
 
   var RAMP = {};
   var NIGHT, TWILIGHT, DAYLIT;
+  /* 'auto' removes the attribute entirely and lets the
+     prefers-color-scheme media query decide, so a manual choice is
+     the only thing that ever overrides the device's own setting \u2014
+     there's no third state to keep in sync by hand. */
+  function applyTheme() {
+    var mode = store.darkMode || 'auto';
+    if (mode === 'auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', mode);
+  }
   function buildRamps() {
     var A = anchors();
     var COLD = hex2rgb(A.cold), GOOD = hex2rgb(A.good),
@@ -952,6 +999,9 @@
 
     return { timeline: true, bg: bgDay(d, function (r) { return colorAt('feels', r.feels == null ? 60 : r.feels); }),
       bold: face,
+      // Low end on the left, high end on the right, humidity riding with the high.
+      icons: [STATE_EMOJI.temp[lo] || '',
+              (hi !== lo ? STATE_EMOJI.temp[hi] || '' : '') + (hum ? STATE_EMOJI.hum[hum] || '' : '')],
       todos: (function () {
         var out = [];
         var swing = d.feelsMax - d.feelsMin;
@@ -991,7 +1041,7 @@
 
   function burnCard(d) {
     var uv = d.uvNoon, sk = skin();
-    if (uv < 2) return { bg: bgFlat('burn', uv), bold: 'No Sunburn Risk',
+    if (uv < 2) return { bg: bgFlat('burn', uv), icon: '\uD83D\uDE0E', bold: 'No Sunburn Risk',
       tip: 'UV only reaches ' + uv.toFixed(1) + ' at solar noon. Nothing to protect against.' };
     var mins = Math.max(5, Math.round(sk.med / (uv * 1.5)));
     var face = mins >= 90 ? Math.round(mins / 60 * 10) / 10 + ' hr to Sunburn' : mins + ' min to Sunburn';
@@ -1008,6 +1058,8 @@
     }
     lines.push(['Not your skin color/burn type? Change in Settings.']);
     return { bg: bgFlat('burn', uv), bold: face, rows: lines,
+             icon: uv < 3 ? '\uD83E\uDD76\uFE0F' : uv < 6 ? '\uD83E\uDDF4' : uv < 8 ? '\uD83E\uDDE2' : '\uD83D\uDD25',
+             severity: uv < 3 ? 20 : uv < 6 ? 45 : uv < 8 ? 70 : 95,
              // Without a tile, the minutes only survive if the pill
              // carries them \u2014 and they are the reason the skin setting
              // exists at all.
@@ -1142,6 +1194,10 @@
     }
 
     return { timeline: true, bg: bg, bold: face, tip: tip,
+      // Morning on the left; afternoon on the right, unless something is
+      // falling, in which case that is the part of the day worth showing.
+      icons: [STATE_EMOJI.sky[wAM] || '',
+              wet ? STATE_EMOJI.precip[kind] || '' : (wPM !== wAM ? STATE_EMOJI.sky[wPM] || '' : '')],
       rows: [
         ['Morning', '', wAM],
         ['Afternoon', '', wPM],
@@ -1162,7 +1218,7 @@
       advice = sens ? (g.lungAdvice || g.generalAdvice || '') : (g.generalAdvice || '');
       dom = g.dominant || '';
     } else if (gAir && gAir.error && d.aqiMax == null) {
-      return { plain: true, bold: 'Air Quality Unavailable', tip: gAir.error };
+      return { plain: true, icon: STATE_EMOJI.unavailable, bold: 'Air Quality Unavailable', tip: gAir.error };
     } else { a = d.aqiMax; }
     if (a == null) return null;
 
@@ -1238,6 +1294,8 @@
     var smokeLink = (domKey === 'pm25' && a > 75)
       ? { href: 'https://fire.airnow.gov/', text: 'Check the smoke outlook at fire.airnow.gov' } : null;
     return { bg: bgFlat('aqi', a), bold: word, tip: tip, todos: out, link: smokeLink,
+             icon: a <= 50 ? '\uD83D\uDE0A' : a <= 100 ? '\uD83D\uDE10' : a <= 150 ? '\uD83D\uDE15' : a <= 200 ? '\uD83D\uDE37' : a <= 300 ? '\uD83E\uDD22' : '\u2620\uFE0F',
+             severity: a <= 50 ? 10 : a <= 100 ? 30 : a <= 150 ? 50 : a <= 200 ? 70 : a <= 300 ? 85 : 100,
              rowsHead: ['AQI', ''], rows: bandRows, hiRow: hiRow };
   }
 
@@ -1353,19 +1411,21 @@
             return out;
           })(),
           bold: filtered ? 'Nothing You Track' : plants.length ? level(sc) + ' Allergies' : 'No Pollen in Season',
+          icon: filtered ? STATE_EMOJI.allergy.none : plants.length ? STATE_EMOJI.allergy[level(sc)] : STATE_EMOJI.allergy.season,
+          severity: filtered ? 15 : plants.length ? sc : 10,
           tip: (filtered ? 'Pollen is out there, just not a category you track.' : idx + ' out of 5 on Pollen Index.')
              + settingsHint,
           rows: plants.length ? [[listJoin(plants)]] : [] };
       }
     }
-    if (pollen && pollen.error) return { plain: true, bold: 'Allergens Unavailable', tip: pollen.error };
+    if (pollen && pollen.error) return { plain: true, icon: STATE_EMOJI.unavailable, bold: 'Allergens Unavailable', tip: pollen.error };
 
     cal = cal || CALENDARS.great_lakes;
     var m = parseInt(d.date.slice(5, 7), 10), namesAll = cal.m[m];
     var names = namesAll.filter(function (n) { return allergyCatOn(n); });
-    if (!namesAll.length) return { bg: bgFlat('risk', 4), bold: 'Pollen Quiet',
+    if (!namesAll.length) return { bg: bgFlat('risk', 4), icon: STATE_EMOJI.allergy.quiet, severity: 10, bold: 'Pollen Quiet',
       tip: 'Little is in bloom this time of year.' };
-    if (!names.length) return { bg: bgFlat('risk', 4), bold: 'Nothing You Track',
+    if (!names.length) return { bg: bgFlat('risk', 4), icon: STATE_EMOJI.allergy.none, severity: 15, bold: 'Nothing You Track',
       tip: 'In bloom this month: ' + listJoin(namesAll.map(cap)) + ', but none of that is a category you track.'
          + settingsHint };
     var s2 = cal.s[m];
@@ -1376,6 +1436,8 @@
     var sc2 = Math.round(Math.max(0, Math.min(1, s2)) * 100);
     return { bg: bgFlat('risk', sc2),
       bold: level(sc2) + ' Allergies',
+      icon: STATE_EMOJI.allergy[level(sc2)],
+      severity: sc2,
       todos: (function () {
         var out = [];
         if (sc2 >= 35) out.push({ text: 'Allergy Meds \u2014 pollen', when: 'out', rank: 35 });
@@ -1417,6 +1479,8 @@
     });
     return { bg: bgFlat('risk', s),
       bold: 'Migraine ' + (s >= 45 ? 'Likely' : 'Possible'),
+      icon: s >= 45 ? '\uD83E\uDD2F' : '\uD83E\uDD15',
+      severity: s,
       todos: [ s >= 45
         ? { text: 'Migraine Meds', when: 'out', rank: 25 }
         : { text: 'Hydrate Early', when: 'day', rank: 25 } ],
@@ -1452,6 +1516,8 @@
     });
     return { bg: bgFlat('risk', s),
       bold: 'Arthritis Flare ' + (s >= 45 ? 'Likely' : 'Possible'),
+      icon: s >= 45 ? '\uD83D\uDE23' : '\uD83E\uDDB4',
+      severity: s,
       todos: s >= 45 ? [{ text: 'Arthritis Meds', when: 'out', rank: 25 }] : [],
       tip: cap(topOf(why) || 'settled, warm and dry') + '. '
          + (s >= 45 ? 'Heat on the worst joints before you move them, a longer warm-up, and push the physical parts of the day later rather than first thing.'
@@ -1468,7 +1534,7 @@
       tip = 'The nearest shoreline is ' + water.station + ', ' + water.miles + ' miles away.';
     } else if (water.kind === 'buoy') {
       if (!water.available) {
-        return { bold: 'Water Temperature Unavailable', plain: true,
+        return { bold: 'Water Temperature Unavailable', icon: STATE_EMOJI.unavailable, plain: true,
           tip: water.station + ' is not reporting. Buoys come out of the lake for the winter. Assume the water is cold.' };
       }
       w = water.waterF; waveFt = water.waveFt;
@@ -1476,7 +1542,7 @@
     } else {
       var day = water.days && water.days[dateStr];
       if (!day) {
-        return { bold: 'Water Temperature Unavailable', plain: true,
+        return { bold: 'Water Temperature Unavailable', icon: STATE_EMOJI.unavailable, plain: true,
           tip: 'No sea surface reading for that day.' };
       }
       w = day.waterF; waveFt = day.waveFt;
@@ -1487,6 +1553,8 @@
              : w < 74 ? 'Bracing Water' : 'Pleasant Water';
     var reading = w + DEG + (waveFt != null ? ' and ' + waveFt + ' ft waves' : '') + '.';
     return { bg: bgFlat('water', w), bold: word, tip: tip,
+             icon: w < 60 ? '\uD83E\uDD76' : w < 68 ? '\uD83E\uDD76\uFE0F' : w < 74 ? '\uD83C\uDF0A' : '\uD83C\uDFCA',
+             severity: w < 60 ? 90 : w < 68 ? 60 : w < 74 ? 30 : 10,
              rows: [[reading]],
              todo2: w < 65 ? { text: 'Ease Into Water \u2014 cold shock risk', when: 'out', rank: 15 } : null,
              todo: (w >= 70 && on('swim')) ? 'Go Swimming \u2014 ' + w + DEG : null, todoWhen: 'day', todoRank: 95, todoOutdoor: true };
@@ -1599,6 +1667,7 @@
 
     return { timeline: true, bg: bg,
       split: { left: [hr(srF) + ' Sunrise'], right: [hr(ssF) + ' Sunset'] },
+      icons: ['\uD83C\uDF05', '\uD83C\uDF07'],
       rows: rows,
       tip: lenLine };
   }
@@ -1786,7 +1855,8 @@
     } else if (worst.rank >= 50) {
       todos.push({ text: 'Wash Hands', when: 'day', rank: 22 });
     }
-    return { bg: bgFlat('risk', worst.rank), bold: face, tip: tip, rows: rows, todos: todos };
+    return { bg: bgFlat('risk', worst.rank), bold: face, tip: tip, rows: rows, todos: todos,
+             icon: worst.rank >= 95 ? '\uD83D\uDE37' : worst.rank >= 78 ? '\uD83E\uDD12' : '\uD83E\uDDA0', severity: worst.rank };
   }
 
   /* Times are the instant of greatest eclipse, UTC.
@@ -1908,7 +1978,7 @@
     // time because the shading is faint enough that the exact minute is
     // not worth claiming \u2014 the whole event is a soft, easy-to-miss dimming.
     if (e.kind === 'lunar' && !e.greatest) {
-      return { bg: bgFlat('risk', 15), bold: 'Penumbral Lunar Eclipse Today',
+      return { bg: bgFlat('risk', 15), icon: '\uD83C\uDF12', bold: 'Penumbral Lunar Eclipse Today',
         tip: 'A subtle shading across part of the moon, not the dramatic red of a total eclipse. '
            + 'Easy to miss even when the sky is clear. Visible in general from ' + e.region + '.' };
     }
@@ -1929,11 +1999,11 @@
         ? 'The moon is above your horizon then, so it should be visible if the sky is clear.'
         : 'The moon is below your horizon at that point, so this one is not visible from here.';
       tip += ' Visible in general from ' + e.region + '.';
-      return { bg: bgFlat('risk', up ? 60 : 20), bold: face, tip: tip };
+      return { bg: bgFlat('risk', up ? 60 : 20), bold: face, icon: '\uD83C\uDF15', tip: tip };
     }
 
     var face2 = e.type + ' Solar Eclipse ' + (e.dateUTC === dateStrIn(tz, 0) ? 'Today' : 'This Week');
-    return { bg: bgFlat('burn', 6), bold: face2,
+    return { bg: bgFlat('burn', 6), bold: face2, icon: '\uD83C\uDF1E',
              tip: 'Greatest eclipse around ' + localTime + ' local time \u2014 this app does not tell you '
                 + 'if it will be visible in your location.',
              // Kept even though it is not in the trimmed version elsewhere:
@@ -1987,6 +2057,7 @@
     }
 
     return { timeline: true, bg: bg, bold: name,
+      icons: [STATE_EMOJI.moon[name] || '', STATE_EMOJI.moon[toFull < toNew ? 'Full Moon' : 'New Moon'] || ''],
       rows: rows,
       tip: next + '.' };
   }
@@ -2087,7 +2158,7 @@
     var bands = [[0, 19, 'Bug-Free'], [20, 39, 'A Few Bugs'], [40, 64, 'Bring Bug Spray'], [65, 100, 'Bugs Are Brutal']];
     var hiRow = -1;
     var bandRows = bands.map(function (b, i) { if (s >= b[0] && s <= b[1]) hiRow = i; return [b[0] + '\u2013' + b[1], b[2]]; });
-    return { bg: bgFlat('risk', s), bold: word,
+    return { bg: bgFlat('risk', s), bold: word, icon: s >= 65 ? '\uD83D\uDE16' : '\uD83E\uDD9F', severity: s,
       todo: 'Bug Spray \u2014 worst at dawn & dusk', todoWhen: 'out', todoRank: 40,
       tip: (why.length ? cap(listJoin(why)) + '. ' : '')
          + 'Worst at dawn and dusk. Repellent on exposed skin, and long sleeves after sunset. '
@@ -2137,6 +2208,8 @@
       ['6\u00b0 or warmer', 'Unlikely']
     ];
     return { bg: bgAt('feels', wc, 9), bold: word, tip: tip,
+             icon: ['\uD83E\uDDCA', '\uD83E\uDDCA', '\uD83E\uDD76', '\uD83E\uDDE3', '\uD83D\uDE42'][hiRow],
+             severity: [100, 90, 70, 45, 15][hiRow],
              todos: (function () {
                var out = wc <= -18
                  ? [{ text: 'Cover Up \u2014 face, ears, hands', when: 'out', rank: 3 }]
@@ -2174,6 +2247,8 @@
       ['66\u00b0 and up', 'Frizz Guaranteed']
     ];
     return { bg: bgAt('sweat', dp, 7), bold: w,
+      icon: ['\u26A1', '\uD83D\uDE0A', '\uD83D\uDE10', '\uD83E\uDE81', '\uD83E\uDE81'][hiRow],
+      severity: [70, 10, 30, 55, 80][hiRow],
       tip: 'Dew point peaks near ' + Math.round(dp) + DEG + '. ' + why,
       rowsHead: ['Dew Point', ''], rows: bandRows, hiRow: hiRow };
   }
@@ -2282,13 +2357,15 @@
     if (!hot && !cold) return null;
 
     if (cold) {
-      return { bg: bgFlat('feels', d.feelsMin), bold: 'Pavement Is Freezing',
+      return { bg: bgFlat('feels', d.feelsMin), bold: 'Pavement Is Freezing', icon: '\uD83E\uDDCA', severity: 70,
         todo: 'Short Dog Walk \u2014 rinse paws after', todoWhen: 'day', todoRank: 55,
         tip: 'Wind chill near ' + Math.round(d.feelsMin) + DEG
            + '. Ice and road salt split pads at this range. Keep walks short, and rinse paws afterwards.' };
     }
     return { bg: bgFlat('risk', Math.min(100, (surface - 110) * 3)),
       bold: surface >= 140 ? 'Pavement Burns Paws' : 'Hot Pavement',
+      icon: surface >= 140 ? '\uD83D\uDD25' : '\u2600\uFE0F',
+      severity: surface >= 140 ? 95 : 70,
       todo: 'Walk Dog Early or Late \u2014 ' + Math.round(surface) + DEG + ' pavement', todoWhen: 'day', todoRank: 55,
       tip: Math.round(surface) + DEG + ' Pavement. This is not safe for paws. Stay on grass, walk early '
          + 'or after sunset, and test the pavement with the back of your hand for 7 seconds before going for a walk.' };
@@ -2308,6 +2385,8 @@
             : gust > 30 ? 'Too much for recreational sailing, and a kite will not survive it.'
             : 'A kite or small sail can handle it, but the gusts will fight you.';
     return { bg: bgFlat('risk', Math.min(100, gust * 2.2)), bold: word + (steady ? '; ' + steady : ''),
+      icon: gust < 8 ? '\uD83D\uDE34' : gust < 15 ? '\uD83C\uDF43' : gust < 25 ? '\uD83C\uDFF4' : gust < 38 ? '\uD83D\uDCA8' : '\uD83C\uDF2A\uFE0F',
+      severity: gust < 8 ? 15 : gust < 15 ? 30 : gust < 25 ? 50 : gust < 38 ? 75 : 95,
       todo: (gust >= 8 && gust <= 22 && factor < 1.9) ? 'Fly a Kite \u2014 ' + Math.round(mean) + ' mph' : null,
       todoWhen: 'out', todoRank: 90, todoOutdoor: true,
       rows: [[Math.round(mean) + ' mph average; ' + Math.round(gust) + ' mph gusts.'], [use]] };
@@ -2347,6 +2426,8 @@
          : half(startH) + DASH + half(endH) + ' is the clearest morning stretch.')
       : 'No clear morning window today \u2014 take whatever the middle of the day offers.';
     return { bg: bgFlat('sky', Math.min(100, d.cloudDay)), bold: word,
+             icon: d.cloudDay >= 80 ? '\uD83C\uDF25\uFE0F' : d.cloudDay >= 55 ? '\u26C5' : d.cloudDay >= 25 ? '\uD83C\uDF24\uFE0F' : '\u2600\uFE0F',
+             severity: d.cloudDay >= 80 ? 75 : d.cloudDay >= 55 ? 55 : d.cloudDay >= 25 ? 35 : 15,
              rows: [
                ['Roughly ' + hm(mins) + ' of usable outdoor light.'],
                [stretchLine]
@@ -2388,6 +2469,8 @@
           text: 'Check light pollution near you \u2014 try "Find closest dark site" there' }
       : null;
     return { bg: bgFlat('risk', Math.min(100, kp.max * 11)), bold: word,
+      icon: goodOdds ? '\uD83C\uDF0C' : strong ? '\u2601\uFE0F' : '\uD83D\uDC40',
+      severity: goodOdds ? 90 : strong ? 50 : 15,
       todo: goodOdds ? 'Drive North \u2014 Kp ' + kp.max.toFixed(1) : null,
       todoWhen: 'night', todoRank: 85, todoOutdoor: true,
       link: lpLink,
@@ -2459,6 +2542,8 @@
     lines.push(['Radiant rises in ' + best.radiant + '; meteors can streak anywhere in the sky, not just near it.']);
 
     return { bg: bgFlat('risk', goodOdds ? 15 : 50), bold: word,
+      icon: goodOdds ? '\uD83C\uDF20' : clear ? '\uD83C\uDF15' : '\u2601\uFE0F',
+      severity: goodOdds ? 90 : clear ? 50 : 15,
       todo: goodOdds ? 'Watch for Meteors \u2014 ' + best.name : null,
       todoWhen: 'night', todoRank: 87, todoOutdoor: true,
       rows: lines };
@@ -2881,14 +2966,14 @@
     // methodology paragraph moved to About, where the other "how this
     // differs from the forecast" explanations already live \u2014 the tap
     // only needs the two facts someone actually wants mid-glance.
-    return { alert: true, bold: noun + ' Right Now',
+    return { alert: true, bold: noun + ' Right Now', icon: STATE_EMOJI.precip[kind] || '',
       det: current.temperature_2m != null ? ' (' + Math.round(current.temperature_2m) + DEG + ')' : '',
       tip: 'As of ' + t + ' local time.' };
   }
 
   function alertCard(al, tz) {
     var until = al.ends ? shortTime(al.ends, tz) : '';
-    return { alert: true, bold: al.event, det: until ? ' (until ' + until + ')' : '',
+    return { alert: true, icon: '\u26A0\uFE0F', bold: al.event, det: until ? ' (until ' + until + ')' : '',
              tip: al.headline || null };
   }
 
@@ -2983,6 +3068,34 @@
   }
 
   var DEFAULT_TILE_ORDER = ['flag', 'air', 'allergy', 'migraine', 'arthritis', 'frostbite', 'bug', 'frizz', 'virus', 'burn', 'light', 'water', 'pavement', 'wind', 'aurora', 'meteor', 'eclipse', 'bird', 'ebird'];
+  /* One identity emoji per tile: Settings and the quiet row use it,
+     and a tile face falls back to it when a card has no state of its
+     own. Faces for things the weather does to a body, objects and sky
+     for things it does to the world. */
+  var TILE_EMOJI = { flag: '\uD83C\uDFF4', air: '\uD83D\uDE37', allergy: '\uD83E\uDD27',
+    migraine: '\uD83E\uDD15', arthritis: '\uD83E\uDDB4', frostbite: '\uD83E\uDD76',
+    bug: '\uD83E\uDD9F', frizz: '\uD83E\uDD81', virus: '\uD83E\uDDA0', burn: '\uD83E\uDDF4',
+    light: '\uD83D\uDD06', water: '\uD83C\uDF0A', pavement: '\uD83D\uDC3E', wind: '\uD83D\uDCA8',
+    aurora: '\uD83C\uDF0C', meteor: '\uD83C\uDF20', eclipse: '\uD83C\uDF11', bird: '\uD83D\uDC26',
+    ebird: '\uD83E\uDD9C' };
+  /* State emoji. A tile's glyph moves with what the tile says, so the
+     picture tells the story before the words do. The four across-the-day
+     cards carry one at each end of the label: where the day starts on
+     the left, where it is heading on the right. Everything keyed here
+     uses the same words the card puts on its face, so the two cannot
+     drift apart; a card with a numeric ladder picks from an array in
+     the builder itself, next to the thresholds it mirrors. */
+  var STATE_EMOJI = {
+    temp: { Frigid: '\uD83E\uDDCA', Freezing: '\uD83E\uDD76', 'Very Cold': '\uD83E\uDDE3', Cold: '\uD83E\uDDE5', Cool: '\uD83C\uDF43',
+            Comfortable: '\uD83D\uDE42', Warm: '\uD83D\uDE0E', Hot: '\uD83E\uDD75', Sweltering: '\uD83D\uDD25' },
+    hum: { 'Bone Dry': '\uD83C\uDFDC\uFE0F', 'Very Dry': '\uD83C\uDF35', Humid: '\uD83D\uDCA7', Muggy: '\uD83D\uDCA6', Oppressive: '\uD83E\uDEE0', 'Miserable Humidity': '\uD83D\uDE35' },
+    sky: { Fog: '\uD83C\uDF2B\uFE0F', Sunny: '\u2600\uFE0F', 'Mostly Sunny': '\uD83C\uDF24\uFE0F', 'Partly Cloudy': '\u26C5', 'Mostly Cloudy': '\uD83C\uDF25\uFE0F', Cloudy: '\u2601\uFE0F' },
+    precip: { hail: '\u26C8\uFE0F', thunder: '\uD83C\uDF29\uFE0F', freezing: '\uD83C\uDF28\uFE0F', snow: '\u2744\uFE0F', showers: '\uD83C\uDF26\uFE0F', rain: '\uD83C\uDF27\uFE0F', drizzle: '\u2614' },
+    moon: { 'New Moon': '\uD83C\uDF11', 'Waxing Crescent': '\uD83C\uDF12', 'First Quarter': '\uD83C\uDF13', 'Waxing Gibbous': '\uD83C\uDF14',
+            'Full Moon': '\uD83C\uDF15', 'Waning Gibbous': '\uD83C\uDF16', 'Last Quarter': '\uD83C\uDF17', 'Waning Crescent': '\uD83C\uDF18' },
+    allergy: { Low: '\uD83C\uDF31', Moderate: '\uD83C\uDF3C', High: '\uD83E\uDD27', none: '\uD83D\uDE42', season: '\uD83C\uDF42', quiet: '\uD83C\uDF3F' },
+    unavailable: '\u2754'
+  };
   var PILL_ONLY = ['shoe','frost','pipe','rust','mow','mold','fire','mask','swim','garden','ice','tick',
                    'power','firefly','leaves'];
   var DEFAULT_HOURLY_ORDER = ['feels', 'sky', 'daylight', 'moon'];
@@ -3585,7 +3698,11 @@
   }
 
   /* ================= render ================= */
-  function card(row) {
+  function emoSpan(text, side) {
+    var es = document.createElement('span'); es.className = 'emo' + (side === 'r' ? ' r' : '');
+    es.setAttribute('aria-hidden', 'true'); es.textContent = text; return es;
+  }
+  function card(row, id) {
     var el = document.createElement((row.tip || (row.rows && row.rows.length)) ? 'button' : 'div');
     el.className = 'card' + (row.tip ? '' : ' flat') + (row.plain ? ' plain' : '')
                  + (row.alert ? ' alert' : '')
@@ -3598,6 +3715,9 @@
     if (row.split) {
       var lb = document.createElement('div'); lb.className = 'end left';
       row.split.left.forEach(function (t) { var e2 = document.createElement('b'); e2.textContent = t; lb.appendChild(e2); });
+      // Split faces put the pair at the two ends of the row, inside the
+      // first line of each side so they stay on the same line as the time.
+      if (showEmoji() && row.icons && row.icons[0] && lb.firstChild) lb.firstChild.insertBefore(emoSpan(row.icons[0]), lb.firstChild.firstChild);
       line.appendChild(lb);
       // A middle column, so the phase sits dead centre between the two
       // times rather than centred on whatever space is left over.
@@ -3610,10 +3730,18 @@
       line.appendChild(mid);
       var rb = document.createElement('div'); rb.className = 'end right';
       row.split.right.forEach(function (t) { var e4 = document.createElement('b'); e4.textContent = t; rb.appendChild(e4); });
+      if (showEmoji() && row.icons && row.icons[1] && rb.firstChild) rb.firstChild.appendChild(emoSpan(row.icons[1], 'r'));
       line.appendChild(rb);
     } else {
+      // A card's own state emoji wins; a tile with none falls back to its
+      // identity glyph. Across-the-day cards pass a pair, one per end.
+      // Gated on one setting rather than at each of the ~20 call sites
+      // that compute an icon \u2014 turning it off here is enough.
+      var icons = showEmoji() ? (row.icons || [row.icon || (id && TILE_EMOJI[id]) || '', '']) : ['', ''];
+      if (icons[0]) line.appendChild(emoSpan(icons[0]));
       var b = document.createElement('b'); b.textContent = row.bold; line.appendChild(b);
       if (row.det) { var s2 = document.createElement('span'); s2.className = 'det'; s2.textContent = row.det; line.appendChild(s2); }
+      if (icons[1]) line.appendChild(emoSpan(icons[1], 'r'));
     }
     if (row.tip || (row.rows && row.rows.length)) {
       var chev = document.createElement('span');
@@ -3710,16 +3838,16 @@
     return el;
   }
   var todos = [];
-  function collectTodos(row) {
+  function collectTodos(row, cardId) {
     if (!row) return;
     if (row.todo) todos.push({ text: row.todo, when: row.todoWhen || 'out',
                                rank: row.todoRank == null ? 50 : row.todoRank,
-                               outdoor: !!row.todoOutdoor });
+                               outdoor: !!row.todoOutdoor, cardId: cardId });
     if (row.todo2) todos.push({ text: row.todo2.text, when: row.todo2.when, rank: row.todo2.rank,
-                                outdoor: !!row.todo2.outdoor });
+                                outdoor: !!row.todo2.outdoor, cardId: cardId });
     (row.todos || []).forEach(function (t) {
       todos.push({ text: t.text, when: t.when || 'out', rank: t.rank == null ? 50 : t.rank,
-                   outdoor: !!t.outdoor, blocksOutdoor: !!t.blocksOutdoor });
+                   outdoor: !!t.outdoor, blocksOutdoor: !!t.blocksOutdoor, cardId: cardId });
     });
   }
 
@@ -3727,7 +3855,7 @@
      It is still built \u2014 for its pills \u2014 but nothing is appended. */
   function collectOnly(id, build) {
     if (!on(id)) return;
-    try { collectTodos(build()); } catch (e) { /* a broken pill is not worth a visible card */ }
+    try { collectTodos(build(), id); } catch (e) { /* a broken pill is not worth a visible card */ }
   }
 
   /* Rearrange mode: one long-press on any hourly card or tile activates
@@ -3760,14 +3888,23 @@
   function enterRearrangeMode() {
     if (rearrange.active) return;
     rearrange.active = true;
-    var h = document.querySelector('.hourly'), g = document.querySelector('.grid');
-    if (h) h.classList.add('rearranging');
-    if (g) g.classList.add('rearranging');
+    // On <body>, not the individual containers, so anything on the
+    // page \u2014 the to-do list included, not just the hourly cards and
+    // tile grid this started with \u2014 can react to being in the mode
+    // with plain CSS instead of needing its own class applied by hand.
+    // No re-render here on purpose: this fires mid-gesture, from the
+    // long-press that's about to become a drag, and rebuilding the
+    // page would destroy the very card being held. The to-do list's
+    // dismiss badges are already sitting in the DOM from the last
+    // normal render, just hidden by this same class \u2014 so there's
+    // nothing to build, only something to reveal.
+    document.body.classList.add('rearranging');
     updateRearrangeHint();
   }
   function exitRearrangeMode() {
     if (!rearrange.active) return;
     rearrange.active = false;
+    document.body.classList.remove('rearranging');
     renderHome();
     updateRearrangeHint();
   }
@@ -3929,13 +4066,28 @@
     }
   }
 
+  /* The ghost row: one greyed emoji per tile that is switched on but
+     had nothing to report, so a short grid reads as a quiet day rather
+     than a broken or switched-off one. Hover or focus names the tile. */
+  function quietRow(ids) {
+    var row = document.createElement('div'); row.className = 'quiet';
+    row.setAttribute('role', 'list'); row.setAttribute('aria-label', 'Quiet today');
+    ids.forEach(function (id) {
+      var s = document.createElement('span'); s.textContent = TILE_EMOJI[id];
+      var label = cardMeta(id).name + ' \u2014 nothing to report today';
+      s.title = label; s.setAttribute('role', 'listitem'); s.setAttribute('aria-label', label);
+      row.appendChild(s);
+    });
+    return row;
+  }
+
   function addCard(host, id, build, which) {
-    if (id && !on(id)) return;
+    if (id && !on(id)) return false;
     try {
       var row = build();
-      if (!row) return;
-      collectTodos(row);
-      var el = card(row);
+      if (!row) return false;
+      collectTodos(row, id);
+      var el = card(row, id);
       if (which) wireRearrange(el, id, which, host);
       host.appendChild(el);
     } catch (e) {
@@ -3944,6 +4096,7 @@
       el2.textContent = 'This card failed: ' + ((e && e.message) || e);
       host.appendChild(el2);
     }
+    return true;
   }
   /* A digest of what the other cards told you to do. Built from their
      own output rather than a second set of rules, so it can never
@@ -4056,6 +4209,7 @@
         li.setAttribute('role', 'button');
         li.setAttribute('tabindex', '0');
         var toggle = function () {
+          if (rearrange.active) return;
           if (!store.done[key]) store.done[key] = {};
           if (store.done[key][t.text]) delete store.done[key][t.text];
           else store.done[key][t.text] = 1;
@@ -4065,6 +4219,26 @@
         li.addEventListener('keydown', function (e) {
           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
         });
+        // Same dismiss badge as a tile, same underlying action \u2014 turn
+        // the card that produced this pill off entirely. Removal only,
+        // never reordering: pills are sorted by rank, not by hand, so
+        // there is nothing to drag here. Present in the DOM at every
+        // render, not just while rearranging, and hidden by the same
+        // CSS the tile badges already use \u2014 so entering the mode via
+        // a long-press elsewhere on the page reveals it instantly,
+        // with no re-render that would risk the drag already in
+        // progress on whatever card started it.
+        if (t.cardId && !cardMeta(t.cardId).always) {
+          var pillBadge = document.createElement('span'); pillBadge.className = 'dismissBadge';
+          pillBadge.textContent = '\u00d7';
+          pillBadge.setAttribute('role', 'button');
+          pillBadge.setAttribute('aria-label', 'Hide ' + cardMeta(t.cardId).name);
+          pillBadge.addEventListener('click', function (e) {
+            e.stopPropagation();
+            store.cards[t.cardId] = false; saveStore(); renderHome(); updateRearrangeHint();
+          });
+          li.appendChild(pillBadge);
+        }
         ul.appendChild(li);
       });
       el.appendChild(ul);
@@ -4535,7 +4709,37 @@
       flag:      function () { return flagCard(p.flag); },
       moon:      function () { return moonCard(d.date, state.tz, lat, lon); }
     };
-    tileOrder().forEach(function (id) { addCard(grid, id, builders[id], 'tiles'); });
+    // Color order: only while nobody has ever dragged a tile by hand.
+    // The moment store.order holds a real saved order, that wins
+    // permanently \u2014 this is a starting default, not a mode that
+    // fights manual reordering for control. Recomputed fresh each
+    // render, from each tile's real severity today, not a fixed list:
+    // a tile with no severity of its own (Flag, Eclipse, Bird
+    // Migration, eBird \u2014 nothing graduated to sort by) sits in the
+    // neutral middle rather than being arbitrarily called green or red.
+    var renderTileOrder = tileOrder();
+    if (store.colorSort && !(store.order && store.order.length)) {
+      var sevCache = {};
+      var ranked = renderTileOrder.map(function (id) {
+        var row = null;
+        if (on(id) && builders[id]) { try { row = builders[id](); } catch (e) {} }
+        sevCache[id] = row;
+        return { id: id, sev: row && row.severity != null ? row.severity : 50 };
+      });
+      ranked.sort(function (a, b) { return a.sev - b.sev; });
+      renderTileOrder = ranked.map(function (r) { return r.id; });
+    }
+    // A tile that is on but returned nothing is quiet, not off: it goes
+    // in the ghost row so the gap is explained. Notable Birds with no
+    // key is neither \u2014 unconfigured \u2014 so it stays out of the row.
+    var quiet = [];
+    renderTileOrder.forEach(function (id) {
+      var shown = addCard(grid, id, builders[id], 'tiles');
+      if (shown || !on(id) || !TILE_EMOJI[id]) return;
+      if (id === 'ebird' && !(store.keys && store.keys.ebird)) return;
+      quiet.push(id);
+    });
+    if (quiet.length && showEmoji()) grid.appendChild(quietRow(quiet));
     // Pill-only cards are built now, so the to-do list is complete
     // before anything is placed.
     PILL_ONLY.forEach(function (id) { collectOnly(id, builders[id]); });
@@ -4815,7 +5019,8 @@
     box.addEventListener('change', function () {
       store.cards[id] = box.checked; saveStore(); buildSettings(); renderHome();
     });
-    var nm = document.createElement('span'); nm.textContent = meta.name;
+    var nm = document.createElement('span');
+    nm.textContent = (showEmoji() && TILE_EMOJI[id] ? TILE_EMOJI[id] + ' ' : '') + meta.name;
     if (meta.note) { var sm = document.createElement('small'); sm.textContent = meta.note; nm.appendChild(sm); }
     var up = document.createElement('button'); up.textContent = '\u2191';
     up.setAttribute('aria-label', 'Move ' + meta.name + ' up'); up.disabled = i === 0;
@@ -4832,6 +5037,32 @@
     var tip = document.createElement('p'); tip.className = 'lede';
     tip.textContent = 'Faster way to do this: press and hold any card on the main page to drag it into place or hide it directly, no need to come here at all.';
     settingsPanel.appendChild(tip);
+    if (which === 'tiles') {
+      var emRow = document.createElement('label'); emRow.className = 'opt';
+      var emBox = document.createElement('input'); emBox.type = 'checkbox';
+      emBox.checked = showEmoji();
+      emBox.addEventListener('change', function () {
+        store.emoji = emBox.checked; saveStore(); renderHome();
+      });
+      var emSp = document.createElement('span');
+      emSp.textContent = 'Show an emoji on each tile';
+      emRow.appendChild(emBox); emRow.appendChild(emSp);
+      settingsPanel.appendChild(emRow);
+
+      var csRow = document.createElement('label'); csRow.className = 'opt';
+      var csBox = document.createElement('input'); csBox.type = 'checkbox';
+      csBox.checked = !!store.colorSort;
+      csBox.addEventListener('change', function () {
+        store.colorSort = csBox.checked; saveStore(); renderHome();
+      });
+      var csSp = document.createElement('span');
+      csSp.textContent = 'Start each day sorted green to red, by how much today\u2019s condition needs attention';
+      csRow.appendChild(csBox); csRow.appendChild(csSp);
+      settingsPanel.appendChild(csRow);
+      var csNote = document.createElement('p'); csNote.className = 'lede';
+      csNote.textContent = 'Re-sorts fresh every day from real conditions, not a fixed list. Dragging a tile below always overrides this \u2014 once you\u2019ve arranged tiles by hand, that order sticks instead.';
+      settingsPanel.appendChild(csNote);
+    }
     var h = document.createElement('h3'); h.textContent = heading;
     settingsPanel.appendChild(h);
     ids.forEach(function (id, i, arr) { cardRow(id, i, arr, which); });
@@ -4947,6 +5178,23 @@
   }
 
   function buildColourTab() {
+    var dh0 = document.createElement('h3'); dh0.textContent = 'Light or dark';
+    settingsPanel.appendChild(dh0);
+    var dm = document.createElement('div'); dm.className = 'presets';
+    [['auto', 'Match device'], ['light', 'Light'], ['dark', 'Dark']].forEach(function (opt) {
+      var b = document.createElement('button');
+      b.className = 'preset' + ((store.darkMode || 'auto') === opt[0] ? ' sel' : '');
+      b.textContent = opt[1];
+      b.addEventListener('click', function () {
+        store.darkMode = opt[0]; saveStore(); applyTheme();
+      });
+      dm.appendChild(b);
+    });
+    settingsPanel.appendChild(dm);
+    var dmNote = document.createElement('p'); dmNote.className = 'lede';
+    dmNote.textContent = 'The condition colors below (cold, fine, warm, dangerous) stay the same either way \u2014 only the page itself changes.';
+    settingsPanel.appendChild(dmNote);
+
     var pr = document.createElement('div'); pr.className = 'presets';
     Object.keys(PRESETS).forEach(function (k) {
       var b = document.createElement('button');
@@ -5226,6 +5474,7 @@
     'Please take <a href="https://tally.so/r/obj48V" target="_blank" rel="noopener">this two minute survey</a>!';
 
   /* ================= start ================= */
+  applyTheme();
   buildRamps();
   pruneDone();
 
