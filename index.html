@@ -27,14 +27,14 @@
          --rowh:62px; --tileh:52px; --gap:7px; }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]){
-      --page:#14171B; --ink:#E7E9EC; --mid:#98A2AD; --line:#3D434B; --link:#7FB0FF;
-      --card2:#20242A; --panel:#1C2025; --panel2:#232830; --input:#2A2F38;
+      --page:#14171B; --ink:#E7E9EC; --mid:#98A2AD; --line:#4A505A; --link:#7FB0FF;
+      --card2:#20242A; --panel:#1C2025; --panel2:#232830; --input:#363C46;
       --faint:#7C8895; --alertbg:#3A2323; --alertborder:#5A2E2E;
     }
   }
   :root[data-theme="dark"]{
-    --page:#14171B; --ink:#E7E9EC; --mid:#98A2AD; --line:#3D434B; --link:#7FB0FF;
-    --card2:#20242A; --panel:#1C2025; --panel2:#232830; --input:#2A2F38;
+    --page:#14171B; --ink:#E7E9EC; --mid:#98A2AD; --line:#4A505A; --link:#7FB0FF;
+    --card2:#20242A; --panel:#1C2025; --panel2:#232830; --input:#363C46;
     --faint:#7C8895; --alertbg:#3A2323; --alertborder:#5A2E2E;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -190,15 +190,21 @@
      must NOT follow the theme the way the rest of the page's text does. */
   .card.coloured{color:#16232F;}
   /* Three independent legibility options, all optional. Color as an
-     accent strip: the strip is purely decorative, positioned over the
-     card's own padding rather than pushed by it, so it works
-     regardless of how much padding a given breakpoint uses. The body
-     underneath stays the normal neutral card surface \u2014 no .coloured,
-     so ordinary theme-adaptive ink applies, never the forced-dark text
-     an actually-colored card needs. */
-  .card.striped{background:var(--card2);padding-top:19px;}
-  .colorStrip{position:absolute;top:0;left:0;right:0;height:6px;
-              border-top-left-radius:inherit;border-top-right-radius:inherit;}
+     accent strip: corrected after the first version was too thin and
+     read as decorative rather than "still a real part of what we're
+     doing" \u2014 now a genuine band, not a hairline, in normal flow rather
+     than absolutely positioned, with the face's own padding pushed
+     below it instead of layered over it. Text goes left rather than
+     centered here specifically, since a left edge to align to is what
+     makes a band-plus-text layout read cleanly, unlike the centered
+     single line the rest of the app uses. The body underneath the
+     strip stays the normal neutral card surface \u2014 no .coloured, so
+     ordinary theme-adaptive ink applies, never the forced-dark text an
+     actually-colored card needs. */
+  .card.striped{background:var(--card2);padding:0;text-align:left;}
+  .card.striped .face{padding:10px 16px 9px;text-align:left;}
+  .card.striped .more{top:38px;}
+  .colorStrip{height:28px;border-top-left-radius:inherit;border-top-right-radius:inherit;}
   /* Neutral detail background: only meaningful on a still-colored
      headline (a striped card's body is already neutral). Extends to
      the card's own edges and rounds to match its bottom corners, so it
@@ -550,7 +556,7 @@
   }
 
   function on(id) { return store.cards[id] !== false; }
-  function showEmoji() { return store.emoji !== false; }
+  function showEmoji() { return store.emoji === true; }
 
   /* Fitzpatrick scale. It classifies how skin RESPONDS to sun rather
      than what colour it is, which is why each option is written as a
@@ -4034,9 +4040,12 @@
       badge.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
       badge.addEventListener('click', function (e) {
         e.stopPropagation();
+        // Only the on/off flag, not the order \u2014 on(id) already hides
+        // this regardless of its position in the saved order, so
+        // writing the order here served no purpose except accidentally
+        // locking out color-sort the moment anyone dismissed one tile,
+        // which is a different thing entirely from customizing order.
         store.cards[id] = false;
-        if (which === 'hourly') store.orderH = hourlyOrder().filter(function (x) { return x !== id; });
-        else store.order = tileOrder().filter(function (x) { return x !== id; });
         saveStore();
         renderHome();
         updateRearrangeHint();
@@ -5133,17 +5142,6 @@
     tip.textContent = 'Faster way to do this: press and hold any card on the main page to drag it into place or hide it directly, no need to come here at all.';
     settingsPanel.appendChild(tip);
     if (which === 'tiles') {
-      var emRow = document.createElement('label'); emRow.className = 'opt';
-      var emBox = document.createElement('input'); emBox.type = 'checkbox';
-      emBox.checked = showEmoji();
-      emBox.addEventListener('change', function () {
-        store.emoji = emBox.checked; saveStore(); renderHome();
-      });
-      var emSp = document.createElement('span');
-      emSp.textContent = 'Show an emoji on each tile';
-      emRow.appendChild(emBox); emRow.appendChild(emSp);
-      settingsPanel.appendChild(emRow);
-
       var csRow = document.createElement('label'); csRow.className = 'opt';
       var csBox = document.createElement('input'); csBox.type = 'checkbox';
       csBox.checked = !!store.colorSort;
@@ -5295,6 +5293,17 @@
     var dmNote = document.createElement('p'); dmNote.className = 'lede';
     dmNote.textContent = 'The condition colors below (cold, fine, warm, dangerous) stay the same either way \u2014 only the page itself changes.';
     settingsPanel.appendChild(dmNote);
+
+    var emRow = document.createElement('label'); emRow.className = 'opt';
+    var emBox = document.createElement('input'); emBox.type = 'checkbox';
+    emBox.checked = showEmoji();
+    emBox.addEventListener('change', function () {
+      store.emoji = emBox.checked; saveStore(); renderHome();
+    });
+    var emSp = document.createElement('span');
+    emSp.textContent = 'Show an emoji on each tile';
+    emRow.appendChild(emBox); emRow.appendChild(emSp);
+    settingsPanel.appendChild(emRow);
 
     var lh = document.createElement('h3'); lh.textContent = 'Legibility';
     settingsPanel.appendChild(lh);
