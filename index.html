@@ -200,8 +200,16 @@
      single line the rest of the app uses. The body underneath the
      strip stays the normal neutral card surface \u2014 no .coloured, so
      ordinary theme-adaptive ink applies, never the forced-dark text an
-     actually-colored card needs. */
-  .card.striped{background:var(--page);padding:0;text-align:left;}
+     actually-colored card needs. Width forced explicitly (100%,
+     min-width:0, border-box) on both variants below rather than left
+     to default sizing: a striped card with tip/rows content can end up
+     narrower than its non-striped siblings otherwise \u2014 flex items
+     default to min-width:auto, which can refuse to shrink to a grid's
+     stretched column width when content is long, and .display:block
+     doesn't share that quirk, so the two rendered inconsistently
+     against each other without this being explicit. */
+  .card.striped{background:var(--page);padding:0;text-align:left;
+               width:100%;min-width:0;box-sizing:border-box;}
   .card.striped .face{padding:10px 16px 9px;text-align:left;}
   .card.striped .more{top:38px;}
   /* .card.sm sets display:flex with centered alignment, and being
@@ -212,10 +220,18 @@
      Hourly cards never carry .sm, so they were never affected; this
      is why the daily cards worked and tiles didn't. Three-class
      specificity here beats both two-class rules regardless of order. */
-  .card.sm.striped{display:block;padding:0;text-align:left;}
-  .card.sm.striped .face{padding:8px 11px 8px;text-align:left;align-items:flex-start;}
+  .card.sm.striped{display:block;padding:0;text-align:left;
+                  width:100%;min-width:0;box-sizing:border-box;}
+  .card.sm.striped .face{padding:6px 11px 7px;text-align:left;align-items:flex-start;}
+  .card.sm.striped .more{top:22px;}
+  /* Tiles need a thinner strip than the full-width daily cards \u2014
+     28px was a large share of a small tile's total height, which read
+     as cramped and squeezed rather than clean. .colorStrip's default
+     is for the daily cards; .sm overrides it to something proportional
+     to a compact tile instead of reusing the daily-card size verbatim. */
   .colorStrip{position:relative;height:28px;overflow:hidden;
              border-top-left-radius:inherit;border-top-right-radius:inherit;}
+  .card.sm .colorStrip{height:14px;}
   /* Neutral detail background: only meaningful on a still-colored
      headline (a striped card's body is already neutral). Extends to
      the card's own edges and rounds to match its bottom corners, so it
