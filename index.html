@@ -392,18 +392,18 @@
                           border-radius:8px;background:var(--input);color:inherit;margin-top:4px;}
   .tabs{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 14px;
         border-bottom:1px solid var(--line);padding-bottom:9px;}
-  .tab{background:none;border:1px solid transparent;border-radius:9px;padding:5px 10px;
+  .tab{background:var(--input);border:1px solid var(--line);border-radius:9px;padding:5px 10px;
        font:inherit;font-size:13.5px;color:var(--mid);cursor:pointer;white-space:nowrap;}
   .tab:hover{background:var(--card2);}
-  .tab.sel{background:var(--input);border-color:var(--line);color:var(--ink);font-weight:600;}
+  .tab.sel{background:var(--ink);border-color:var(--ink);color:var(--page);font-weight:600;}
   .steps{margin:4px 0 12px;padding-left:22px;font-size:13.5px;color:var(--mid);line-height:1.5;}
   .steps li{margin-bottom:6px;}
   .ord input[type=checkbox]{width:17px;height:17px;flex:0 0 auto;margin:0;}
   .ord span small{display:block;font-size:12.5px;color:var(--mid);line-height:1.35;margin-top:1px;}
   .presets{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 12px;}
   .preset{background:var(--input);border:1px solid var(--line);border-radius:10px;padding:7px 10px;
-          font:inherit;font-size:13.5px;cursor:pointer;display:flex;align-items:center;gap:8px;}
-  .preset.sel{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);}
+          font:inherit;font-size:13.5px;cursor:pointer;display:flex;align-items:center;gap:8px;color:inherit;}
+  .preset.sel{background:var(--ink);border-color:var(--ink);color:var(--page);font-weight:600;}
   .preset .sw{display:flex;gap:2px;}
   .preset .sw i{width:11px;height:11px;border-radius:3px;display:block;}
   .contrast{margin-top:8px;padding-left:9px;border-left:2px solid #C9BFA9;}
@@ -4339,13 +4339,35 @@
           li.addEventListener('pointerdown', function (e) {
             if (e.button != null && e.button !== 0) return;
             pStartX = e.clientX; pStartY = e.clientY;
-            pTimer = setTimeout(function () { pTimer = null; enterRearrangeMode(); }, 500);
+            if (window.DEBUG_REARRANGE) console.log('[pill] pointerdown, timer armed', t.text);
+            pTimer = setTimeout(function () {
+              pTimer = null;
+              if (window.DEBUG_REARRANGE) console.log('[pill] 500ms reached, calling enterRearrangeMode()', t.text);
+              enterRearrangeMode();
+              if (window.DEBUG_REARRANGE) {
+                requestAnimationFrame(function () {
+                  var b = li.querySelector('.dismissBadge');
+                  console.log('[pill] body.rearranging=', document.body.classList.contains('rearranging'),
+                              'badge found=', !!b,
+                              'badge display=', b ? getComputedStyle(b).display : 'n/a');
+                });
+              }
+            }, 500);
           });
           li.addEventListener('pointermove', function (e) {
-            if (pTimer && (Math.abs(e.clientX - pStartX) > 10 || Math.abs(e.clientY - pStartY) > 10)) cancelPTimer();
+            if (pTimer && (Math.abs(e.clientX - pStartX) > 10 || Math.abs(e.clientY - pStartY) > 10)) {
+              if (window.DEBUG_REARRANGE) console.log('[pill] pointermove cancelled timer (moved >10px)', t.text);
+              cancelPTimer();
+            }
           });
-          li.addEventListener('pointerup', cancelPTimer);
-          li.addEventListener('pointercancel', cancelPTimer);
+          li.addEventListener('pointerup', function () {
+            if (window.DEBUG_REARRANGE && pTimer) console.log('[pill] pointerup cancelled timer (released early)', t.text);
+            cancelPTimer();
+          });
+          li.addEventListener('pointercancel', function () {
+            if (window.DEBUG_REARRANGE && pTimer) console.log('[pill] pointercancel fired \u2014 browser took the gesture (likely scroll)', t.text);
+            cancelPTimer();
+          });
         })();
         // Same dismiss badge as a tile, same underlying action \u2014 turn
         // the card that produced this pill off entirely. Removal only,
@@ -5348,7 +5370,7 @@
       var lBox = document.createElement('input'); lBox.type = 'checkbox';
       lBox.checked = !!store[opt[0]];
       lBox.addEventListener('change', function () {
-        store[opt[0]] = lBox.checked; saveStore(); renderHome();
+        store[opt[0]] = lBox.checked; saveStore(); renderHome(); updateContrast();
       });
       var lSp = document.createElement('span'); lSp.textContent = opt[1];
       lRow.appendChild(lBox); lRow.appendChild(lSp);
@@ -5521,7 +5543,14 @@
     if (!el) return;
     var r = contrastReport();
     if (!r) { el.textContent = ''; return; }
-    el.textContent = r.text;
+    var text = r.text;
+    if (store.stripHourly || store.stripTiles) {
+      var which = store.stripHourly && store.stripTiles ? 'the daily cards and tiles'
+                : store.stripHourly ? 'the daily cards' : 'tiles';
+      text += ' With the accent-strip setting on for ' + which
+            + ', this check only still applies to whatever hasn\u2019t moved off the color \u2014 to-do pills, for instance, and anything with the strip setting off.';
+    }
+    el.textContent = text;
     el.className = 'lede contrast' + (r.ok ? ' ok' : ' bad');
   }
 
