@@ -210,7 +210,7 @@
      against each other without this being explicit. */
   .card.striped{background:var(--page);padding:0;text-align:left;
                width:100%;min-width:0;box-sizing:border-box;}
-  .card.striped .face{padding:10px 16px 9px;text-align:left;}
+  .card.striped .face{padding:10px 34px 9px 16px;text-align:left;}
   .card.striped .more{top:38px;}
   /* .card.sm sets display:flex with centered alignment, and being
      declared after .card.striped in the sheet with equal (two-class)
@@ -222,15 +222,23 @@
      specificity here beats both two-class rules regardless of order. */
   .card.sm.striped{display:block;padding:0;text-align:left;
                   width:100%;min-width:0;box-sizing:border-box;}
-  .card.sm.striped .face{padding:6px 11px 7px;text-align:left;align-items:flex-start;}
+  .card.sm.striped .face{padding:6px 24px 7px 11px;text-align:left;align-items:flex-start;}
   .card.sm.striped .more{top:22px;}
   /* Tiles need a thinner strip than the full-width daily cards \u2014
      28px was a large share of a small tile's total height, which read
      as cramped and squeezed rather than clean. .colorStrip's default
      is for the daily cards; .sm overrides it to something proportional
      to a compact tile instead of reusing the daily-card size verbatim. */
+  /* Rounded to match the tile treatment regardless of the card's own
+     shape. Used to be `inherit`, which worked for tiles (.card.sm keeps
+     its normal 14px radius) but resolved to 0 for the four always-on
+     cards, since .hourly > .card deliberately squares those off to sit
+     flush edge-to-edge \u2014 leaving their strips with sharp top corners
+     while every tile's strip below them was rounded. Hardcoded instead
+     of inherited so the strip's own corners never depend on what its
+     parent card's shape happens to be. */
   .colorStrip{position:relative;height:28px;overflow:hidden;
-             border-top-left-radius:inherit;border-top-right-radius:inherit;}
+             border-top-left-radius:14px;border-top-right-radius:14px;}
   .card.sm .colorStrip{height:14px;}
   /* Neutral detail background: only meaningful on a still-colored
      headline (a striped card's body is already neutral). Extends to
