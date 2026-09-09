@@ -4008,8 +4008,8 @@
           });
         });
       }
-      if (id === 'allergy') {
-        disclosureRow(t, 'Allergy Settings', null, function (body) {
+      if (id === 'air') {
+        disclosureRow(t, 'Air Quality Settings', null, function (body) {
           var sRow = document.createElement('label'); sRow.className = 'opt sub';
           var sBox = document.createElement('input'); sBox.type = 'checkbox'; sBox.checked = sensitive();
           sBox.addEventListener('change', function () {
@@ -4021,6 +4021,10 @@
           sSm.textContent = 'Asthma, COPD, heart conditions, pregnancy, or you are older or very young';
           sTx.appendChild(sSm);
           sRow.appendChild(sBox); sRow.appendChild(sTx); body.appendChild(sRow);
+        });
+      }
+      if (id === 'allergy') {
+        disclosureRow(t, 'Allergy Settings', null, function (body) {
           allergyCategoryRows(body);
         });
       }
@@ -5476,50 +5480,62 @@
     emSp.textContent = 'Show an emoji on each tile';
     emRow.appendChild(emBox); emRow.appendChild(emSp);
     settingsPanel.appendChild(emRow);
+    settingsPanel.appendChild(labeledPair(miniEmojiCard(false), miniEmojiCard(true)));
 
-    var legActive = ['neutralDetail', 'stripHourly', 'stripTiles'].filter(function (k) { return !!store[k]; }).length;
-    collapseSection('colourLegibility', 'Legibility', legActive ? (legActive + ' of 3 on') : 'Off',
-      legActive > 0, function (body) {
-      [
-        ['neutralDetail', 'Neutral background when a card is expanded', 'Keeps the headline color; the detail underneath gets a plain background instead.'],
-        ['stripHourly', 'Color as an accent strip on the daily cards', 'Feels Like, Sky, Sunrise and Sunset, and Moon \u2014 color becomes a thin bar, text sits below it.'],
-        ['stripTiles', 'Color as an accent strip on tiles', 'Same treatment, for the grid of tiles below the daily cards.']
-      ].forEach(function (opt) {
-        var lRow = document.createElement('label'); lRow.className = 'opt';
-        var lBox = document.createElement('input'); lBox.type = 'checkbox';
-        lBox.checked = !!store[opt[0]];
-        lBox.addEventListener('change', function () {
-          store[opt[0]] = lBox.checked; saveStore(); renderHome(); updateContrast();
-        });
-        var lSp = document.createElement('span'); lSp.textContent = opt[1];
-        if (opt[2]) { var sm = document.createElement('small'); sm.textContent = opt[2]; lSp.appendChild(sm); }
-        lRow.appendChild(lBox); lRow.appendChild(lSp);
-        body.appendChild(lRow);
+    // Plain and always visible: three toggles is not enough to be worth
+    // a click to even see, and the whole point of a preview is that you
+    // see it, not that you find it.
+    var lh = document.createElement('h3'); lh.textContent = 'Legibility';
+    settingsPanel.appendChild(lh);
+    [
+      ['neutralDetail', 'Neutral background when a card is expanded', 'Keeps the headline color; the detail underneath gets a plain background instead.'],
+      ['stripHourly', 'Color as an accent strip on the daily cards', 'Feels Like, Sky, Sunrise and Sunset, and Moon \u2014 color becomes a thin bar, text sits below it.'],
+      ['stripTiles', 'Color as an accent strip on tiles', 'Same treatment, for the grid of tiles below the daily cards.']
+    ].forEach(function (opt) {
+      var lRow = document.createElement('label'); lRow.className = 'opt';
+      var lBox = document.createElement('input'); lBox.type = 'checkbox';
+      lBox.checked = !!store[opt[0]];
+      lBox.addEventListener('change', function () {
+        store[opt[0]] = lBox.checked; saveStore(); renderHome(); updateContrast();
       });
+      var lSp = document.createElement('span'); lSp.textContent = opt[1];
+      if (opt[2]) { var sm = document.createElement('small'); sm.textContent = opt[2]; lSp.appendChild(sm); }
+      lRow.appendChild(lBox); lRow.appendChild(lSp);
+      settingsPanel.appendChild(lRow);
+      if (opt[0] === 'neutralDetail') {
+        settingsPanel.appendChild(labeledPair(miniDetailCard(false), miniDetailCard(true)));
+      } else {
+        settingsPanel.appendChild(labeledPair(miniStripCard(false, opt[0] === 'stripTiles'), miniStripCard(true, opt[0] === 'stripTiles')));
+      }
     });
 
     var t = store.theme || {};
     var custom = t.cold || t.good || t.warm || t.danger || t.night || t.dawn || t.day;
-    var colorLabel = custom ? 'Custom' : (PRESETS[t.preset || 'default'] || PRESETS.default).name;
-    collapseSection('colourCustom', 'Colors', colorLabel, !!custom, function (body) {
-      var pr = document.createElement('div'); pr.className = 'presets';
-      Object.keys(PRESETS).forEach(function (k) {
-        var b = document.createElement('button');
-        b.className = 'preset' + ((t.preset || 'default') === k && !custom ? ' sel' : '');
-        b.textContent = PRESETS[k].name;
-        var sw = document.createElement('span'); sw.className = 'sw';
-        ['cold','good','warm','danger'].forEach(function (a) {
-          var d2 = document.createElement('i'); d2.style.background = PRESETS[k][a]; sw.appendChild(d2);
-        });
-        b.appendChild(sw);
-        b.addEventListener('click', function () {
-          store.theme = { preset: k }; saveStore(); buildRamps();
-          buildSettings(); renderHome();
-        });
-        pr.appendChild(b);
+    var ch = document.createElement('h3'); ch.textContent = 'Colors'; ch.style.marginTop = '18px';
+    settingsPanel.appendChild(ch);
+    // The presets ARE the visual part of this \u2014 gating them behind a
+    // click meant you couldn't see any color at all without one, which
+    // defeats the point of a swatch. Only the six individual pickers,
+    // genuinely rare, go behind Customize.
+    var pr = document.createElement('div'); pr.className = 'presets';
+    Object.keys(PRESETS).forEach(function (k) {
+      var b = document.createElement('button');
+      b.className = 'preset' + ((t.preset || 'default') === k && !custom ? ' sel' : '');
+      b.textContent = PRESETS[k].name;
+      var sw = document.createElement('span'); sw.className = 'sw';
+      ['cold','good','warm','danger'].forEach(function (a) {
+        var d2 = document.createElement('i'); d2.style.background = PRESETS[k][a]; sw.appendChild(d2);
       });
-      body.appendChild(pr);
+      b.appendChild(sw);
+      b.addEventListener('click', function () {
+        store.theme = { preset: k }; saveStore(); buildRamps();
+        buildSettings(); renderHome();
+      });
+      pr.appendChild(b);
+    });
+    settingsPanel.appendChild(pr);
 
+    collapseSection('colourCustomize', 'Customize colors further', custom ? 'Custom' : null, !!custom, function (body) {
       var A = anchors();
       swatchRow('cold', 'Cold and dry', A.cold, body);
       swatchRow('good', 'Fine', A.good, body);
@@ -5545,6 +5561,75 @@
       body.appendChild(reset);
       updateContrast();
     });
+  }
+
+  /* Miniature, non-interactive renderings that reuse the same classes
+     the real cards use \u2014 .card/.coloured/.striped/.colorStrip/.tip.
+     neutralDetail \u2014 so a preview can never quietly drift out of sync
+     with what the setting actually produces on a live card. Sample
+     colors are fixed rather than pulled from the live theme, since the
+     point is to show the STRUCTURE of the effect (where the line goes,
+     what moves), not today's actual color values. */
+  var PREVIEW_BG = 'linear-gradient(90deg,#F2C86D,#E2894F)';
+  function labeledPair(offNode, onNode) {
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;gap:10px;margin:2px 0 14px;';
+    [['Off', offNode], ['On', onNode]].forEach(function (pair) {
+      var col = document.createElement('div'); col.style.cssText = 'flex:1;min-width:0;';
+      var lab = document.createElement('div'); lab.textContent = pair[0];
+      lab.style.cssText = 'font-size:11px;color:var(--mid);text-align:center;margin-bottom:3px;';
+      col.appendChild(lab); col.appendChild(pair[1]);
+      wrap.appendChild(col);
+    });
+    return wrap;
+  }
+  function miniStripCard(strip, thin) {
+    var mini = document.createElement('div');
+    mini.className = 'card sm' + (strip ? ' striped' : ' coloured');
+    mini.style.cssText = 'margin:0;pointer-events:none;';
+    if (strip) {
+      var s = document.createElement('div'); s.className = 'colorStrip';
+      if (thin) s.style.height = '14px';
+      s.style.background = PREVIEW_BG;
+      mini.appendChild(s);
+    } else {
+      mini.style.background = PREVIEW_BG;
+    }
+    var face = document.createElement('div'); face.className = 'face';
+    var b = document.createElement('b'); b.textContent = 'Warm';
+    face.appendChild(b);
+    mini.appendChild(face);
+    return mini;
+  }
+  function miniDetailCard(neutral) {
+    var mini = document.createElement('div');
+    mini.className = 'card sm coloured';
+    mini.style.cssText = 'margin:0;pointer-events:none;';
+    mini.style.background = PREVIEW_BG;
+    var face = document.createElement('div'); face.className = 'face';
+    var b = document.createElement('b'); b.textContent = 'Warm';
+    face.appendChild(b);
+    mini.appendChild(face);
+    var t = document.createElement('p'); t.className = 'tip' + (neutral ? ' neutralDetail' : '');
+    t.style.display = 'block';
+    t.textContent = 'Feels warmer than the air.';
+    mini.appendChild(t);
+    return mini;
+  }
+  function miniEmojiCard(withEmoji) {
+    var mini = document.createElement('div');
+    mini.className = 'card sm plain';
+    mini.style.cssText = 'margin:0;pointer-events:none;background:var(--card2);';
+    var face = document.createElement('div'); face.className = 'face';
+    if (withEmoji) {
+      var e = document.createElement('span'); e.className = 'emo';
+      e.setAttribute('aria-hidden', 'true'); e.textContent = '\uD83E\uDD75';
+      face.appendChild(e);
+    }
+    var b = document.createElement('b'); b.textContent = 'Warm';
+    face.appendChild(b);
+    mini.appendChild(face);
+    return mini;
   }
 
   function swatchRow(key, label, value, container) {
