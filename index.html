@@ -413,6 +413,23 @@
           font:inherit;font-size:13.5px;cursor:pointer;display:flex;align-items:center;gap:8px;color:inherit;}
   .preset.sel{background:var(--ink);border-color:var(--ink);color:var(--page);font-weight:600;}
   .preset .sw{display:flex;gap:2px;}
+  /* Collapsible group within a settings tab \u2014 for a section with enough
+     rows that showing it flat, always-expanded, buries the tab in scroll.
+     Closed by default unless its own contents say otherwise (something in
+     it is already customized), so the common case is a short scan of
+     section names rather than every control at once. */
+  .subhead{display:flex;align-items:center;gap:8px;padding:11px 2px;margin-top:6px;
+           cursor:pointer;-webkit-user-select:none;user-select:none;
+           border-top:1px solid var(--line);}
+  .subhead:first-child{border-top:none;margin-top:0;}
+  .subhead h3{margin:0;flex:0 0 auto;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+              color:var(--mid);font-weight:600;}
+  .subhead .count{font-size:13px;color:var(--mid);flex:1;text-align:right;}
+  .subhead .chev{width:16px;height:16px;flex:0 0 auto;opacity:.5;transition:transform .15s;}
+  .subhead .chev svg{display:block;width:100%;height:100%;}
+  .subhead.open .chev{transform:rotate(180deg);opacity:.7;}
+  .subbody{display:none;padding-top:2px;}
+  .subbody.open{display:block;}
   .preset .sw i{width:11px;height:11px;border-radius:3px;display:block;}
   .contrast{margin-top:8px;padding-left:9px;border-left:2px solid #C9BFA9;}
   .contrast.ok{border-left-color:#7FA86B;}
@@ -1124,7 +1141,7 @@
     if (sk.id >= 4) {
       lines.push(['A longer window is not the same as no risk \u2014 UV still ages and damages skin that rarely burns.']);
     }
-    lines.push(['Not your skin color/burn type? Change in Settings.']);
+    lines.push(['Not your skin type? Adjust below.']);
     return { bg: bgFlat('burn', uv), bold: face, rows: lines,
              icon: uv < 3 ? '\uD83E\uDD76\uFE0F' : uv < 6 ? '\uD83E\uDDF4' : uv < 8 ? '\uD83E\uDDE2' : '\uD83D\uDD25',
              severity: uv < 3 ? 20 : uv < 6 ? 45 : uv < 8 ? 70 : 95,
@@ -1449,7 +1466,7 @@
   function allergyCard(d, pollen, cal) {
     var level = function (s) { return s >= 65 ? 'High' : s >= 35 ? 'Moderate' : 'Low'; };
 
-    var settingsHint = ' Not your allergies? Change it in Settings.';
+    var settingsHint = ' Not your allergies? Adjust below.';
     if (pollen && pollen.days) {
       var day = null;
       for (var i = 0; i < pollen.days.length; i++) if (pollen.days[i].date === d.date) day = pollen.days[i];
@@ -1673,7 +1690,15 @@
 
   function goldenHour(d, lat, lon, tzOff) {
     if (lat == null) return null;
-    var sr = d.sunrise, ss = d.sunset;   // derive() names them sunrise/sunset
+    // Was using d.sunrise/d.sunset here, which derive() sets via hourOf()
+    // \u2014 a whole-hour truncation meant for bucketing into hourly forecast
+    // arrays elsewhere, not a clock time. Two sunsets in the same clock
+    // hour (8:47 PM and 8:07 PM both truncate to hour 20) truncated to
+    // the identical value and searched the identical window, so two
+    // cities with genuinely different sunsets rendered the exact same
+    // Golden Hour Starts time. frac() keeps the minutes, matching what
+    // srF/ssF already use for the rest of this card.
+    var sr = frac(d.sunriseISO), ss = frac(d.sunsetISO);
     var amEnd = null, pmStart = null;
     for (var h1 = sr - 0.5; h1 < sr + 4; h1 += 1 / 30) {
       if (solarElevation(lat, lon, d.date, h1, tzOff) > 6) { amEnd = h1; break; }
@@ -3766,6 +3791,59 @@
   }
 
   /* ================= render ================= */
+  /* A collapsible row usable anywhere \u2014 inside a tile's own expanded
+     detail, or a Settings tab. Always starts closed and never persists
+     that state, unlike collapseSection() in Settings, which remembers
+     what's open across reopening the panel because that's a screen
+     people return to. This is for an occasional, in-place reveal
+     ("what's my skin type set to") that doesn't need to be remembered. */
+  function disclosureRow(container, title, countText, buildBody) {
+    var head = document.createElement('div'); head.className = 'subhead';
+    var h = document.createElement('h3'); h.textContent = title;
+    head.appendChild(h);
+    if (countText) { var c = document.createElement('span'); c.className = 'count'; c.textContent = countText; head.appendChild(c); }
+    var chev = document.createElement('span'); chev.className = 'chev';
+    chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true">'
+      + '<path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" '
+      + 'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    head.appendChild(chev);
+    var body = document.createElement('div'); body.className = 'subbody';
+    var built = false;
+    head.addEventListener('click', function (e) {
+      e.stopPropagation();   // a nested reveal should not also close the tile underneath it
+      var open = !head.classList.contains('open');
+      head.classList.toggle('open', open);
+      body.classList.toggle('open', open);
+      if (open && !built) { buildBody(body); built = true; }
+    });
+    container.appendChild(head);
+    container.appendChild(body);
+  }
+  /* The allergen checklist, by category \u2014 built once, used both by the
+     Allergens tile's own nested disclosure and (from here on) wherever
+     else it's needed, so the two can never drift out of sync with each
+     other the way two hand-written copies eventually would. */
+  function allergyCategoryRows(container) {
+    if (!store.allergyPlants) store.allergyPlants = {};
+    var byCategory = {};
+    ALLERGY_PLANTS.forEach(function (p) { (byCategory[ALLERGY_CAT[p]] = byCategory[ALLERGY_CAT[p]] || []).push(p); });
+    ['Trees', 'Grass', 'Weeds', 'Mold'].forEach(function (catName) {
+      var plants = byCategory[catName] || [];
+      var onCount = plants.filter(function (p) { return store.allergyPlants[p] !== false; }).length;
+      disclosureRow(container, catName, onCount + ' of ' + plants.length + ' on', function (body) {
+        plants.forEach(function (plant) {
+          var row = document.createElement('label'); row.className = 'opt';
+          var box = document.createElement('input'); box.type = 'checkbox';
+          box.checked = store.allergyPlants[plant] !== false;
+          box.addEventListener('change', function () {
+            store.allergyPlants[plant] = box.checked; saveStore(); renderHome();
+          });
+          var sp = document.createElement('span'); sp.textContent = cap(plant);
+          row.appendChild(box); row.appendChild(sp); body.appendChild(row);
+        });
+      });
+    });
+  }
   function emoSpan(text, side) {
     var es = document.createElement('span'); es.className = 'emo' + (side === 'r' ? ' r' : '');
     es.setAttribute('aria-hidden', 'true'); es.textContent = text; return es;
@@ -3912,6 +3990,39 @@
           tbl.appendChild(tr);
         });
         t.appendChild(tbl);
+      }
+      // Config that only matters to one card lives on that card, not a
+      // trip to Settings \u2014 a second-level reveal so it doesn't compete
+      // with the card's actual weather information for attention.
+      if (id === 'burn') {
+        disclosureRow(t, 'Skin Type', null, function (body) {
+          SKIN.forEach(function (sk) {
+            var row = document.createElement('label'); row.className = 'opt sub';
+            var r = document.createElement('input'); r.type = 'radio'; r.name = 'skin';
+            r.checked = (store.skin || 2) === sk.id;
+            r.addEventListener('change', function () {
+              store.skin = sk.id; saveStore(); renderHome();
+            });
+            var sp = document.createElement('span'); sp.textContent = sk.label;
+            row.appendChild(r); row.appendChild(sp); body.appendChild(row);
+          });
+        });
+      }
+      if (id === 'allergy') {
+        disclosureRow(t, 'Allergy Settings', null, function (body) {
+          var sRow = document.createElement('label'); sRow.className = 'opt sub';
+          var sBox = document.createElement('input'); sBox.type = 'checkbox'; sBox.checked = sensitive();
+          sBox.addEventListener('change', function () {
+            store.sensitive = sBox.checked; saveStore(); renderHome();
+          });
+          var sTx = document.createElement('span');
+          sTx.textContent = 'Air quality affects me sooner than most';
+          var sSm = document.createElement('small');
+          sSm.textContent = 'Asthma, COPD, heart conditions, pregnancy, or you are older or very young';
+          sTx.appendChild(sSm);
+          sRow.appendChild(sBox); sRow.appendChild(sTx); body.appendChild(sRow);
+          allergyCategoryRows(body);
+        });
       }
       el.appendChild(t);
       el.setAttribute('aria-expanded', 'false');
@@ -5174,6 +5285,34 @@
     else buildKeyTab();
   }
 
+  /* A named, collapsible group within a settings tab. Closed by default
+     unless defaultOpen says otherwise (typically: something inside it is
+     already customized, so the person sees their own settings without an
+     extra tap). State persists per key across reopening Settings, the
+     same way the top-level tabs already remember what's open. buildBody
+     receives the container to append into \u2014 append there, not to
+     settingsPanel directly, or it'll land outside the collapsible. */
+  function collapseSection(key, title, countText, defaultOpen, buildBody) {
+    store.settingsOpen = store.settingsOpen || {};
+    var isOpen = key in store.settingsOpen ? store.settingsOpen[key] : defaultOpen;
+    var head = document.createElement('div'); head.className = 'subhead' + (isOpen ? ' open' : '');
+    var h = document.createElement('h3'); h.textContent = title;
+    head.appendChild(h);
+    if (countText) { var c = document.createElement('span'); c.className = 'count'; c.textContent = countText; head.appendChild(c); }
+    var chev = document.createElement('span'); chev.className = 'chev';
+    chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true">'
+      + '<path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" '
+      + 'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    head.appendChild(chev);
+    var body = document.createElement('div'); body.className = 'subbody' + (isOpen ? ' open' : '');
+    head.addEventListener('click', function () {
+      store.settingsOpen[key] = !isOpen; saveStore(); buildSettings();
+    });
+    settingsPanel.appendChild(head);
+    settingsPanel.appendChild(body);
+    if (isOpen) buildBody(body);
+  }
+
   /* A row: checkbox, name, and the two arrows. Sub-controls that only
      make sense for one card hang underneath it rather than sitting in a
      settings screen of their own. */
@@ -5196,7 +5335,6 @@
     dn.addEventListener('click', function () { moveCard(id, 1, which); });
     row.appendChild(box); row.appendChild(nm); row.appendChild(up); row.appendChild(dn);
     settingsPanel.appendChild(row);
-    if (on(id)) subControls(id);
   }
 
   function listWithArrows(ids, which, heading) {
@@ -5255,34 +5393,6 @@
           var sp = document.createElement('span'); sp.textContent = opt[1];
           row.appendChild(r); row.appendChild(sp); settingsPanel.appendChild(row);
         });
-    }
-  }
-
-  function subControls(id) {
-    if (id === 'air') {
-      var row = document.createElement('label'); row.className = 'opt sub';
-      var box = document.createElement('input'); box.type = 'checkbox'; box.checked = sensitive();
-      box.addEventListener('change', function () {
-        store.sensitive = box.checked; saveStore(); renderHome();
-      });
-      var tx = document.createElement('span');
-      tx.textContent = 'Air quality affects me sooner than most';
-      var sm = document.createElement('small');
-      sm.textContent = 'Asthma, COPD, heart conditions, pregnancy, or you are older or very young';
-      tx.appendChild(sm);
-      row.appendChild(box); row.appendChild(tx); settingsPanel.appendChild(row);
-    }
-    if (id === 'burn') {
-      SKIN.forEach(function (sk) {
-        var row = document.createElement('label'); row.className = 'opt sub';
-        var r = document.createElement('input'); r.type = 'radio'; r.name = 'skin';
-        r.checked = (store.skin || 2) === sk.id;
-        r.addEventListener('change', function () {
-          store.skin = sk.id; saveStore(); renderHome();
-        });
-        var sp = document.createElement('span'); sp.textContent = sk.label;
-        row.appendChild(r); row.appendChild(sp); settingsPanel.appendChild(row);
-      });
     }
   }
 
@@ -5367,74 +5477,78 @@
     emRow.appendChild(emBox); emRow.appendChild(emSp);
     settingsPanel.appendChild(emRow);
 
-    var lh = document.createElement('h3'); lh.textContent = 'Legibility';
-    settingsPanel.appendChild(lh);
-    [
-      ['neutralDetail', 'Neutral background when a card is expanded', 'Keeps the headline color, gives the detail underneath a plain background instead of continuing it.'],
-      ['stripHourly', 'Color as an accent strip on the daily cards', 'Feels Like, Sky, Sunrise and Sunset, and Moon. Color becomes a thin bar; the text sits on a plain background below it.'],
-      ['stripTiles', 'Color as an accent strip on tiles', 'Same treatment, for the grid of tiles below the daily cards.']
-    ].forEach(function (opt) {
-      var lRow = document.createElement('label'); lRow.className = 'opt';
-      var lBox = document.createElement('input'); lBox.type = 'checkbox';
-      lBox.checked = !!store[opt[0]];
-      lBox.addEventListener('change', function () {
-        store[opt[0]] = lBox.checked; saveStore(); renderHome(); updateContrast();
+    var legActive = ['neutralDetail', 'stripHourly', 'stripTiles'].filter(function (k) { return !!store[k]; }).length;
+    collapseSection('colourLegibility', 'Legibility', legActive ? (legActive + ' of 3 on') : 'Off',
+      legActive > 0, function (body) {
+      [
+        ['neutralDetail', 'Neutral background when a card is expanded', 'Keeps the headline color; the detail underneath gets a plain background instead.'],
+        ['stripHourly', 'Color as an accent strip on the daily cards', 'Feels Like, Sky, Sunrise and Sunset, and Moon \u2014 color becomes a thin bar, text sits below it.'],
+        ['stripTiles', 'Color as an accent strip on tiles', 'Same treatment, for the grid of tiles below the daily cards.']
+      ].forEach(function (opt) {
+        var lRow = document.createElement('label'); lRow.className = 'opt';
+        var lBox = document.createElement('input'); lBox.type = 'checkbox';
+        lBox.checked = !!store[opt[0]];
+        lBox.addEventListener('change', function () {
+          store[opt[0]] = lBox.checked; saveStore(); renderHome(); updateContrast();
+        });
+        var lSp = document.createElement('span'); lSp.textContent = opt[1];
+        if (opt[2]) { var sm = document.createElement('small'); sm.textContent = opt[2]; lSp.appendChild(sm); }
+        lRow.appendChild(lBox); lRow.appendChild(lSp);
+        body.appendChild(lRow);
       });
-      var lSp = document.createElement('span'); lSp.textContent = opt[1];
-      lRow.appendChild(lBox); lRow.appendChild(lSp);
-      settingsPanel.appendChild(lRow);
-      var lNote = document.createElement('p'); lNote.className = 'lede';
-      lNote.textContent = opt[2];
-      settingsPanel.appendChild(lNote);
     });
 
-    var pr = document.createElement('div'); pr.className = 'presets';
-    Object.keys(PRESETS).forEach(function (k) {
-      var b = document.createElement('button');
-      var t = store.theme || {};
-      var custom = t.cold || t.good || t.warm || t.danger || t.night || t.dawn || t.day;
-      b.className = 'preset' + ((t.preset || 'default') === k && !custom ? ' sel' : '');
-      b.textContent = PRESETS[k].name;
-      var sw = document.createElement('span'); sw.className = 'sw';
-      ['cold','good','warm','danger'].forEach(function (a) {
-        var d2 = document.createElement('i'); d2.style.background = PRESETS[k][a]; sw.appendChild(d2);
+    var t = store.theme || {};
+    var custom = t.cold || t.good || t.warm || t.danger || t.night || t.dawn || t.day;
+    var colorLabel = custom ? 'Custom' : (PRESETS[t.preset || 'default'] || PRESETS.default).name;
+    collapseSection('colourCustom', 'Colors', colorLabel, !!custom, function (body) {
+      var pr = document.createElement('div'); pr.className = 'presets';
+      Object.keys(PRESETS).forEach(function (k) {
+        var b = document.createElement('button');
+        b.className = 'preset' + ((t.preset || 'default') === k && !custom ? ' sel' : '');
+        b.textContent = PRESETS[k].name;
+        var sw = document.createElement('span'); sw.className = 'sw';
+        ['cold','good','warm','danger'].forEach(function (a) {
+          var d2 = document.createElement('i'); d2.style.background = PRESETS[k][a]; sw.appendChild(d2);
+        });
+        b.appendChild(sw);
+        b.addEventListener('click', function () {
+          store.theme = { preset: k }; saveStore(); buildRamps();
+          buildSettings(); renderHome();
+        });
+        pr.appendChild(b);
       });
-      b.appendChild(sw);
-      b.addEventListener('click', function () {
-        store.theme = { preset: k }; saveStore(); buildRamps();
+      body.appendChild(pr);
+
+      var A = anchors();
+      swatchRow('cold', 'Cold and dry', A.cold, body);
+      swatchRow('good', 'Fine', A.good, body);
+      swatchRow('warm', 'Warm', A.warm, body);
+      swatchRow('danger', 'Dangerous', A.danger, body);
+
+      var dh = document.createElement('h3'); dh.textContent = 'Sunrise and sunset';
+      body.appendChild(dh);
+      var TH = store.theme || {};
+      swatchRow('night', 'Night', TH.night || rgb2hex(NIGHT), body);
+      swatchRow('dawn', 'Dawn and dusk', TH.dawn || rgb2hex(TWILIGHT), body);
+      swatchRow('day', 'Midday', TH.day || rgb2hex(DAYLIT), body);
+
+      var warn = document.createElement('p'); warn.className = 'lede contrast'; warn.id = 'contrastNote';
+      body.appendChild(warn);
+
+      var reset = document.createElement('button'); reset.className = 'reset';
+      reset.textContent = 'Reset colours';
+      reset.addEventListener('click', function () {
+        store.theme = { preset: 'default' }; saveStore(); buildRamps();
         buildSettings(); renderHome();
       });
-      pr.appendChild(b);
+      body.appendChild(reset);
+      updateContrast();
     });
-    settingsPanel.appendChild(pr);
-
-    var A = anchors();
-    swatchRow('cold', 'Cold and dry', A.cold);
-    swatchRow('good', 'Fine', A.good);
-    swatchRow('warm', 'Warm', A.warm);
-    swatchRow('danger', 'Dangerous', A.danger);
-
-    var dh = document.createElement('h3'); dh.textContent = 'Sunrise and sunset';
-    settingsPanel.appendChild(dh);
-    var TH = store.theme || {};
-    swatchRow('night', 'Night', TH.night || rgb2hex(NIGHT));
-    swatchRow('dawn', 'Dawn and dusk', TH.dawn || rgb2hex(TWILIGHT));
-    swatchRow('day', 'Midday', TH.day || rgb2hex(DAYLIT));
-
-    var warn = document.createElement('p'); warn.className = 'lede contrast'; warn.id = 'contrastNote';
-    settingsPanel.appendChild(warn);
-
-    var reset = document.createElement('button'); reset.className = 'reset';
-    reset.textContent = 'Reset colours';
-    reset.addEventListener('click', function () {
-      store.theme = { preset: 'default' }; saveStore(); buildRamps();
-      buildSettings(); renderHome();
-    });
-    settingsPanel.appendChild(reset);
-    updateContrast();
   }
 
-  function swatchRow(key, label, value) {
+  function swatchRow(key, label, value, container) {
+    container = container || settingsPanel;
     var row = document.createElement('label'); row.className = 'opt';
     var inp = document.createElement('input'); inp.type = 'color'; inp.value = value;
     inp.style.cssText = 'width:38px;height:26px;padding:0;border:1px solid #D6D0C4;border-radius:5px;background:none;flex:0 0 auto';
@@ -5444,7 +5558,7 @@
       saveStore(); buildRamps(); renderHome(); updateContrast();
     });
     var sp = document.createElement('span'); sp.textContent = label;
-    row.appendChild(inp); row.appendChild(sp); settingsPanel.appendChild(row);
+    row.appendChild(inp); row.appendChild(sp); container.appendChild(row);
   }
 
   function buildAllergyTab() {
@@ -5456,17 +5570,19 @@
     var byCategory = {};
     ALLERGY_PLANTS.forEach(function (p) { (byCategory[ALLERGY_CAT[p]] = byCategory[ALLERGY_CAT[p]] || []).push(p); });
     ['Trees', 'Grass', 'Weeds', 'Mold'].forEach(function (catName) {
-      var h = document.createElement('h3'); h.textContent = catName;
-      settingsPanel.appendChild(h);
-      (byCategory[catName] || []).forEach(function (plant) {
-        var row = document.createElement('label'); row.className = 'opt';
-        var box = document.createElement('input'); box.type = 'checkbox';
-        box.checked = store.allergyPlants[plant] !== false;
-        box.addEventListener('change', function () {
-          store.allergyPlants[plant] = box.checked; saveStore(); renderHome();
+      var plants = byCategory[catName] || [];
+      var onCount = plants.filter(function (p) { return store.allergyPlants[p] !== false; }).length;
+      collapseSection('allergy-' + catName, catName, onCount + ' of ' + plants.length + ' on', false, function (body) {
+        plants.forEach(function (plant) {
+          var row = document.createElement('label'); row.className = 'opt';
+          var box = document.createElement('input'); box.type = 'checkbox';
+          box.checked = store.allergyPlants[plant] !== false;
+          box.addEventListener('change', function () {
+            store.allergyPlants[plant] = box.checked; saveStore(); renderHome();
+          });
+          var sp = document.createElement('span'); sp.textContent = cap(plant);
+          row.appendChild(box); row.appendChild(sp); body.appendChild(row);
         });
-        var sp = document.createElement('span'); sp.textContent = cap(plant);
-        row.appendChild(box); row.appendChild(sp); settingsPanel.appendChild(row);
       });
     });
   }
