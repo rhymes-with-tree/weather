@@ -484,6 +484,20 @@
   .rearranging .card{touch-action:none;outline:2px solid var(--link);outline-offset:-2px;}
   .card.dragging{z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.22);transform:scale(1.04);
                  transition:none !important;pointer-events:none;}
+  /* The keyboard equivalent of a card currently under your finger \u2014
+     a stronger outline than every other card gets in rearrange mode,
+     since this one specifically will move on the next arrow press. */
+  .card.grabbed{outline:3px solid var(--link);outline-offset:-3px;
+                box-shadow:0 4px 14px rgba(0,0,0,.18);}
+  /* Dashed rather than the solid outline every other card gets in
+     rearrange mode \u2014 this one isn't draggable itself, it opens a list. */
+  .card.addCard{outline:2px dashed var(--line) !important;cursor:pointer;background:none;}
+  .card.addCard .face b{color:var(--mid);font-weight:600;}
+  .addCardList{display:none;flex-direction:column;gap:4px;width:100%;margin-top:8px;}
+  .card.addCard.open .addCardList{display:flex;}
+  .addCardItem{font:inherit;font-size:13px;text-align:left;background:var(--input);
+              border:1px solid var(--line);border-radius:8px;padding:6px 10px;
+              color:var(--ink);cursor:pointer;}
   .cardPlaceholder{background:rgba(0,0,0,.05);border:2px dashed var(--line);
                    box-shadow:none;margin:0 0 var(--gap);}
   .dismissBadge{display:none;position:absolute;top:-7px;left:-7px;width:22px;height:22px;
@@ -3825,6 +3839,10 @@
      other the way two hand-written copies eventually would. */
   function allergyCategoryRows(container) {
     if (!store.allergyPlants) store.allergyPlants = {};
+    var lede = document.createElement('p'); lede.className = 'lede';
+    lede.textContent = 'Everything on by default. If you have had an allergy test, turn off whatever it '
+                      + 'cleared you on \u2014 the Allergens tile only counts what is left on.';
+    container.appendChild(lede);
     var byCategory = {};
     ALLERGY_PLANTS.forEach(function (p) { (byCategory[ALLERGY_CAT[p]] = byCategory[ALLERGY_CAT[p]] || []).push(p); });
     ['Trees', 'Grass', 'Weeds', 'Mold'].forEach(function (catName) {
@@ -4073,7 +4091,64 @@
      drag in progress can trigger a re-render (finishing a drag, or
      dismissing a card) and the fresh containers need to come back
      already wiggling rather than needing a second pass to reapply it. */
-  var rearrange = { active: false };
+  var rearrange = { active: false, grabbedId: null, grabbedWhich: null };
+
+  function focusCardEl(id) {
+    var elx = document.querySelector('[data-card-id="' + id + '"]');
+    if (elx && elx.focus) elx.focus();
+  }
+
+  /* The other half of rearrange mode: dragging only ever works on a
+     card that's already visible, so hiding a card in Settings used to
+     be the only way back. One small tile at the end of the row/grid,
+     present only while rearrange mode is on, listing whatever's
+     currently off for this context \u2014 tap a name to turn it on, right
+     where you're already working. */
+  function addCardAffordance(which) {
+    var def = which === 'hourly' ? DEFAULT_HOURLY_ORDER : DEFAULT_TILE_ORDER;
+    var hidden = def.filter(function (id) {
+      var meta = cardMeta(id);
+      return !meta.always && !on(id);
+    });
+    if (!hidden.length) return null;
+    var wrap = document.createElement('div');
+    wrap.className = 'card sm addCard';
+    wrap.tabIndex = 0;
+    wrap.setAttribute('role', 'button');
+    wrap.setAttribute('aria-expanded', 'false');
+    wrap.setAttribute('aria-label', 'Add a card');
+    var face = document.createElement('div'); face.className = 'face';
+    var b = document.createElement('b'); b.textContent = '+ Add';
+    face.appendChild(b);
+    wrap.appendChild(face);
+    var list = document.createElement('div'); list.className = 'addCardList';
+    hidden.forEach(function (id) {
+      var item = document.createElement('button'); item.type = 'button'; item.className = 'addCardItem';
+      item.textContent = cardMeta(id).name;
+      item.addEventListener('click', function (e) {
+        e.stopPropagation();
+        store.cards[id] = true;
+        var o = orderOf(which);
+        if (o.indexOf(id) < 0) o.push(id);
+        if (which === 'hourly') store.orderH = o; else store.order = o;
+        saveStore(); renderHome(); updateRearrangeHint();
+        focusCardEl(id);
+      });
+      list.appendChild(item);
+    });
+    wrap.appendChild(list);
+    function toggle(e) {
+      e.stopPropagation();
+      var open = !wrap.classList.contains('open');
+      wrap.classList.toggle('open', open);
+      wrap.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    wrap.addEventListener('click', toggle);
+    wrap.addEventListener('keydown', function (e) {
+      if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter') { e.preventDefault(); toggle(e); }
+    });
+    return wrap;
+  }
 
   function updateRearrangeHint() {
     var hint = document.getElementById('tipHint');
@@ -4082,7 +4157,10 @@
       hint.style.display = '';
       hint.className = 'rearrangeBar';
       hint.innerHTML = '';
-      var span = document.createElement('span'); span.textContent = 'Drag to reorder, tap \u00d7 to hide.';
+      var span = document.createElement('span');
+      span.textContent = rearrange.grabbedId
+        ? 'Arrow keys to move, Space to drop.'
+        : 'Drag to reorder, tap \u00d7 to hide, or + Add to bring something back \u2014 or Tab to a card and press Space to move it with arrow keys.';
       var done = document.createElement('button'); done.type = 'button'; done.textContent = 'Done';
       done.addEventListener('click', exitRearrangeMode);
       hint.appendChild(span); hint.appendChild(done);
@@ -4112,6 +4190,7 @@
   function exitRearrangeMode() {
     if (!rearrange.active) return;
     rearrange.active = false;
+    rearrange.grabbedId = null; rearrange.grabbedWhich = null;
     document.body.classList.remove('rearranging');
     renderHome();
     updateRearrangeHint();
@@ -4186,6 +4265,16 @@
   function wireRearrange(el, id, which, host) {
     el.dataset.cardId = id;
     el.dataset.which = which;
+    // A <button> is already focusable; a flat/plain card is a <div>
+    // with no other reason to be in tab order, so it needs one
+    // explicitly \u2014 every card that can be reordered needs to be
+    // reachable by keyboard, not just the ones with expandable detail.
+    if (el.tabIndex < 0 || el.tagName !== 'BUTTON') el.tabIndex = 0;
+    if (el.tagName !== 'BUTTON') el.setAttribute('role', 'button');
+    el.setAttribute('aria-roledescription', 'reorderable card');
+    var grabbed = rearrange.grabbedId === id;
+    el.setAttribute('aria-grabbed', grabbed ? 'true' : 'false');
+    if (grabbed) el.classList.add('grabbed');
 
     var meta = cardMeta(id);
     if (!meta.always) {
@@ -4207,6 +4296,38 @@
       });
       el.appendChild(badge);
     }
+
+    // Keyboard equivalent of press-and-hold-then-drag: Space or Enter
+    // grabs the focused card (entering rearrange mode on the first
+    // press, same as a long-press would), arrow keys swap it with its
+    // neighbour one step at a time \u2014 through moveCard(), the exact
+    // function the old Settings up/down arrows called, so a keyboard
+    // move and a Settings-arrow move have always been the same
+    // operation under the hood. A second Space/Enter on the already-
+    // grabbed card drops it without leaving rearrange mode, so several
+    // cards can be moved in one pass. Escape leaves rearrange mode
+    // entirely. Unlike a pointer drag, each arrow press commits
+    // immediately \u2014 there is no pending position to cancel \u2014 so
+    // Escape ends the session rather than undoing anything.
+    el.addEventListener('keydown', function (e) {
+      if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter') {
+        e.preventDefault();
+        if (rearrange.grabbedId === id) {
+          rearrange.grabbedId = null; rearrange.grabbedWhich = null;
+        } else {
+          if (!rearrange.active) enterRearrangeMode();
+          rearrange.grabbedId = id; rearrange.grabbedWhich = which;
+        }
+        renderHome(); updateRearrangeHint(); focusCardEl(id);
+      } else if (rearrange.grabbedId === id && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        e.preventDefault();
+        moveCard(id, e.key === 'ArrowUp' ? -1 : 1, which);
+        focusCardEl(id);
+      } else if (e.key === 'Escape' && rearrange.active) {
+        e.preventDefault();
+        exitRearrangeMode();
+      }
+    });
 
     var startX, startY, timer, dragging = false;
 
@@ -4946,6 +5067,7 @@
     };
     var col = document.createElement('div'); col.className = 'hourly' + (rearrange.active ? ' rearranging' : '');
     hourlyOrder().forEach(function (id) { addCard(col, id, hourlyBuilders[id], 'hourly'); });
+    if (rearrange.active) { var addH = addCardAffordance('hourly'); if (addH) col.appendChild(addH); }
     roundEnds(col);
 
     var grid = document.createElement('div'); grid.className = 'grid' + (rearrange.active ? ' rearranging' : '');
@@ -5021,6 +5143,7 @@
       quiet.push(id);
     });
     if (quiet.length && showEmoji()) grid.appendChild(quietRow(quiet));
+    if (rearrange.active) { var addT = addCardAffordance('tiles'); if (addT) grid.appendChild(addT); }
     // Pill-only cards are built now, so the to-do list is complete
     // before anything is placed.
     PILL_ONLY.forEach(function (id) { collectOnly(id, builders[id]); });
@@ -5251,8 +5374,8 @@
   var settingsPanel = document.getElementById('settingsPanel');
   var aboutPanel = document.getElementById('aboutPanel');
 
-  var TABS = [['cards', 'Cards'], ['tiles', 'Tiles'], ['todo', 'To-Do List'],
-              ['order', 'Page Order'], ['colour', 'Color'], ['allergy', 'Allergens'], ['key', 'API Key']];
+  var TABS = [['cards', 'Daily Cards'], ['tiles', 'Tiles'], ['todo', 'To-Do List'],
+              ['order', 'Page Order'], ['colour', 'Color'], ['key', 'API Key']];
 
   function buildSettings() {
     settingsPanel.innerHTML = '';
@@ -5280,12 +5403,11 @@
     settingsPanel.appendChild(bar);
     if (!isOpen) return;
 
-    if (tab === 'cards') listWithArrows(hourlyOrder(), 'hourly', 'Across the day');
-    else if (tab === 'tiles') listWithArrows(tileOrder(), 'tiles', 'Tiles');
+    if (tab === 'cards') buildCardsTab();
+    else if (tab === 'tiles') buildTilesTab();
     else if (tab === 'todo') buildTodoTab();
     else if (tab === 'order') buildOrderTab();
     else if (tab === 'colour') buildColourTab();
-    else if (tab === 'allergy') buildAllergyTab();
     else buildKeyTab();
   }
 
@@ -5317,87 +5439,63 @@
     if (isOpen) buildBody(body);
   }
 
-  /* A row: checkbox, name, and the two arrows. Sub-controls that only
-     make sense for one card hang underneath it rather than sitting in a
-     settings screen of their own. */
-  function cardRow(id, i, arr, which) {
-    var meta = cardMeta(id);
-    var row = document.createElement('div'); row.className = 'ord';
-    var box = document.createElement('input'); box.type = 'checkbox';
-    box.checked = on(id); box.disabled = !!meta.always;
-    box.addEventListener('change', function () {
-      store.cards[id] = box.checked; saveStore(); buildSettings(); renderHome();
-    });
-    var nm = document.createElement('span');
-    nm.textContent = (showEmoji() && TILE_EMOJI[id] ? TILE_EMOJI[id] + ' ' : '') + meta.name;
-    if (meta.note) { var sm = document.createElement('small'); sm.textContent = meta.note; nm.appendChild(sm); }
-    var up = document.createElement('button'); up.textContent = '\u2191';
-    up.setAttribute('aria-label', 'Move ' + meta.name + ' up'); up.disabled = i === 0;
-    up.addEventListener('click', function () { moveCard(id, -1, which); });
-    var dn = document.createElement('button'); dn.textContent = '\u2193';
-    dn.setAttribute('aria-label', 'Move ' + meta.name + ' down'); dn.disabled = i === arr.length - 1;
-    dn.addEventListener('click', function () { moveCard(id, 1, which); });
-    row.appendChild(box); row.appendChild(nm); row.appendChild(up); row.appendChild(dn);
-    settingsPanel.appendChild(row);
+  /* What's left of these two tabs once ordering moved to the page.
+     The reorder lists (checkbox + name + up/down arrows, one row per
+     card) are gone \u2014 rearrange mode does all of it now, including
+     turning cards back on via "+ Add", so the rows were a second way
+     to do something already done better elsewhere. What stayed is what
+     rearrange mode has no equivalent for and never did: time markers,
+     multi-day style, color-sort, and the order reset. */
+  function buildCardsTab() {
+    var th = document.createElement('h3'); th.textContent = 'Time markers';
+    settingsPanel.appendChild(th);
+    [[0, 'Off'], [6, 'Every 6 hours'], [4, 'Every 4 hours'], [3, 'Every 3 hours']]
+      .forEach(function (opt) {
+        var row = document.createElement('label'); row.className = 'opt sub';
+        var r = document.createElement('input'); r.type = 'radio'; r.name = 'ticks';
+        r.checked = (store.tickHours || 0) === opt[0];
+        r.addEventListener('change', function () {
+          store.tickHours = opt[0]; saveStore(); renderHome();
+        });
+        var sp = document.createElement('span'); sp.textContent = opt[1];
+        row.appendChild(r); row.appendChild(sp); settingsPanel.appendChild(row);
+      });
+
+    var mh = document.createElement('h3'); mh.textContent = 'Multi-day style';
+    settingsPanel.appendChild(mh);
+    [['strip', 'Continuous strips'], ['pills', 'Pills, one per day']]
+      .forEach(function (opt) {
+        var row = document.createElement('label'); row.className = 'opt sub';
+        var r = document.createElement('input'); r.type = 'radio'; r.name = 'mdstyle';
+        r.checked = (store.mdStyle || 'strip') === opt[0];
+        r.addEventListener('change', function () {
+          store.mdStyle = opt[0]; saveStore(); renderHome();
+        });
+        var sp = document.createElement('span'); sp.textContent = opt[1];
+        row.appendChild(r); row.appendChild(sp); settingsPanel.appendChild(row);
+      });
   }
 
-  function listWithArrows(ids, which, heading) {
-    var tip = document.createElement('p'); tip.className = 'lede';
-    tip.textContent = 'Faster way to do this: press and hold any card on the main page to drag it into place or hide it directly, no need to come here at all.';
-    settingsPanel.appendChild(tip);
-    if (which === 'tiles') {
-      var csRow = document.createElement('label'); csRow.className = 'opt';
-      var csBox = document.createElement('input'); csBox.type = 'checkbox';
-      csBox.checked = !!store.colorSort;
-      csBox.addEventListener('change', function () {
-        store.colorSort = csBox.checked; saveStore(); renderHome();
-      });
-      var csSp = document.createElement('span');
-      csSp.textContent = 'Start each day sorted green to red, by how much today\u2019s condition needs attention';
-      csRow.appendChild(csBox); csRow.appendChild(csSp);
-      settingsPanel.appendChild(csRow);
-      var csNote = document.createElement('p'); csNote.className = 'lede';
-      csNote.textContent = 'Re-sorts fresh every day from real conditions, not a fixed list. Dragging a tile below always overrides this \u2014 once you\u2019ve arranged tiles by hand, that order sticks instead.';
-      settingsPanel.appendChild(csNote);
-      var orderReset = document.createElement('button'); orderReset.className = 'reset';
-      orderReset.textContent = 'Reset tile order';
-      orderReset.addEventListener('click', function () {
-        store.order = null; saveStore(); buildSettings(); renderHome();
-      });
-      settingsPanel.appendChild(orderReset);
-    }
-    var h = document.createElement('h3'); h.textContent = heading;
-    settingsPanel.appendChild(h);
-    ids.forEach(function (id, i, arr) { cardRow(id, i, arr, which); });
-    if (which === 'hourly') {
-      var th = document.createElement('h3'); th.textContent = 'Time markers';
-      settingsPanel.appendChild(th);
-      [[0, 'Off'], [6, 'Every 6 hours'], [4, 'Every 4 hours'], [3, 'Every 3 hours']]
-        .forEach(function (opt) {
-          var row = document.createElement('label'); row.className = 'opt sub';
-          var r = document.createElement('input'); r.type = 'radio'; r.name = 'ticks';
-          r.checked = (store.tickHours || 0) === opt[0];
-          r.addEventListener('change', function () {
-            store.tickHours = opt[0]; saveStore(); renderHome();
-          });
-          var sp = document.createElement('span'); sp.textContent = opt[1];
-          row.appendChild(r); row.appendChild(sp); settingsPanel.appendChild(row);
-        });
-
-      var mh = document.createElement('h3'); mh.textContent = 'Multi-day style';
-      settingsPanel.appendChild(mh);
-      [['strip', 'Continuous strips'], ['pills', 'Pills, one per day']]
-        .forEach(function (opt) {
-          var row = document.createElement('label'); row.className = 'opt sub';
-          var r = document.createElement('input'); r.type = 'radio'; r.name = 'mdstyle';
-          r.checked = (store.mdStyle || 'strip') === opt[0];
-          r.addEventListener('change', function () {
-            store.mdStyle = opt[0]; saveStore(); renderHome();
-          });
-          var sp = document.createElement('span'); sp.textContent = opt[1];
-          row.appendChild(r); row.appendChild(sp); settingsPanel.appendChild(row);
-        });
-    }
+  function buildTilesTab() {
+    var csRow = document.createElement('label'); csRow.className = 'opt';
+    var csBox = document.createElement('input'); csBox.type = 'checkbox';
+    csBox.checked = !!store.colorSort;
+    csBox.addEventListener('change', function () {
+      store.colorSort = csBox.checked; saveStore(); renderHome();
+    });
+    var csSp = document.createElement('span');
+    csSp.textContent = 'Start each day sorted green to red, by how much today\u2019s condition needs attention';
+    csRow.appendChild(csBox); csRow.appendChild(csSp);
+    settingsPanel.appendChild(csRow);
+    var csNote = document.createElement('p'); csNote.className = 'lede';
+    csNote.textContent = 'Re-sorts fresh every day from real conditions, not a fixed list. Rearranging tiles by hand always overrides this \u2014 once you\u2019ve set an order yourself, that order sticks instead.';
+    settingsPanel.appendChild(csNote);
+    var orderReset = document.createElement('button'); orderReset.className = 'reset';
+    orderReset.textContent = 'Reset tile order';
+    orderReset.addEventListener('click', function () {
+      store.order = null; saveStore(); buildSettings(); renderHome();
+    });
+    settingsPanel.appendChild(orderReset);
   }
 
   /* Alphabetical, and no arrows: order in the to-do list comes from how
@@ -5405,17 +5503,39 @@
   function buildTodoTab() {
     var h = document.createElement('h3'); h.textContent = 'To-do list';
     settingsPanel.appendChild(h);
-    PILL_ONLY.map(cardMeta).sort(function (a, b) {
-      return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
-    }).forEach(function (meta) {
+
+    function todoRow(id, container) {
+      var meta = cardMeta(id);
       var row = document.createElement('label'); row.className = 'opt';
-      var box = document.createElement('input'); box.type = 'checkbox'; box.checked = on(meta.id);
+      var box = document.createElement('input'); box.type = 'checkbox'; box.checked = on(id);
       box.addEventListener('change', function () {
-        store.cards[meta.id] = box.checked; saveStore(); renderHome();
+        store.cards[id] = box.checked; saveStore(); renderHome();
       });
       var nm = document.createElement('span'); nm.textContent = meta.name;
       if (meta.note) { var sm = document.createElement('small'); sm.textContent = meta.note; nm.appendChild(sm); }
-      row.appendChild(box); row.appendChild(nm); settingsPanel.appendChild(row);
+      row.appendChild(box); row.appendChild(nm); container.appendChild(row);
+    }
+
+    // Masking, Swimming, and Shoes each turned out to be the only thing
+    // left in their planned group (Health, Health, Prep) once Arthritis,
+    // Migraine, Bug Spray, and Hair Frizz \u2014 also part of those groups
+    // in the original sort, but full tiles with their own on/off on the
+    // main page, not entries in this list \u2014 are set aside. A one-item
+    // group header saves nothing over just showing the item, so these
+    // three sit plainly instead of under a heading of their own.
+    ['mask', 'swim', 'shoe'].forEach(function (id) { todoRow(id, settingsPanel); });
+
+    [
+      ['Yard', ['mow', 'garden']],
+      ['Home', ['pipe', 'mold']],
+      ['Vehicle', ['rust', 'frost']],
+      ['Safety', ['fire', 'ice', 'power']],
+      ['Outdoor', ['tick', 'firefly', 'leaves']]
+    ].forEach(function (g) {
+      var onCount = g[1].filter(function (id) { return on(id); }).length;
+      collapseSection('todo-' + g[0], g[0], onCount + ' of ' + g[1].length + ' on', false, function (body) {
+        g[1].forEach(function (id) { todoRow(id, body); });
+      });
     });
   }
 
@@ -5644,32 +5764,6 @@
     });
     var sp = document.createElement('span'); sp.textContent = label;
     row.appendChild(inp); row.appendChild(sp); container.appendChild(row);
-  }
-
-  function buildAllergyTab() {
-    var lede = document.createElement('p'); lede.className = 'lede';
-    lede.textContent = 'Everything on by default. If you have had an allergy test, turn off whatever it '
-                      + 'cleared you on \u2014 the Allergens tile only counts what is left on.';
-    settingsPanel.appendChild(lede);
-    if (!store.allergyPlants) store.allergyPlants = {};
-    var byCategory = {};
-    ALLERGY_PLANTS.forEach(function (p) { (byCategory[ALLERGY_CAT[p]] = byCategory[ALLERGY_CAT[p]] || []).push(p); });
-    ['Trees', 'Grass', 'Weeds', 'Mold'].forEach(function (catName) {
-      var plants = byCategory[catName] || [];
-      var onCount = plants.filter(function (p) { return store.allergyPlants[p] !== false; }).length;
-      collapseSection('allergy-' + catName, catName, onCount + ' of ' + plants.length + ' on', false, function (body) {
-        plants.forEach(function (plant) {
-          var row = document.createElement('label'); row.className = 'opt';
-          var box = document.createElement('input'); box.type = 'checkbox';
-          box.checked = store.allergyPlants[plant] !== false;
-          box.addEventListener('change', function () {
-            store.allergyPlants[plant] = box.checked; saveStore(); renderHome();
-          });
-          var sp = document.createElement('span'); sp.textContent = cap(plant);
-          row.appendChild(box); row.appendChild(sp); body.appendChild(row);
-        });
-      });
-    });
   }
 
   function buildKeyTab() {
