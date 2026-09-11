@@ -253,7 +253,8 @@
      face even though cards centre by default \u2014 that split reads as the
      day running left to right, and centring either end would break it. */
   .face.split .end.left{text-align:left;}
-  .card.flat, .card.todo, .card.todo .todohead{cursor:default;}
+  .card.flat, .card.todo{cursor:default;}
+  .todohead{cursor:pointer;}
   /* Compact tier. A card whose gradient runs midnight to midnight
      needs the width to be read across; a card that is one word does
      not, so it gets less height and a slightly smaller face. */
@@ -265,7 +266,7 @@
      row of water tiles swell to the height of the whole column. Only a
      card opened by tapping is allowed to grow. */
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);margin-top:17px;
-        grid-auto-rows:minmax(var(--tileh),auto);align-content:start;}
+        grid-auto-rows:minmax(var(--tileh),auto);align-content:start;align-items:start;grid-auto-flow:dense;}
   .card.sm{min-height:var(--tileh);display:flex;flex-direction:column;
            align-items:center;justify-content:center;text-align:center;
            padding:8px 26px 8px 11px;font-size:14px;border-radius:12px;margin:0;width:auto;
@@ -341,7 +342,7 @@
     .hourly > .card:not(.open){height:var(--rowh);}
     .hourly > .card.open{height:auto;}
     .card.sm{aspect-ratio:auto;min-height:var(--tileh);font-size:15px;}
-    .grid{grid-template-columns:repeat(3,1fr);margin-top:0;}
+    .grid{grid-template-columns:repeat(3,1fr);margin-top:0;grid-auto-flow:dense;}
     .card.sm.open{grid-column:span 3;min-height:0;}
   }
   @media (min-width:1180px){
@@ -380,8 +381,7 @@
      it \u2014 they were relying on whatever the browser draws by default,
      which works but looks inconsistent with everywhere else this app
      bothered to style it on purpose. */
-  .tab:focus-visible, .ord input:focus-visible, .ord button:focus-visible,
-  .opt input:focus-visible, .rearrangeBar button:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
+  .tab:focus-visible, .opt input:focus-visible, .rearrangeBar button:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;
          padding:16px 18px;margin:0 0 12px;}
   .panel h2{font-size:17px;margin:0 0 4px;}
@@ -394,8 +394,27 @@
   .opt input{margin:3px 0 0;width:17px;height:17px;flex:0 0 auto;}
   .opt.sub{padding-left:26px;border-top:1px solid #EFECE4;}
   .opt.sub span{font-size:14.5px;}
-  .ord + .opt.sub{border-top:1px solid #EFECE4;}
   .opt span small{display:block;font-size:12.5px;color:var(--mid);line-height:1.35;margin-top:1px;}
+  /* A real toggle switch \u2014 same on/off semantics as a checkbox, just
+     the visual a switch-driven row deserves instead of a small square. */
+  .toggleSwitch{position:relative;display:inline-block;width:42px;height:25px;flex:0 0 auto;}
+  .toggleSwitch input{position:absolute;inset:0;margin:0;opacity:0;cursor:pointer;}
+  .toggleSwitch .track{position:absolute;inset:0;background:var(--line);border-radius:999px;
+                       transition:background .15s;pointer-events:none;}
+  .toggleSwitch .thumb{position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;
+                       background:#FFF;box-shadow:0 1px 3px rgba(0,0,0,.3);
+                       transition:transform .15s;pointer-events:none;}
+  .toggleSwitch input:checked + .track{background:var(--link);}
+  .toggleSwitch input:checked + .track + .thumb{transform:translateX(17px);}
+  /* One row: a switch and its label on top, the real effect \u2014 reusing
+     the exact card markup, not new art \u2014 shown either side underneath.
+     No separate "Off"/"On" captions or paragraph of explanation; the
+     switch state and the preview itself are the explanation. */
+  .legRow{margin:14px 0;}
+  .legRow .legHead{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .legRow .legHead b{font-size:15px;font-weight:600;}
+  .legPreview{display:flex;gap:10px;}
+  .legPreview > div{flex:1;min-width:0;}
   .panel input[type=text]{font:inherit;width:100%;padding:7px 9px;border:1px solid var(--line);
                           border-radius:8px;background:var(--input);color:inherit;margin-top:4px;}
   .tabs{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 14px;
@@ -406,8 +425,6 @@
   .tab.sel{background:var(--ink);border-color:var(--ink);color:var(--page);font-weight:600;}
   .steps{margin:4px 0 12px;padding-left:22px;font-size:13.5px;color:var(--mid);line-height:1.5;}
   .steps li{margin-bottom:6px;}
-  .ord input[type=checkbox]{width:17px;height:17px;flex:0 0 auto;margin:0;}
-  .ord span small{display:block;font-size:12.5px;color:var(--mid);line-height:1.35;margin-top:1px;}
   .presets{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 12px;}
   .preset{background:var(--input);border:1px solid var(--line);border-radius:10px;padding:7px 10px;
           font:inherit;font-size:13.5px;cursor:pointer;display:flex;align-items:center;gap:8px;color:inherit;}
@@ -436,18 +453,86 @@
   .contrast.bad{border-left-color:#C4703F;}
   .reset{margin-top:10px;background:var(--input);border:1px solid var(--line);border-radius:9px;
          padding:7px 12px;font:inherit;font-size:14px;cursor:pointer;}
-  .ord{display:flex;align-items:center;gap:9px;padding:7px 0;font-size:14.5px;
-       border-top:1px solid #E8E4DC;}
-  .ord span{flex:1 1 auto;}
-  .ord button{background:var(--input);border:1px solid var(--line);border-radius:7px;width:30px;height:28px;
-              font:inherit;font-size:15px;line-height:1;cursor:pointer;color:var(--ink);}
-  .ord button:disabled{opacity:.32;cursor:default;}
   .card.todo{background:var(--panel2);border:1px solid var(--line);display:block;
              padding:12px 15px 13px;min-height:0;margin-bottom:10px;}
   .todohead{font-size:12.5px;letter-spacing:.07em;text-transform:uppercase;
-            color:var(--ink);opacity:.62;font-weight:700;margin-bottom:7px;}
-  .card.todo ul + .todohead{margin-top:14px;padding-top:12px;
-                            border-top:1px solid rgba(22,35,47,.13);}
+            color:var(--ink);opacity:.62;font-weight:700;margin-bottom:7px;position:relative;}
+  /* Sections are wrapped elements now, so the divider between them
+     hangs off the wrapper rather than off a `ul + .todohead` sibling
+     pair, which no longer exists in that shape. */
+  .todosection{position:relative;}
+  .todosection + .todosection{margin-top:14px;padding-top:12px;
+                              border-top:1px solid rgba(22,35,47,.13);}
+  /* Both the block heading (Across the day / Tiles / To-do list) and
+     each to-do section's own heading double as their rearrange handle
+     \u2014 focusable and clickable rather than just a label, once either
+     is picked up via the same grab pattern the cards use. */
+  .blockHead{font-size:13px;letter-spacing:.06em;text-transform:uppercase;
+             color:var(--mid);font-weight:700;margin:0 2px 8px;cursor:pointer;
+             display:flex;align-items:center;gap:6px;}
+  /* .grid is itself a CSS grid container, so a heading dropped in as
+     its first child would otherwise become just another grid item,
+     stuck inside one tile-width column instead of sitting above the
+     whole thing. */
+  .grid > .blockHead{grid-column:1/-1;}
+  .grid > .wiggleTileExtras{grid-column:1/-1;}
+  /* Rarely-touched settings, surfaced only while rearrange mode is on
+     \u2014 see the comment above buildWiggleStrip() for why. Reuses .opt,
+     .presets/.preset from elsewhere in the file rather than inventing
+     new row styles. */
+  .wiggleStrip{margin-bottom:14px;padding-bottom:10px;border-bottom:1px dashed var(--line);}
+  .wiggleTileExtras{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);}
+  .hourly > .wiggleTileExtras{border-top:1px solid var(--line);}
+  /* A stepped dot-slider: same idea as a range input, but with named
+     stops instead of a continuous drag, since there are only four
+     valid values. Clicking a dot jumps straight to it. */
+  /* Two miniatures flanking a switch. Clicking either side picks it,
+     as well as the switch itself \u2014 the pictures are the affordance
+     people reach for, so they have to be live, not decorative. */
+  .mdToggleRow{display:flex;align-items:center;justify-content:center;gap:14px;
+               margin:12px 0;flex-wrap:wrap;}
+  .mdSide{cursor:pointer;text-align:center;opacity:.5;transition:opacity .15s;}
+  .mdSide.sel{opacity:1;}
+  .mdSideLabel{font-size:13px;font-weight:600;margin-top:5px;}
+  .mdSide.sel .mdSideLabel{color:var(--link);}
+  .mdMini{display:flex;gap:3px;width:110px;height:30px;}
+  .mdMiniSeg{flex:1;border-radius:5px;display:block;}
+  .mdMiniBar{flex:1;border-radius:5px;display:block;}
+  .hmSlider{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);}
+  .hmLabel{font-size:13px;font-weight:600;margin-bottom:8px;}
+  .hmTrack{display:flex;align-items:flex-start;position:relative;}
+  .hmTrack::before{content:'';position:absolute;top:7px;left:7px;right:7px;height:2px;
+                   background:var(--line);z-index:0;}
+  .hmDot{flex:1;background:none;border:none;font:inherit;cursor:pointer;
+         display:flex;flex-direction:column;align-items:center;gap:5px;
+         padding:0;position:relative;z-index:1;}
+  .hmCirc{width:15px;height:15px;border-radius:50%;border:2px solid var(--mid);
+          background:var(--page);}
+  .hmDot.sel .hmCirc{background:var(--link);border-color:var(--link);}
+  .hmTxt{font-size:12px;color:var(--mid);}
+  .hmDot.sel .hmTxt{color:var(--link);font-weight:600;}
+  /* The dashed boundary wraps the whole block now, not just its
+     heading \u2014 reads as "this whole section moves/hides together"
+     rather than "this label is draggable." .todoblock, not the
+     generic .card.todo, so this doesn't collide with the solid
+     per-card outline every other reorderable card gets. */
+  .rearranging .hourly, .rearranging .grid, .rearranging .todoblock{
+             outline:2px dashed var(--link) !important;outline-offset:8px !important;
+             border-radius:16px;position:relative;}
+  .hourly, .grid, .card.todo{position:relative;}
+  /* On the wrapper, not the heading \u2014 the boundary should enclose the
+     section's pills too, not just its label. */
+  .rearranging .todosection{outline:2px dashed var(--link);
+             outline-offset:4px;border-radius:10px;cursor:grab;}
+  .rearranging .todohead{cursor:grab;}
+  .blockHead.grabbed, .todosection.grabbed{outline:3px solid var(--link) !important;
+             outline-offset:4px;background:var(--card2);}
+  .blockChip{position:fixed;z-index:60;background:var(--ink);color:var(--page);
+             font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+             padding:8px 14px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.28);
+             pointer-events:none;}
+  .blockPlaceholder{background:rgba(0,0,0,.05);border:2px dashed var(--line);
+                    border-radius:14px;margin-bottom:var(--gap);}
   /* Later This Week: day-grouped, always-visible text \u2014 not a pill.
      These are forecasts to read, not actions with a done state or
      detail worth hiding behind a tap; no chip shape, no toggle. */
@@ -457,8 +542,6 @@
            opacity:.55;font-weight:700;margin:0 2px 5px;}
   .weeknote{font-size:14.5px;line-height:1.45;margin:0 2px 8px;}
   .weeknote:last-child{margin-bottom:0;}
-  .ord.sub{padding-left:18px;}
-  .ord.sub span{opacity:.8;}
   .card.todo ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:7px 9px;}
   .card.todo li{position:relative;background:var(--input);border:1px solid var(--line);
                 border-radius:999px;padding:5px 12px;cursor:pointer;
@@ -493,8 +576,14 @@
      rearrange mode \u2014 this one isn't draggable itself, it opens a list. */
   .card.addCard{outline:2px dashed var(--line) !important;cursor:pointer;background:none;}
   .card.addCard .face b{color:var(--mid);font-weight:600;}
+  /* Same picker, full-width rather than tile-shaped \u2014 for the to-do
+     list and the page-level block picker, neither of which lives in a
+     tile grid. */
+  .addCardWide{border:2px dashed var(--line);border-radius:12px;padding:9px 12px;
+               cursor:pointer;margin-top:10px;}
+  .addCardWide .face b{color:var(--mid);font-weight:600;font-size:14px;}
   .addCardList{display:none;flex-direction:column;gap:4px;width:100%;margin-top:8px;}
-  .card.addCard.open .addCardList{display:flex;}
+  .card.addCard.open .addCardList, .addCardWide.open .addCardList{display:flex;}
   .addCardItem{font:inherit;font-size:13px;text-align:left;background:var(--input);
               border:1px solid var(--line);border-radius:8px;padding:6px 10px;
               color:var(--ink);cursor:pointer;}
@@ -505,10 +594,13 @@
                 font-size:15px;line-height:18px;text-align:center;font-weight:700;
                 cursor:pointer;z-index:51;}
   .rearranging .dismissBadge{display:block;}
-  .rearrangeBar{display:flex;align-items:center;justify-content:space-between;
-                background:var(--page);position:sticky;top:0;z-index:40;padding:6px 0;}
+  .rearrangeBar{display:flex;align-items:flex-start;justify-content:space-between;
+                background:var(--page);position:sticky;top:0;z-index:40;padding:6px 0;gap:10px;}
   .rearrangeBar button{font:inherit;font-weight:700;color:var(--link);background:none;
-                       border:none;padding:6px 4px;cursor:pointer;}
+                       border:none;padding:6px 4px;cursor:pointer;flex:0 0 auto;}
+  .rearrangeLines{flex:1;min-width:0;}
+  .rearrangeLines p{margin:0 0 2px;font-size:13px;line-height:1.35;color:var(--mid);}
+  .rearrangeLines p:last-child{margin-bottom:0;}
   .disc{font-size:12px;color:var(--faint);line-height:1.55;margin:16px 4px 0;
         border-top:1px solid var(--line);padding-top:12px;}
   .disc b{color:var(--mid);}
@@ -1155,7 +1247,6 @@
     if (sk.id >= 4) {
       lines.push(['A longer window is not the same as no risk \u2014 UV still ages and damages skin that rarely burns.']);
     }
-    lines.push(['Not your skin type? Adjust below.']);
     return { bg: bgFlat('burn', uv), bold: face, rows: lines,
              icon: uv < 3 ? '\uD83E\uDD76\uFE0F' : uv < 6 ? '\uD83E\uDDF4' : uv < 8 ? '\uD83E\uDDE2' : '\uD83D\uDD25',
              severity: uv < 3 ? 20 : uv < 6 ? 45 : uv < 8 ? 70 : 95,
@@ -1480,7 +1571,10 @@
   function allergyCard(d, pollen, cal) {
     var level = function (s) { return s >= 65 ? 'High' : s >= 35 ? 'Moderate' : 'Low'; };
 
-    var settingsHint = ' Not your allergies? Adjust below.';
+    // No "adjust below" hint here \u2014 the disclosure row immediately
+    // underneath is literally labelled "Allergy Settings", so the
+    // sentence was telling you what the next line already says.
+    var settingsHint = '';
     if (pollen && pollen.days) {
       var day = null;
       for (var i = 0; i < pollen.days.length; i++) if (pollen.days[i].date === d.date) day = pollen.days[i];
@@ -2314,7 +2408,7 @@
       ['-18\u00b0 to 5\u00b0', 'Slow risk'],
       ['6\u00b0 or warmer', 'Unlikely']
     ];
-    return { bg: bgAt('feels', wc, 9), bold: word, tip: tip,
+    return { bg: bgFlat('feels', wc), bold: word, tip: tip,
              icon: ['\uD83E\uDDCA', '\uD83E\uDDCA', '\uD83E\uDD76', '\uD83E\uDDE3', '\uD83D\uDE42'][hiRow],
              severity: [100, 90, 70, 45, 15][hiRow],
              todos: (function () {
@@ -2353,7 +2447,7 @@
       ['56\u00b0\u201365\u00b0', 'Frizz Likely'],
       ['66\u00b0 and up', 'Frizz Guaranteed']
     ];
-    return { bg: bgAt('sweat', dp, 7), bold: w,
+    return { bg: bgFlat('sweat', dp), bold: w,
       icon: ['\u26A1', '\uD83D\uDE0A', '\uD83D\uDE10', '\uD83E\uDE81', '\uD83E\uDE81'][hiRow],
       severity: [70, 10, 30, 55, 80][hiRow],
       tip: 'Dew point peaks near ' + Math.round(dp) + DEG + '. ' + why,
@@ -2575,7 +2669,7 @@
       ? { href: 'https://www.lightpollutionmap.info/#zoom=10.00&lat=' + lat.toFixed(4) + '&lon=' + lon.toFixed(4),
           text: 'Check light pollution near you \u2014 try "Find closest dark site" there' }
       : null;
-    return { bg: bgFlat('risk', Math.min(100, kp.max * 11)), bold: word,
+    return { bg: bgFlat('sky', 60), bold: word,
       icon: goodOdds ? '\uD83C\uDF0C' : strong ? '\u2601\uFE0F' : '\uD83D\uDC40',
       severity: goodOdds ? 90 : strong ? 50 : 15,
       todo: goodOdds ? 'Drive North \u2014 Kp ' + kp.max.toFixed(1) : null,
@@ -2590,7 +2684,7 @@
      than a pill: this is genuinely browsable content, not an action. */
   function ebirdCard(list) {
     if (!list || !list.length) return null;
-    return { bg: bgFlat('sky', 30),
+    return { bg: bgFlat('sky', 60),
       bold: list.length === 1 ? 'Notable Bird Nearby' : list.length + ' Notable Birds Nearby',
       tip: 'From eBird, within the last week and 25 km.',
       rows: list.map(function (o) { return [o.name, o.loc]; }) };
@@ -2996,7 +3090,7 @@
     var spring = (m >= 3 && m <= 5) || (m === 6 && day <= 15);
     var fall = (m >= 8 && m <= 10) || (m === 11 && day <= 15);
     if (!spring && !fall) return null;
-    return { bg: bgFlat('sky', 35), bold: 'Bird Migration Season',
+    return { bg: bgFlat('sky', 60), bold: 'Bird Migration Season',
       tip: 'Nocturnal migration runs nationwide through mid-' + (spring ? 'June' : 'November')
          + '. Turning off non-essential outdoor lighting overnight cuts collision risk on the '
          + 'heaviest migration nights. Want more \u2014 actual notable sightings near you, not just '
@@ -3220,6 +3314,11 @@
     if (i < 0 || j < 0 || j >= o.length) return;
     o.splice(j, 0, o.splice(i, 1)[0]);
     if (which === 'hourly') store.orderH = o; else store.order = o;
+    // A manual move is exactly the moment color-sort should stop
+    // fighting for control \u2014 see the fix note by that setting itself
+    // for why this needs to happen here now, not just be implied by a
+    // saved order existing.
+    if (which === 'tiles' && store.colorSort) store.colorSort = false;
     saveStore(); buildSettings(); renderHome();
   }
 
@@ -3244,6 +3343,7 @@
   }
 
   var FORECAST = 'https://api.open-meteo.com/v1/forecast';
+  var DEMO_SCENARIOS = {"cold":{"wx":{"latitude":68.1119,"longitude":-145.575,"timezone":"America/Anchorage","timezone_abbreviation":"AKDT","utc_offset_seconds":-28800,"hourly":{"time":["2026-09-07T00:00","2026-09-07T01:00","2026-09-07T02:00","2026-09-07T03:00","2026-09-07T04:00","2026-09-07T05:00","2026-09-07T06:00","2026-09-07T07:00","2026-09-07T08:00","2026-09-07T09:00","2026-09-07T10:00","2026-09-07T11:00","2026-09-07T12:00","2026-09-07T13:00","2026-09-07T14:00","2026-09-07T15:00","2026-09-07T16:00","2026-09-07T17:00","2026-09-07T18:00","2026-09-07T19:00","2026-09-07T20:00","2026-09-07T21:00","2026-09-07T22:00","2026-09-07T23:00","2026-09-08T00:00","2026-09-08T01:00","2026-09-08T02:00","2026-09-08T03:00","2026-09-08T04:00","2026-09-08T05:00","2026-09-08T06:00","2026-09-08T07:00","2026-09-08T08:00","2026-09-08T09:00","2026-09-08T10:00","2026-09-08T11:00","2026-09-08T12:00","2026-09-08T13:00","2026-09-08T14:00","2026-09-08T15:00","2026-09-08T16:00","2026-09-08T17:00","2026-09-08T18:00","2026-09-08T19:00","2026-09-08T20:00","2026-09-08T21:00","2026-09-08T22:00","2026-09-08T23:00","2026-09-09T00:00","2026-09-09T01:00","2026-09-09T02:00","2026-09-09T03:00","2026-09-09T04:00","2026-09-09T05:00","2026-09-09T06:00","2026-09-09T07:00","2026-09-09T08:00","2026-09-09T09:00","2026-09-09T10:00","2026-09-09T11:00","2026-09-09T12:00","2026-09-09T13:00","2026-09-09T14:00","2026-09-09T15:00","2026-09-09T16:00","2026-09-09T17:00","2026-09-09T18:00","2026-09-09T19:00","2026-09-09T20:00","2026-09-09T21:00","2026-09-09T22:00","2026-09-09T23:00","2026-09-10T00:00","2026-09-10T01:00","2026-09-10T02:00","2026-09-10T03:00","2026-09-10T04:00","2026-09-10T05:00","2026-09-10T06:00","2026-09-10T07:00","2026-09-10T08:00","2026-09-10T09:00","2026-09-10T10:00","2026-09-10T11:00","2026-09-10T12:00","2026-09-10T13:00","2026-09-10T14:00","2026-09-10T15:00","2026-09-10T16:00","2026-09-10T17:00","2026-09-10T18:00","2026-09-10T19:00","2026-09-10T20:00","2026-09-10T21:00","2026-09-10T22:00","2026-09-10T23:00","2026-09-11T00:00","2026-09-11T01:00","2026-09-11T02:00","2026-09-11T03:00","2026-09-11T04:00","2026-09-11T05:00","2026-09-11T06:00","2026-09-11T07:00","2026-09-11T08:00","2026-09-11T09:00","2026-09-11T10:00","2026-09-11T11:00","2026-09-11T12:00","2026-09-11T13:00","2026-09-11T14:00","2026-09-11T15:00","2026-09-11T16:00","2026-09-11T17:00","2026-09-11T18:00","2026-09-11T19:00","2026-09-11T20:00","2026-09-11T21:00","2026-09-11T22:00","2026-09-11T23:00","2026-09-12T00:00","2026-09-12T01:00","2026-09-12T02:00","2026-09-12T03:00","2026-09-12T04:00","2026-09-12T05:00","2026-09-12T06:00","2026-09-12T07:00","2026-09-12T08:00","2026-09-12T09:00","2026-09-12T10:00","2026-09-12T11:00","2026-09-12T12:00","2026-09-12T13:00","2026-09-12T14:00","2026-09-12T15:00","2026-09-12T16:00","2026-09-12T17:00","2026-09-12T18:00","2026-09-12T19:00","2026-09-12T20:00","2026-09-12T21:00","2026-09-12T22:00","2026-09-12T23:00","2026-09-13T00:00","2026-09-13T01:00","2026-09-13T02:00","2026-09-13T03:00","2026-09-13T04:00","2026-09-13T05:00","2026-09-13T06:00","2026-09-13T07:00","2026-09-13T08:00","2026-09-13T09:00","2026-09-13T10:00","2026-09-13T11:00","2026-09-13T12:00","2026-09-13T13:00","2026-09-13T14:00","2026-09-13T15:00","2026-09-13T16:00","2026-09-13T17:00","2026-09-13T18:00","2026-09-13T19:00","2026-09-13T20:00","2026-09-13T21:00","2026-09-13T22:00","2026-09-13T23:00","2026-09-14T00:00","2026-09-14T01:00","2026-09-14T02:00","2026-09-14T03:00","2026-09-14T04:00","2026-09-14T05:00","2026-09-14T06:00","2026-09-14T07:00","2026-09-14T08:00","2026-09-14T09:00","2026-09-14T10:00","2026-09-14T11:00","2026-09-14T12:00","2026-09-14T13:00","2026-09-14T14:00","2026-09-14T15:00","2026-09-14T16:00","2026-09-14T17:00","2026-09-14T18:00","2026-09-14T19:00","2026-09-14T20:00","2026-09-14T21:00","2026-09-14T22:00","2026-09-14T23:00","2026-09-15T00:00","2026-09-15T01:00","2026-09-15T02:00","2026-09-15T03:00","2026-09-15T04:00","2026-09-15T05:00","2026-09-15T06:00","2026-09-15T07:00","2026-09-15T08:00","2026-09-15T09:00","2026-09-15T10:00","2026-09-15T11:00","2026-09-15T12:00","2026-09-15T13:00","2026-09-15T14:00","2026-09-15T15:00","2026-09-15T16:00","2026-09-15T17:00","2026-09-15T18:00","2026-09-15T19:00","2026-09-15T20:00","2026-09-15T21:00","2026-09-15T22:00","2026-09-15T23:00","2026-09-16T00:00","2026-09-16T01:00","2026-09-16T02:00","2026-09-16T03:00","2026-09-16T04:00","2026-09-16T05:00","2026-09-16T06:00","2026-09-16T07:00","2026-09-16T08:00","2026-09-16T09:00","2026-09-16T10:00","2026-09-16T11:00","2026-09-16T12:00","2026-09-16T13:00","2026-09-16T14:00","2026-09-16T15:00","2026-09-16T16:00","2026-09-16T17:00","2026-09-16T18:00","2026-09-16T19:00","2026-09-16T20:00","2026-09-16T21:00","2026-09-16T22:00","2026-09-16T23:00"],"apparent_temperature":[17.0,16.9,16.7,17.1,19.0,16.9,22.6,24.4,27.2,28.9,29.8,32.2,32.0,32.2,32.8,32.6,31.8,29.0,28.0,25.9,22.6,19.2,17.5,16.1,20.1,20.4,21.1,23.0,22.2,23.0,27.1,28.2,32.4,34.3,35.9,35.8,36.3,36.5,37.2,35.1,35.3,33.7,31.3,29.9,26.7,21.8,23.2,20.5,23.6,24.9,23.9,26.2,25.9,25.3,31.6,34.1,34.0,36.7,39.3,39.4,40.4,40.0,40.8,38.9,39.5,37.3,35.7,32.4,31.6,25.2,25.4,23.1,26.0,26.9,27.3,28.3,27.6,28.4,33.4,34.8,38.7,39.6,41.1,41.2,43.5,42.4,43.1,42.6,40.3,39.3,38.4,35.7,33.3,27.6,27.6,25.7,25.9,24.2,25.3,26.9,26.9,26.6,31.5,34.8,36.6,37.8,39.1,40.8,41.5,42.8,42.3,39.5,40.2,37.6,37.0,34.2,31.2,27.5,27.0,24.6,24.6,23.2,23.3,26.2,26.1,24.5,29.7,32.0,34.7,37.8,37.7,40.0,40.1,41.5,40.6,40.6,38.4,36.5,33.8,32.7,30.1,26.6,26.4,22.3,22.4,22.4,22.3,25.1,22.9,24.5,30.0,31.3,34.5,35.7,35.9,39.2,37.8,38.8,38.3,37.9,37.6,34.5,33.4,30.7,29.8,23.1,23.4,22.1,24.6,22.9,23.5,25.5,24.3,25.0,31.0,32.4,34.2,35.7,38.1,38.5,40.7,40.4,39.7,39.8,38.2,36.8,36.0,32.1,31.2,25.8,26.6,24.1,22.0,19.8,19.8,21.9,22.6,22.9,26.6,30.9,31.7,34.7,35.9,36.7,38.7,36.6,36.4,37.8,36.3,34.2,31.4,30.6,28.1,23.1,23.0,21.8,18.9,20.7,19.1,20.9,21.4,22.1,27.1,29.4,29.8,32.8,34.5,36.9,36.2,36.9,36.5,35.4,35.3,31.7,31.7,29.7,25.5,21.8,22.7,19.2],"relative_humidity_2m":[76,75,72,77,76,72,68,71,68,68,62,63,64,64,63,64,64,63,69,67,73,73,75,74,77,73,78,76,74,76,70,68,64,67,65,62,62,60,63,66,66,66,66,65,70,73,74,73,73,75,75,74,74,74,69,70,66,68,66,63,59,59,60,64,65,63,66,71,72,72,73,74,74,77,78,74,71,76,69,67,64,68,67,64,65,65,64,62,65,64,67,69,70,75,74,73,79,75,73,72,72,72,71,68,66,63,62,64,60,64,65,62,63,66,65,70,69,75,73,79,78,75,77,75,73,76,73,69,67,65,66,62,59,65,60,61,64,66,69,68,68,76,71,75,77,75,75,76,71,73,67,65,65,67,61,60,61,65,63,64,62,64,66,71,71,76,71,78,75,76,74,74,75,75,71,66,63,67,62,65,62,59,60,62,65,68,68,71,73,77,74,76,78,79,73,75,75,73,72,69,66,67,62,62,63,62,65,66,61,65,64,71,67,73,75,75,78,75,78,73,76,71,71,67,69,65,63,65,65,65,61,64,64,62,64,71,71,75,71,75],"dew_point_2m":[11.7,11.3,10.5,12.0,13.7,10.7,15.5,18.0,20.1,21.8,21.4,24.0,24.0,24.2,24.6,24.6,23.8,20.8,21.1,18.6,16.6,13.2,11.9,10.3,15.0,14.4,16.2,17.7,16.4,17.7,20.4,21.1,24.4,27.0,28.1,27.4,27.9,27.6,29.0,27.5,27.7,26.1,23.7,22.1,20.0,15.8,17.4,14.5,17.6,19.3,18.3,20.4,20.1,19.5,24.7,27.4,26.4,29.6,31.7,31.2,31.3,30.9,31.9,30.9,31.7,29.1,28.1,26.0,25.4,19.0,19.4,17.3,20.2,21.8,22.4,22.5,21.2,23.1,26.5,27.5,30.7,32.5,33.8,33.2,35.7,34.6,35.1,34.2,32.5,31.3,31.1,28.8,26.6,22.0,21.8,19.7,21.2,18.6,19.3,20.7,20.7,20.4,25.1,27.7,29.0,29.6,30.7,32.8,32.6,34.8,34.5,31.1,32.0,30.0,29.2,27.5,24.3,21.9,21.0,19.9,19.7,17.6,18.2,20.6,20.1,19.2,23.7,25.1,27.4,30.0,30.1,31.6,31.0,33.7,31.7,31.9,30.4,28.9,26.9,25.6,23.0,21.3,20.0,16.7,17.3,16.8,16.7,19.8,16.5,18.5,22.7,23.5,26.7,28.4,27.2,30.3,29.1,31.0,30.1,29.9,29.2,26.5,25.8,24.3,23.4,17.8,17.0,17.2,19.0,17.6,17.7,19.7,18.7,19.4,24.6,24.8,26.0,28.4,29.7,30.7,32.3,31.3,30.8,31.4,30.4,29.7,28.9,25.7,25.2,20.7,20.8,18.8,17.1,15.1,13.8,16.3,17.0,16.9,20.4,24.0,24.1,27.4,27.5,28.3,30.5,28.2,28.6,30.2,27.6,26.4,23.4,24.2,20.8,17.1,17.4,16.2,14.0,15.1,14.2,14.9,16.1,15.7,20.7,22.1,22.9,25.0,26.3,29.1,28.4,29.1,27.8,27.4,27.3,23.3,23.7,23.3,19.1,16.2,16.3,13.6],"precipitation_probability":[6,0,9,11,0,8,0,8,46,63,37,63,34,61,38,58,54,52,47,35,61,59,2,2,8,3,12,10,3,5,3,10,2,1,6,4,12,4,7,5,5,4,8,0,3,9,7,12,8,1,0,8,0,0,5,7,31,30,29,31,46,53,27,48,48,53,37,53,47,55,1,4,18,10,11,9,15,12,14,12,66,78,74,94,67,69,97,96,83,71,69,90,78,76,20,9,9,12,7,4,11,12,12,8,12,5,12,12,7,14,3,4,12,4,7,13,13,1,12,7,1,13,7,5,8,1,9,11,48,42,49,51,56,49,55,50,44,63,52,61,58,63,8,13,6,0,6,7,0,2,5,0,31,53,44,35,27,26,50,51,33,39,21,24,34,22,0,0,3,8,4,6,10,2,7,8,5,10,6,0,5,3,3,2,10,8,1,1,0,5,0,7,2,6,7,0,5,0,1,2,7,2,2,0,0,4,9,7,7,3,0,8,0,0,7,0,4,13,9,15,5,9,10,6,75,67,53,65,71,52,52,76,67,51,61,84,69,52,7,17],"precipitation":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.037,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.021,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.038,0.044,0.051,0.052,0.046,0.06,0.012,0.051,0.0,0.017,0.05,0.036,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.078,0.091,0.062,0.127,0.067,0.005,0.168,0.126,0.079,0.079,0.116,0.148,0.015,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.034,0.043,0.026,0.017,0.071,0.007,0.001,0.01,0.076,0.083,0.037,0.03,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.046,0.058,0.008,0.001,0.03,0.035,0.057,0.065,0.051,0.008,0.006,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.011,0.114,0.124,0.005,0.054,0.006,0.019,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"snowfall":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.68,0.18,0.74,0.25,0.76,0.26,0.16,0.42,0.52,0.48,0.18,0.0,0.3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.47,0.1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.93,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.55,0.14,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.25,0.1,0.1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.38,0.46,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.18,0.62,1.17,0.11,0.46,0.0,0.0],"pressure_msl":[1012.7,1013.7,1012.1,1011.7,1013.5,1012.8,1014.1,1013.3,1012.3,1012.1,1013.5,1013.3,1012.6,1013.3,1013.0,1012.5,1014.0,1013.2,1012.7,1014.1,1014.4,1014.2,1013.6,1012.3,1014.2,1014.6,1015.6,1016.3,1013.6,1014.9,1014.0,1013.7,1014.5,1016.4,1015.1,1014.6,1015.9,1016.3,1015.0,1014.2,1014.8,1016.0,1014.8,1015.5,1014.6,1014.8,1013.8,1016.4,1016.0,1015.2,1018.0,1017.5,1016.0,1017.1,1018.1,1017.8,1017.4,1017.6,1016.9,1017.4,1016.4,1018.0,1017.9,1016.0,1015.5,1017.7,1015.2,1017.0,1017.5,1016.8,1016.1,1017.7,1019.0,1018.0,1019.1,1017.9,1019.4,1016.9,1018.0,1017.9,1016.7,1018.9,1019.5,1017.6,1017.6,1017.4,1018.4,1019.4,1017.9,1016.7,1017.9,1019.2,1019.5,1016.6,1019.1,1017.1,1018.3,1018.1,1019.2,1019.1,1019.2,1018.7,1017.5,1019.0,1018.2,1020.0,1019.3,1018.4,1018.0,1019.1,1019.6,1017.6,1018.4,1020.2,1019.9,1019.2,1019.5,1019.5,1017.6,1018.3,1020.2,1020.0,1020.1,1017.6,1017.8,1017.9,1019.3,1019.6,1019.6,1018.2,1017.8,1020.4,1019.1,1020.0,1017.9,1018.6,1018.5,1019.9,1018.5,1018.1,1018.0,1020.0,1018.3,1018.9,1019.5,1018.2,1018.6,1018.6,1018.2,1017.2,1019.5,1018.4,1018.5,1018.5,1019.9,1017.5,1019.9,1017.2,1018.7,1019.3,1018.3,1017.9,1019.1,1019.3,1019.3,1017.9,1017.9,1019.1,1018.2,1016.3,1018.2,1017.5,1017.5,1017.4,1017.1,1018.0,1017.6,1017.3,1016.3,1017.2,1016.0,1015.8,1018.4,1017.8,1016.4,1018.5,1016.7,1016.3,1017.5,1018.6,1016.0,1018.3,1015.8,1016.6,1016.7,1016.0,1016.4,1014.8,1015.0,1016.5,1017.2,1016.3,1015.2,1015.8,1017.2,1017.0,1017.0,1015.4,1016.4,1015.4,1015.4,1016.3,1017.2,1016.4,1015.0,1016.2,1015.2,1013.8,1014.7,1014.4,1014.9,1013.5,1013.0,1015.0,1013.6,1012.8,1012.7,1012.9,1013.2,1013.2,1015.0,1014.9,1014.9,1014.1,1013.9,1014.9,1012.5,1014.0,1014.6,1013.6],"cloud_cover":[36,25,39,36,28,31,23,35,36,30,33,41,38,34,27,22,25,32,39,38,28,39,33,35,24,28,37,38,33,35,38,27,44,37,28,34,41,29,43,25,30,25,43,27,31,40,32,38,35,21,21,33,17,33,31,27,36,29,32,32,27,35,22,28,35,21,22,27,19,29,25,24,50,44,49,58,59,53,56,55,58,51,48,50,50,51,52,52,42,45,44,59,52,47,58,56,32,37,46,29,31,43,44,33,39,42,42,32,46,44,46,32,28,36,29,40,46,40,38,39,37,35,43,32,45,34,38,37,27,38,46,34,39,39,34,29,41,43,41,29,38,42,32,37,28,17,29,27,27,16,31,21,18,26,26,32,34,18,20,35,26,32,28,27,31,32,23,29,36,31,41,28,42,38,29,22,36,38,29,36,23,31,23,29,22,39,25,42,28,37,25,22,30,24,36,36,25,39,20,19,21,28,19,30,22,31,30,26,22,34,29,34,31,27,38,25,51,50,52,40,44,43,47,44,46,46,51,44,42,34,43,40,52,35,44,34,52,34,40,47],"wind_speed_10m":[11.4,8.9,11.4,9.5,9.9,11.5,12.1,10.0,9.1,8.9,8.6,12.4,11.2,9.5,12.3,9.8,9.3,11.4,8.4,8.9,12.1,10.2,12.2,12.0,12.8,9.4,11.5,13.0,11.4,10.3,13.1,12.2,8.7,10.3,9.8,12.1,12.8,11.0,9.7,10.5,12.4,10.4,10.6,12.2,9.7,8.7,11.5,12.1,10.6,6.9,9.9,7.6,9.8,10.1,8.6,9.5,8.2,10.7,10.8,10.3,9.2,7.7,8.9,8.5,6.9,8.8,7.7,8.3,11.0,7.9,11.1,10.3,15.9,15.3,14.8,13.5,13.7,16.1,14.2,15.1,15.0,15.6,16.0,12.9,12.7,14.0,14.0,16.0,16.2,14.4,14.7,12.9,12.7,16.8,15.4,14.4,10.8,11.9,9.8,9.8,12.7,11.0,12.8,13.5,9.3,11.6,11.3,11.4,12.3,12.3,12.5,11.6,11.1,11.7,9.5,10.7,12.5,12.9,13.1,11.0,12.4,9.4,10.0,11.9,10.1,10.5,11.4,13.0,11.0,10.7,9.3,9.8,10.6,9.2,10.2,9.3,13.4,9.2,12.8,13.5,13.0,12.6,12.4,13.2,10.4,8.0,8.1,9.5,10.6,7.7,6.7,7.9,10.9,10.2,8.8,8.9,9.5,10.6,10.1,8.7,7.7,11.0,10.3,7.2,7.3,8.5,10.5,7.1,9.9,9.3,10.9,11.4,11.3,11.8,10.2,8.4,11.3,11.4,10.2,10.8,11.2,9.4,11.3,10.7,10.2,8.6,11.9,8.2,12.4,11.4,11.4,9.4,9.4,9.3,9.2,9.4,9.5,7.8,7.6,7.5,10.0,8.4,7.9,10.6,9.1,11.3,8.8,11.6,10.5,10.1,11.5,11.0,10.3,11.6,9.7,10.6,13.5,12.8,14.2,13.8,11.9,13.2,10.8,12.6,11.6,11.8,11.3,15.2,11.0,13.2,13.3,15.3,11.5,12.0,11.6,13.0,14.7,10.8,14.1,10.9],"wind_gusts_10m":[16.3,13.0,17.0,13.8,14.5,16.3,18.2,15.4,13.4,10.8,13.8,18.0,17.6,14.4,18.8,12.4,11.2,14.5,12.9,11.2,17.9,14.4,15.8,15.7,17.5,12.9,15.9,19.6,16.5,16.3,17.1,16.0,12.2,16.3,12.6,15.2,16.5,17.2,12.0,16.1,16.4,12.7,16.0,17.9,11.9,12.9,14.4,15.3,14.2,9.6,12.9,10.5,12.6,16.0,10.7,12.4,11.8,16.4,15.2,14.5,11.4,11.3,12.6,11.4,10.7,13.0,10.3,10.5,14.7,12.2,13.4,13.1,19.3,19.1,21.3,19.5,18.0,25.4,18.5,19.8,19.4,21.3,21.1,17.6,15.7,22.1,18.5,20.8,24.0,20.1,18.9,18.6,20.0,22.8,21.1,22.0,16.5,18.1,13.5,12.4,16.0,14.3,17.3,21.1,12.1,15.3,16.6,14.2,15.4,18.1,19.5,14.6,17.3,14.9,14.9,14.6,16.3,18.2,17.5,16.1,19.3,12.9,13.4,15.3,16.1,13.0,16.6,17.7,17.5,15.1,11.6,13.4,15.5,14.2,14.8,12.1,17.3,11.9,16.7,18.6,18.0,18.0,15.9,16.3,15.6,9.8,11.9,11.5,13.0,11.0,8.3,11.9,14.1,13.7,11.0,11.5,12.0,14.3,13.5,13.2,10.5,14.8,15.1,10.8,8.8,10.5,15.0,9.9,12.7,13.7,15.5,17.7,13.6,17.0,12.7,11.6,14.8,16.4,13.2,14.0,14.6,14.3,16.4,14.0,16.1,13.7,18.4,10.6,17.5,14.6,17.6,13.5,11.7,12.5,11.8,11.5,13.1,10.2,10.9,11.9,12.5,11.8,11.9,13.0,12.7,15.7,13.7,16.1,14.4,12.4,15.7,16.2,13.4,16.9,14.5,16.0,16.2,15.8,21.0,20.6,15.1,18.5,17.1,15.7,17.3,15.6,16.5,18.4,17.1,18.3,20.2,22.7,14.6,17.3,15.5,18.4,19.1,15.8,20.0,13.1],"uv_index":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.1,0.5,0.8,1.1,1.3,1.4,1.4,1.4,1.2,1.0,0.7,0.4,0.1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.1,0.4,0.7,1.0,1.2,1.3,1.4,1.3,1.2,1.0,0.7,0.4,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.1,0.5,0.9,1.2,1.4,1.5,1.6,1.5,1.3,1.1,0.8,0.4,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0,0.3,0.5,0.7,0.8,0.9,0.9,0.9,0.8,0.6,0.4,0.2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0,0.4,0.7,0.9,1.1,1.2,1.3,1.2,1.1,0.9,0.6,0.3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0,0.4,0.7,1.0,1.2,1.3,1.3,1.2,1.1,0.9,0.6,0.3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0,0.4,0.8,1.2,1.4,1.5,1.6,1.5,1.3,1.0,0.7,0.3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.4,0.7,1.0,1.3,1.4,1.4,1.3,1.2,0.9,0.6,0.2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.4,0.8,1.1,1.3,1.5,1.5,1.4,1.2,0.9,0.6,0.2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.3,0.6,0.8,1.0,1.1,1.1,1.0,0.9,0.7,0.4,0.1,0.0,0.0,0.0,0.0],"weather_code":[2,1,2,2,1,1,1,1,61,73,73,73,73,73,73,73,73,73,73,73,61,73,1,1,1,1,2,2,1,1,2,1,2,2,1,1,2,1,2,1,1,1,2,1,1,2,1,2,1,1,1,1,1,1,1,1,2,1,63,63,61,63,1,63,61,61,1,61,73,73,1,1,2,2,2,2,2,2,2,2,63,63,63,63,63,61,63,63,63,63,63,63,61,73,2,2,1,2,2,1,1,2,2,1,2,2,2,1,2,2,2,1,1,2,1,2,2,2,2,2,2,1,2,1,2,1,2,2,61,61,61,61,63,61,61,61,63,63,61,61,73,73,1,2,1,1,1,1,1,1,1,1,1,63,61,1,1,1,63,63,63,1,1,73,73,73,1,1,2,1,2,1,2,2,1,1,2,2,1,2,1,1,1,1,1,2,1,2,1,2,1,1,1,1,2,2,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,2,2,2,2,2,2,2,2,73,73,61,63,63,61,63,61,61,73,73,73,73,73,2,2],"soil_moisture_0_to_1cm":[0.123,0.116,0.097,0.116,0.111,0.127,0.096,0.13,0.103,0.099,0.115,0.232,0.248,0.239,0.214,0.246,0.122,0.099,0.132,0.095,0.127,0.127,0.124,0.095,0.133,0.099,0.099,0.096,0.099,0.132,0.106,0.127,0.219,0.221,0.219,0.219,0.229,0.236,0.232,0.254,0.251,0.234,0.105,0.12,0.118,0.124,0.122,0.126,0.114,0.105,0.112,0.107,0.112,0.095,0.102,0.202,0.237,0.233,0.233,0.23,0.227,0.221,0.207,0.239,0.21,0.217,0.229,0.234,0.103,0.093,0.091,0.119,0.135,0.158,0.152,0.156,0.13,0.136,0.28,0.258,0.275,0.251,0.271,0.258,0.259,0.25,0.25,0.245,0.252,0.261,0.268,0.254,0.282,0.135,0.142,0.126,0.126,0.102,0.119,0.114,0.125,0.12,0.105,0.259,0.259,0.223,0.222,0.241,0.241,0.253,0.235,0.222,0.226,0.239,0.24,0.237,0.115,0.13,0.128,0.137,0.111,0.105,0.104,0.108,0.119,0.111,0.109,0.253,0.245,0.226,0.228,0.22,0.239,0.226,0.244,0.251,0.229,0.255,0.235,0.222,0.099,0.11,0.104,0.113,0.093,0.104,0.092,0.096,0.093,0.087,0.117,0.113,0.233,0.213,0.24,0.222,0.222,0.225,0.224,0.209,0.207,0.237,0.236,0.12,0.096,0.118,0.099,0.094,0.126,0.113,0.127,0.13,0.099,0.115,0.12,0.246,0.251,0.217,0.244,0.23,0.221,0.235,0.223,0.216,0.246,0.237,0.229,0.223,0.096,0.112,0.122,0.093,0.125,0.097,0.11,0.093,0.104,0.093,0.116,0.118,0.107,0.211,0.223,0.221,0.238,0.239,0.217,0.216,0.228,0.245,0.1,0.094,0.093,0.123,0.093,0.097,0.128,0.146,0.117,0.118,0.146,0.148,0.145,0.119,0.142,0.258,0.237,0.242,0.248,0.267,0.236,0.237,0.249,0.111,0.142,0.113,0.111,0.111,0.126,0.13],"soil_moisture_3_to_9cm":[0.153,0.146,0.127,0.146,0.141,0.157,0.126,0.16,0.133,0.129,0.145,0.262,0.278,0.269,0.244,0.276,0.152,0.129,0.162,0.125,0.157,0.157,0.154,0.125,0.163,0.129,0.129,0.126,0.129,0.162,0.136,0.157,0.249,0.251,0.249,0.249,0.259,0.266,0.262,0.284,0.281,0.264,0.135,0.15,0.148,0.154,0.152,0.156,0.144,0.135,0.142,0.137,0.142,0.125,0.132,0.232,0.267,0.263,0.263,0.26,0.257,0.251,0.237,0.269,0.24,0.247,0.259,0.264,0.133,0.123,0.121,0.149,0.165,0.188,0.182,0.186,0.16,0.166,0.31,0.288,0.305,0.281,0.301,0.288,0.289,0.28,0.28,0.275,0.282,0.291,0.298,0.284,0.312,0.165,0.172,0.156,0.156,0.132,0.149,0.144,0.155,0.15,0.135,0.289,0.289,0.253,0.252,0.271,0.271,0.283,0.265,0.252,0.256,0.269,0.27,0.267,0.145,0.16,0.158,0.167,0.141,0.135,0.134,0.138,0.149,0.141,0.139,0.283,0.275,0.256,0.258,0.25,0.269,0.256,0.274,0.281,0.259,0.285,0.265,0.252,0.129,0.14,0.134,0.143,0.123,0.134,0.122,0.126,0.123,0.117,0.147,0.143,0.263,0.243,0.27,0.252,0.252,0.255,0.254,0.239,0.237,0.267,0.266,0.15,0.126,0.148,0.129,0.124,0.156,0.143,0.157,0.16,0.129,0.145,0.15,0.276,0.281,0.247,0.274,0.26,0.251,0.265,0.253,0.246,0.276,0.267,0.259,0.253,0.126,0.142,0.152,0.123,0.155,0.127,0.14,0.123,0.134,0.123,0.146,0.148,0.137,0.241,0.253,0.251,0.268,0.269,0.247,0.246,0.258,0.275,0.13,0.124,0.123,0.153,0.123,0.127,0.158,0.176,0.147,0.148,0.176,0.178,0.175,0.149,0.172,0.288,0.267,0.272,0.278,0.297,0.266,0.267,0.279,0.141,0.172,0.143,0.141,0.141,0.156,0.16],"soil_temperature_0cm":[13.3,12.0,13.0,12.5,14.8,13.2,18.9,19.9,24.0,25.2,26.2,28.5,27.6,27.7,29.5,28.0,28.3,25.0,24.3,22.6,19.4,15.2,14.0,12.8,16.0,16.5,17.9,19.9,19.0,19.8,23.1,24.8,28.5,29.9,31.9,31.7,31.5,33.0,33.0,30.9,30.7,29.8,27.3,25.0,21.7,18.1,19.4,15.9,18.8,21.9,20.3,23.1,22.2,21.6,28.0,30.3,30.4,32.5,35.5,35.7,35.5,35.2,36.1,35.3,35.4,33.7,31.7,27.7,27.4,20.2,22.0,18.5,22.8,23.0,24.3,24.2,23.9,24.0,30.3,31.2,33.7,36.2,37.7,36.6,38.6,39.2,38.6,39.0,36.3,35.7,34.2,31.4,29.6,23.4,22.9,22.2,22.0,19.7,21.9,22.4,22.7,22.2,27.4,29.9,33.5,33.3,35.1,35.8,37.4,39.5,38.8,35.7,36.5,33.8,32.9,29.6,26.6,24.1,22.2,19.9,20.2,19.2,19.9,21.8,22.2,20.8,25.4,27.3,31.4,34.1,34.1,36.1,36.8,37.1,35.9,35.9,35.1,33.1,30.0,28.5,26.5,22.8,21.8,19.2,18.3,17.9,18.8,20.7,19.1,19.6,25.9,26.9,30.1,31.2,31.4,35.1,33.0,35.7,33.8,34.2,34.6,31.4,29.2,26.5,26.3,18.5,18.9,17.4,20.7,18.3,19.8,20.5,20.5,21.9,26.2,28.6,29.7,31.5,34.8,35.3,37.6,36.9,35.9,36.6,33.7,32.2,32.7,27.8,27.5,20.9,21.8,20.6,18.8,16.5,16.5,16.9,19.5,18.4,22.3,27.5,28.0,30.9,32.1,32.0,35.0,32.6,33.3,34.0,32.0,30.6,28.3,27.2,23.4,18.2,18.4,18.3,14.9,15.9,15.9,17.5,16.6,17.8,23.6,26.1,26.2,29.0,30.1,33.4,31.6,32.3,33.1,30.6,31.4,28.2,27.7,26.2,21.9,18.6,18.8,14.3]},"daily":{"time":["2026-09-07","2026-09-08","2026-09-09","2026-09-10","2026-09-11","2026-09-12","2026-09-13","2026-09-14","2026-09-15","2026-09-16"],"weather_code":[73,1,1,63,2,61,1,1,1,2],"temperature_2m_max":[35.8,40.2,43.8,46.5,45.8,44.5,42.2,43.7,41.7,39.9],"temperature_2m_min":[13.1,17.1,20.1,22.7,21.2,19.3,19.1,19.9,16.8,15.9],"apparent_temperature_max":[32.8,37.2,40.8,43.5,42.8,41.5,39.2,40.7,38.7,36.9],"apparent_temperature_min":[16.1,20.1,23.1,25.7,24.2,22.3,22.1,22.9,19.8,18.9],"precipitation_sum":[0.06,0.0,0.46,1.16,0.0,0.43,0.36,0.0,0.0,0.33],"snowfall_sum":[4.93,0.0,0.57,0.93,0.0,0.69,0.45,0.0,0.0,3.38],"precipitation_probability_max":[63,12,55,97,14,63,53,10,9,84],"uv_index_max":[1.4,1.4,1.6,0.9,1.3,1.3,1.6,1.4,1.5,1.1],"shortwave_radiation_sum":[392.0,392.0,448.0,252.0,364.0,364.0,448.0,392.0,420.0,308.0],"sunrise":["2026-09-07T07:40","2026-09-08T07:43","2026-09-09T07:46","2026-09-10T07:49","2026-09-11T07:52","2026-09-12T07:55","2026-09-13T07:58","2026-09-14T08:01","2026-09-15T08:04","2026-09-16T08:07"],"sunset":["2026-09-07T20:10","2026-09-08T20:05","2026-09-09T20:00","2026-09-10T19:55","2026-09-11T19:50","2026-09-12T19:45","2026-09-13T19:40","2026-09-14T19:35","2026-09-15T19:30","2026-09-16T19:25"]},"current":{"time":"2026-09-10T14:00","temperature_2m":43.1,"precipitation":0.168,"rain":0.168,"showers":0,"snowfall":0.0,"weather_code":63,"cloud_cover":52}},"aq":{"latitude":68.1119,"longitude":-145.575,"timezone":"America/Anchorage","hourly":{"time":["2026-09-07T00:00","2026-09-07T01:00","2026-09-07T02:00","2026-09-07T03:00","2026-09-07T04:00","2026-09-07T05:00","2026-09-07T06:00","2026-09-07T07:00","2026-09-07T08:00","2026-09-07T09:00","2026-09-07T10:00","2026-09-07T11:00","2026-09-07T12:00","2026-09-07T13:00","2026-09-07T14:00","2026-09-07T15:00","2026-09-07T16:00","2026-09-07T17:00","2026-09-07T18:00","2026-09-07T19:00","2026-09-07T20:00","2026-09-07T21:00","2026-09-07T22:00","2026-09-07T23:00","2026-09-08T00:00","2026-09-08T01:00","2026-09-08T02:00","2026-09-08T03:00","2026-09-08T04:00","2026-09-08T05:00","2026-09-08T06:00","2026-09-08T07:00","2026-09-08T08:00","2026-09-08T09:00","2026-09-08T10:00","2026-09-08T11:00","2026-09-08T12:00","2026-09-08T13:00","2026-09-08T14:00","2026-09-08T15:00","2026-09-08T16:00","2026-09-08T17:00","2026-09-08T18:00","2026-09-08T19:00","2026-09-08T20:00","2026-09-08T21:00","2026-09-08T22:00","2026-09-08T23:00","2026-09-09T00:00","2026-09-09T01:00","2026-09-09T02:00","2026-09-09T03:00","2026-09-09T04:00","2026-09-09T05:00","2026-09-09T06:00","2026-09-09T07:00","2026-09-09T08:00","2026-09-09T09:00","2026-09-09T10:00","2026-09-09T11:00","2026-09-09T12:00","2026-09-09T13:00","2026-09-09T14:00","2026-09-09T15:00","2026-09-09T16:00","2026-09-09T17:00","2026-09-09T18:00","2026-09-09T19:00","2026-09-09T20:00","2026-09-09T21:00","2026-09-09T22:00","2026-09-09T23:00","2026-09-10T00:00","2026-09-10T01:00","2026-09-10T02:00","2026-09-10T03:00","2026-09-10T04:00","2026-09-10T05:00","2026-09-10T06:00","2026-09-10T07:00","2026-09-10T08:00","2026-09-10T09:00","2026-09-10T10:00","2026-09-10T11:00","2026-09-10T12:00","2026-09-10T13:00","2026-09-10T14:00","2026-09-10T15:00","2026-09-10T16:00","2026-09-10T17:00","2026-09-10T18:00","2026-09-10T19:00","2026-09-10T20:00","2026-09-10T21:00","2026-09-10T22:00","2026-09-10T23:00","2026-09-11T00:00","2026-09-11T01:00","2026-09-11T02:00","2026-09-11T03:00","2026-09-11T04:00","2026-09-11T05:00","2026-09-11T06:00","2026-09-11T07:00","2026-09-11T08:00","2026-09-11T09:00","2026-09-11T10:00","2026-09-11T11:00","2026-09-11T12:00","2026-09-11T13:00","2026-09-11T14:00","2026-09-11T15:00","2026-09-11T16:00","2026-09-11T17:00","2026-09-11T18:00","2026-09-11T19:00","2026-09-11T20:00","2026-09-11T21:00","2026-09-11T22:00","2026-09-11T23:00","2026-09-12T00:00","2026-09-12T01:00","2026-09-12T02:00","2026-09-12T03:00","2026-09-12T04:00","2026-09-12T05:00","2026-09-12T06:00","2026-09-12T07:00","2026-09-12T08:00","2026-09-12T09:00","2026-09-12T10:00","2026-09-12T11:00","2026-09-12T12:00","2026-09-12T13:00","2026-09-12T14:00","2026-09-12T15:00","2026-09-12T16:00","2026-09-12T17:00","2026-09-12T18:00","2026-09-12T19:00","2026-09-12T20:00","2026-09-12T21:00","2026-09-12T22:00","2026-09-12T23:00","2026-09-13T00:00","2026-09-13T01:00","2026-09-13T02:00","2026-09-13T03:00","2026-09-13T04:00","2026-09-13T05:00","2026-09-13T06:00","2026-09-13T07:00","2026-09-13T08:00","2026-09-13T09:00","2026-09-13T10:00","2026-09-13T11:00","2026-09-13T12:00","2026-09-13T13:00","2026-09-13T14:00","2026-09-13T15:00","2026-09-13T16:00","2026-09-13T17:00","2026-09-13T18:00","2026-09-13T19:00","2026-09-13T20:00","2026-09-13T21:00","2026-09-13T22:00","2026-09-13T23:00","2026-09-14T00:00","2026-09-14T01:00","2026-09-14T02:00","2026-09-14T03:00","2026-09-14T04:00","2026-09-14T05:00","2026-09-14T06:00","2026-09-14T07:00","2026-09-14T08:00","2026-09-14T09:00","2026-09-14T10:00","2026-09-14T11:00","2026-09-14T12:00","2026-09-14T13:00","2026-09-14T14:00","2026-09-14T15:00","2026-09-14T16:00","2026-09-14T17:00","2026-09-14T18:00","2026-09-14T19:00","2026-09-14T20:00","2026-09-14T21:00","2026-09-14T22:00","2026-09-14T23:00","2026-09-15T00:00","2026-09-15T01:00","2026-09-15T02:00","2026-09-15T03:00","2026-09-15T04:00","2026-09-15T05:00","2026-09-15T06:00","2026-09-15T07:00","2026-09-15T08:00","2026-09-15T09:00","2026-09-15T10:00","2026-09-15T11:00","2026-09-15T12:00","2026-09-15T13:00","2026-09-15T14:00","2026-09-15T15:00","2026-09-15T16:00","2026-09-15T17:00","2026-09-15T18:00","2026-09-15T19:00","2026-09-15T20:00","2026-09-15T21:00","2026-09-15T22:00","2026-09-15T23:00","2026-09-16T00:00","2026-09-16T01:00","2026-09-16T02:00","2026-09-16T03:00","2026-09-16T04:00","2026-09-16T05:00","2026-09-16T06:00","2026-09-16T07:00","2026-09-16T08:00","2026-09-16T09:00","2026-09-16T10:00","2026-09-16T11:00","2026-09-16T12:00","2026-09-16T13:00","2026-09-16T14:00","2026-09-16T15:00","2026-09-16T16:00","2026-09-16T17:00","2026-09-16T18:00","2026-09-16T19:00","2026-09-16T20:00","2026-09-16T21:00","2026-09-16T22:00","2026-09-16T23:00"],"pm2_5":[6.0,3.9,4.6,4.3,4.4,4.4,3.3,5.3,6.0,3.0,4.0,3.2,5.7,3.8,5.1,7.5,5.1,4.8,7.6,5.8,5.6,6.5,3.3,4.4,5.2,4.2,3.8,5.1,6.2,5.5,5.4,5.3,5.4,6.1,6.9,6.8,5.7,6.6,4.4,5.7,4.0,4.5,4.2,6.1,7.6,4.7,4.5,4.8,5.0,5.6,3.1,5.5,6.0,5.8,4.5,4.0,5.3,4.5,4.8,6.0,5.2,5.3,4.5,2.5,6.6,3.7,5.9,5.6,3.3,5.5,3.4,4.7,5.5,10.2,7.1,7.8,6.7,6.8,9.1,9.6,5.7,6.7,10.0,8.2,7.2,5.8,6.2,10.3,6.3,6.7,10.0,6.4,6.1,6.7,8.0,10.2,8.5,4.5,5.4,5.4,6.8,6.8,6.0,6.8,6.8,7.6,6.8,6.3,8.1,3.8,5.4,4.2,8.4,4.7,8.2,8.1,6.3,8.1,3.6,7.4,4.9,8.0,7.2,6.1,4.8,4.4,5.8,8.4,4.8,5.4,7.1,6.2,6.1,6.6,6.2,5.9,7.8,6.6,6.1,4.8,3.7,5.0,4.5,6.0,2.2,3.6,2.9,5.9,5.4,3.0,6.8,4.0,6.8,6.5,3.1,5.6,5.7,5.6,3.5,4.9,2.3,5.6,7.1,6.0,6.4,5.3,6.7,5.4,4.0,5.3,7.3,7.1,3.1,6.1,5.5,5.1,7.7,4.6,7.5,6.0,6.6,3.6,4.9,4.9,3.4,4.5,3.3,4.7,5.2,6.1,5.2,3.9,5.6,4.7,4.3,6.9,5.4,2.9,5.3,4.4,5.6,6.0,4.1,4.7,4.2,3.2,5.9,4.1,5.1,6.4,3.6,4.6,3.6,7.1,3.4,6.5,7.5,9.1,6.0,4.8,6.9,8.0,7.9,8.3,5.6,7.5,9.1,7.8,7.2,5.8,4.9,6.8,5.8,8.3,6.9,6.5,7.3,7.4,9.2,9.3],"ozone":[27.4,23.2,26.7,20.8,21.9,18.4,31.0,26.0,27.0,26.3,25.5,25.2,30.0,25.5,21.6,22.9,18.9,20.2,18.3,27.0,22.6,21.0,24.9,30.5,24.3,31.8,30.8,28.1,19.1,27.2,30.7,28.3,28.9,27.7,26.7,22.3,27.8,20.8,29.3,21.1,20.8,28.4,20.1,23.8,17.7,22.8,27.2,23.2,30.2,22.7,34.5,33.6,31.4,24.6,19.3,19.4,25.4,20.2,26.9,29.9,33.7,27.8,25.7,27.5,33.6,19.1,23.2,19.3,22.9,25.9,20.7,29.9,15.9,23.7,26.0,13.8,12.6,14.1,14.1,21.2,24.4,19.9,19.4,12.7,13.8,15.6,21.3,13.8,25.1,17.5,21.7,22.0,11.1,11.8,20.4,25.4,23.1,25.4,23.2,17.3,20.0,24.9,21.6,23.8,30.1,15.4,25.7,15.8,24.9,17.4,25.3,19.0,15.7,20.8,22.1,21.6,28.1,18.0,15.6,26.5,19.1,21.5,25.7,20.4,17.0,25.9,23.9,16.3,25.9,20.2,15.9,26.6,17.9,16.9,21.8,24.9,22.5,31.1,19.2,26.3,22.8,17.4,30.5,23.4,22.4,34.3,20.2,29.7,27.1,33.3,32.8,30.7,33.5,30.6,31.9,20.1,24.4,21.7,24.1,23.4,34.2,23.8,25.7,20.2,28.3,21.1,20.9,31.8,30.8,24.9,23.4,22.5,24.9,19.7,27.5,23.6,22.1,17.1,24.9,20.5,29.9,17.3,24.6,31.2,32.5,23.8,21.9,29.5,20.9,22.7,26.5,23.8,28.6,29.3,32.6,21.1,29.9,18.3,25.7,28.6,27.8,24.0,27.8,18.1,20.3,31.0,28.7,20.4,21.6,25.3,26.3,19.8,30.0,30.4,30.9,25.0,22.5,18.6,22.7,20.5,21.3,22.3,15.5,22.0,15.8,26.5,21.2,14.4,15.8,17.0,28.4,26.5,19.9,16.0,21.2,26.8,15.2,21.2,13.0,16.1],"us_aqi":[21,22,14,18,22,19,17,18,32,17,24,19,27,18,22,30,28,24,38,28,24,30,11,18,21,17,22,25,32,21,25,19,26,21,24,31,19,26,21,23,18,14,13,28,31,22,20,27,19,29,16,27,26,28,26,18,19,17,16,23,27,29,14,14,33,12,30,26,11,19,19,24,23,45,33,27,35,32,44,41,27,32,43,30,27,27,29,42,23,29,43,28,31,24,40,48,32,25,26,26,32,23,28,23,24,33,35,33,37,23,27,19,41,20,34,37,28,34,16,25,17,32,36,29,19,21,27,40,20,29,30,24,31,25,29,23,33,26,30,15,10,17,21,28,13,20,16,28,27,13,26,12,33,34,14,22,24,26,17,25,15,25,33,26,33,24,24,27,16,20,30,26,18,23,30,26,34,22,26,24,27,11,20,18,19,14,17,20,22,32,18,22,19,18,14,30,18,16,19,24,17,28,20,18,19,8,25,14,23,27,11,20,21,23,11,24,30,34,20,22,23,33,27,32,19,27,38,30,35,23,22,34,20,39,31,24,30,32,36,40]}},"name":"Demo Town (Arctic Village, AK)","lat":68.1119,"lon":-145.575,"tz":"America/Anchorage"},"hot":{"wx":{"latitude":33.4484,"longitude":-112.074,"timezone":"America/Phoenix","timezone_abbreviation":"MST","utc_offset_seconds":-25200,"hourly":{"time":["2026-09-07T00:00","2026-09-07T01:00","2026-09-07T02:00","2026-09-07T03:00","2026-09-07T04:00","2026-09-07T05:00","2026-09-07T06:00","2026-09-07T07:00","2026-09-07T08:00","2026-09-07T09:00","2026-09-07T10:00","2026-09-07T11:00","2026-09-07T12:00","2026-09-07T13:00","2026-09-07T14:00","2026-09-07T15:00","2026-09-07T16:00","2026-09-07T17:00","2026-09-07T18:00","2026-09-07T19:00","2026-09-07T20:00","2026-09-07T21:00","2026-09-07T22:00","2026-09-07T23:00","2026-09-08T00:00","2026-09-08T01:00","2026-09-08T02:00","2026-09-08T03:00","2026-09-08T04:00","2026-09-08T05:00","2026-09-08T06:00","2026-09-08T07:00","2026-09-08T08:00","2026-09-08T09:00","2026-09-08T10:00","2026-09-08T11:00","2026-09-08T12:00","2026-09-08T13:00","2026-09-08T14:00","2026-09-08T15:00","2026-09-08T16:00","2026-09-08T17:00","2026-09-08T18:00","2026-09-08T19:00","2026-09-08T20:00","2026-09-08T21:00","2026-09-08T22:00","2026-09-08T23:00","2026-09-09T00:00","2026-09-09T01:00","2026-09-09T02:00","2026-09-09T03:00","2026-09-09T04:00","2026-09-09T05:00","2026-09-09T06:00","2026-09-09T07:00","2026-09-09T08:00","2026-09-09T09:00","2026-09-09T10:00","2026-09-09T11:00","2026-09-09T12:00","2026-09-09T13:00","2026-09-09T14:00","2026-09-09T15:00","2026-09-09T16:00","2026-09-09T17:00","2026-09-09T18:00","2026-09-09T19:00","2026-09-09T20:00","2026-09-09T21:00","2026-09-09T22:00","2026-09-09T23:00","2026-09-10T00:00","2026-09-10T01:00","2026-09-10T02:00","2026-09-10T03:00","2026-09-10T04:00","2026-09-10T05:00","2026-09-10T06:00","2026-09-10T07:00","2026-09-10T08:00","2026-09-10T09:00","2026-09-10T10:00","2026-09-10T11:00","2026-09-10T12:00","2026-09-10T13:00","2026-09-10T14:00","2026-09-10T15:00","2026-09-10T16:00","2026-09-10T17:00","2026-09-10T18:00","2026-09-10T19:00","2026-09-10T20:00","2026-09-10T21:00","2026-09-10T22:00","2026-09-10T23:00","2026-09-11T00:00","2026-09-11T01:00","2026-09-11T02:00","2026-09-11T03:00","2026-09-11T04:00","2026-09-11T05:00","2026-09-11T06:00","2026-09-11T07:00","2026-09-11T08:00","2026-09-11T09:00","2026-09-11T10:00","2026-09-11T11:00","2026-09-11T12:00","2026-09-11T13:00","2026-09-11T14:00","2026-09-11T15:00","2026-09-11T16:00","2026-09-11T17:00","2026-09-11T18:00","2026-09-11T19:00","2026-09-11T20:00","2026-09-11T21:00","2026-09-11T22:00","2026-09-11T23:00","2026-09-12T00:00","2026-09-12T01:00","2026-09-12T02:00","2026-09-12T03:00","2026-09-12T04:00","2026-09-12T05:00","2026-09-12T06:00","2026-09-12T07:00","2026-09-12T08:00","2026-09-12T09:00","2026-09-12T10:00","2026-09-12T11:00","2026-09-12T12:00","2026-09-12T13:00","2026-09-12T14:00","2026-09-12T15:00","2026-09-12T16:00","2026-09-12T17:00","2026-09-12T18:00","2026-09-12T19:00","2026-09-12T20:00","2026-09-12T21:00","2026-09-12T22:00","2026-09-12T23:00","2026-09-13T00:00","2026-09-13T01:00","2026-09-13T02:00","2026-09-13T03:00","2026-09-13T04:00","2026-09-13T05:00","2026-09-13T06:00","2026-09-13T07:00","2026-09-13T08:00","2026-09-13T09:00","2026-09-13T10:00","2026-09-13T11:00","2026-09-13T12:00","2026-09-13T13:00","2026-09-13T14:00","2026-09-13T15:00","2026-09-13T16:00","2026-09-13T17:00","2026-09-13T18:00","2026-09-13T19:00","2026-09-13T20:00","2026-09-13T21:00","2026-09-13T22:00","2026-09-13T23:00","2026-09-14T00:00","2026-09-14T01:00","2026-09-14T02:00","2026-09-14T03:00","2026-09-14T04:00","2026-09-14T05:00","2026-09-14T06:00","2026-09-14T07:00","2026-09-14T08:00","2026-09-14T09:00","2026-09-14T10:00","2026-09-14T11:00","2026-09-14T12:00","2026-09-14T13:00","2026-09-14T14:00","2026-09-14T15:00","2026-09-14T16:00","2026-09-14T17:00","2026-09-14T18:00","2026-09-14T19:00","2026-09-14T20:00","2026-09-14T21:00","2026-09-14T22:00","2026-09-14T23:00","2026-09-15T00:00","2026-09-15T01:00","2026-09-15T02:00","2026-09-15T03:00","2026-09-15T04:00","2026-09-15T05:00","2026-09-15T06:00","2026-09-15T07:00","2026-09-15T08:00","2026-09-15T09:00","2026-09-15T10:00","2026-09-15T11:00","2026-09-15T12:00","2026-09-15T13:00","2026-09-15T14:00","2026-09-15T15:00","2026-09-15T16:00","2026-09-15T17:00","2026-09-15T18:00","2026-09-15T19:00","2026-09-15T20:00","2026-09-15T21:00","2026-09-15T22:00","2026-09-15T23:00","2026-09-16T00:00","2026-09-16T01:00","2026-09-16T02:00","2026-09-16T03:00","2026-09-16T04:00","2026-09-16T05:00","2026-09-16T06:00","2026-09-16T07:00","2026-09-16T08:00","2026-09-16T09:00","2026-09-16T10:00","2026-09-16T11:00","2026-09-16T12:00","2026-09-16T13:00","2026-09-16T14:00","2026-09-16T15:00","2026-09-16T16:00","2026-09-16T17:00","2026-09-16T18:00","2026-09-16T19:00","2026-09-16T20:00","2026-09-16T21:00","2026-09-16T22:00","2026-09-16T23:00"],"apparent_temperature":[85.5,85.4,86.8,88.1,88.1,88.1,95.0,96.2,100.9,103.1,103.7,105.8,107.0,106.7,106.9,105.8,104.8,101.6,99.2,97.4,95.3,88.1,88.8,86.8,86.4,86.5,86.5,89.2,89.0,87.7,95.0,97.8,99.4,102.4,103.2,105.0,107.2,107.4,106.5,104.9,104.1,102.5,100.0,97.5,95.1,88.4,88.0,87.4,87.2,85.7,87.7,87.9,88.0,88.6,94.5,98.4,100.9,102.2,105.4,106.4,107.4,107.9,106.4,104.7,104.3,101.2,100.9,98.7,94.6,87.9,87.8,86.5,88.3,87.5,89.3,89.1,90.9,89.6,97.0,98.7,100.5,104.7,105.2,108.1,108.2,109.1,108.6,107.3,105.0,104.6,100.4,98.9,97.0,90.0,89.8,87.8,85.8,87.8,86.6,89.5,88.9,87.7,94.6,98.7,100.3,103.5,105.4,105.5,107.4,106.3,106.7,104.8,104.6,101.6,99.9,97.2,95.5,88.8,88.0,87.2,86.3,87.3,87.8,89.7,90.0,89.2,94.5,97.7,100.4,102.5,103.6,105.9,106.8,106.4,108.0,105.5,105.1,102.3,100.0,96.8,95.3,90.0,89.3,87.9,89.3,89.5,90.4,90.3,90.8,90.8,98.1,100.7,102.7,106.0,107.7,108.5,108.8,110.3,108.8,108.6,106.4,105.4,102.9,99.3,96.3,91.7,91.7,89.2,89.5,89.3,88.8,91.0,90.7,90.8,96.4,99.4,102.8,105.0,106.5,106.9,109.6,110.2,108.9,107.2,106.8,104.8,102.8,100.3,96.7,90.9,90.8,89.6,91.0,92.1,91.5,93.7,93.8,94.4,99.7,103.0,105.0,106.8,108.3,109.4,112.0,110.9,110.8,111.1,107.9,106.7,104.3,101.1,98.4,92.4,94.1,91.3,93.0,92.1,91.6,95.0,93.9,95.4,101.4,103.4,105.5,108.6,111.0,110.5,112.6,112.7,111.3,110.5,109.0,107.7,105.9,102.4,101.2,94.8,95.5,92.9],"relative_humidity_2m":[49,45,50,43,50,46,45,39,40,40,38,36,29,33,29,33,38,40,34,39,40,43,43,47,50,51,44,46,51,42,38,38,36,40,38,34,30,33,36,36,37,39,42,38,44,43,50,50,50,47,46,48,49,45,38,42,41,33,35,30,30,28,31,30,37,35,41,41,43,43,50,52,46,51,52,47,46,45,39,43,40,37,32,38,31,34,35,31,33,37,34,42,45,50,43,44,46,48,45,45,44,51,45,42,38,39,35,34,28,32,33,35,36,32,34,39,43,46,48,46,50,44,49,47,47,45,40,44,41,40,30,37,35,29,35,33,35,36,42,35,44,46,43,48,46,47,49,51,45,45,40,41,35,33,36,37,35,30,31,29,33,40,41,42,45,45,44,53,51,45,52,48,50,47,45,43,38,35,31,33,37,28,30,37,30,39,39,42,47,44,49,48,44,52,51,49,48,47,41,42,34,36,35,34,31,28,32,37,34,37,37,36,45,42,48,46,49,45,47,43,48,50,38,36,42,38,30,33,35,32,37,33,32,35,37,39,40,50,49,47],"dew_point_2m":[74.2,73.2,75.7,75.4,77.0,76.1,82.8,82.6,87.6,89.8,89.9,91.6,91.2,91.8,91.1,90.9,91.0,88.3,84.5,83.8,82.0,75.4,76.1,75.0,75.3,75.6,74.1,77.2,78.1,74.8,81.2,84.0,85.2,89.1,89.4,90.3,91.6,92.5,92.3,90.7,90.1,88.9,87.1,83.7,82.7,75.7,76.9,76.3,76.1,73.9,75.7,76.3,76.7,76.4,80.7,85.5,87.8,87.3,91.0,90.8,91.8,91.9,91.1,89.1,90.3,86.8,87.8,85.6,81.9,75.2,76.7,75.8,76.3,76.6,78.6,77.3,78.9,77.4,83.4,86.0,87.2,90.7,90.1,94.3,92.9,94.4,94.2,92.0,90.1,90.6,85.7,86.0,84.8,78.9,77.1,75.4,73.8,76.2,74.4,77.3,76.5,76.8,82.4,85.8,86.5,89.9,91.0,90.8,91.4,91.2,91.8,90.4,90.4,86.5,85.2,83.6,82.8,76.8,76.4,75.2,75.2,74.9,76.5,77.9,78.2,77.0,81.2,85.3,87.3,89.2,88.0,91.9,92.4,90.6,93.6,90.6,90.7,88.1,87.1,82.4,82.9,78.0,76.6,76.3,77.3,77.7,79.1,79.4,78.6,78.6,84.8,87.6,88.3,91.1,93.5,94.5,94.4,94.7,93.5,92.8,91.5,92.1,89.8,86.4,84.1,79.5,79.3,78.8,78.6,77.1,78.1,79.4,79.6,79.0,84.2,86.7,89.0,90.6,91.2,92.0,95.6,94.2,93.3,93.2,91.2,91.2,89.2,87.4,84.9,78.5,79.5,78.0,78.6,81.4,80.6,82.4,82.2,82.6,86.6,90.1,90.3,92.6,93.9,94.7,96.7,94.9,95.7,97.1,93.2,92.7,90.3,86.9,86.2,79.5,82.5,79.3,81.7,79.9,79.8,82.3,82.3,84.3,87.6,89.2,92.6,94.8,95.4,95.6,98.2,97.6,97.3,95.6,93.9,93.3,91.9,88.8,87.9,83.7,84.2,81.1],"precipitation_probability":[16,15,20,19,11,13,16,20,20,11,14,12,14,17,12,16,19,14,13,13,11,18,15,10,20,8,13,19,16,20,15,18,15,17,9,16,9,18,19,10,15,20,9,16,9,14,8,20,14,10,17,13,19,11,14,19,18,18,20,14,18,12,17,13,10,17,16,20,20,10,19,11,0,6,5,7,3,8,1,1,32,33,47,49,29,55,45,33,46,39,34,22,28,37,0,8,9,1,1,4,0,11,6,6,9,6,10,8,1,12,4,2,3,2,9,10,5,3,6,8,3,2,12,8,12,13,11,8,3,6,8,8,10,8,3,15,12,7,14,6,12,8,3,9,20,20,17,20,20,12,10,20,12,10,19,11,16,14,17,16,11,17,10,9,13,16,12,14,14,6,8,9,13,10,4,4,14,12,11,11,9,2,4,6,12,4,2,5,8,2,4,7,5,9,4,11,7,4,3,14,2,12,3,5,5,11,2,7,2,13,13,3,6,10,8,5,4,4,4,9,0,9,0,0,0,9,2,0,4,10,7,5,4,0,8,9,0,0,10,2],"precipitation":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.036,0.023,0.012,0.062,0.015,0.008,0.053,0.059,0.042,0.028,0.028,0.018,0.04,0.012,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"snowfall":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"pressure_msl":[1011.9,1013.0,1012.6,1013.3,1011.8,1013.8,1014.3,1013.6,1012.6,1013.1,1014.2,1012.4,1013.2,1012.9,1013.5,1013.2,1013.5,1012.8,1014.1,1014.1,1014.0,1012.0,1013.6,1014.1,1014.4,1014.6,1015.9,1015.2,1014.8,1015.7,1015.1,1015.3,1015.8,1016.3,1015.8,1016.1,1015.5,1015.4,1013.7,1013.9,1015.2,1016.2,1014.2,1016.4,1016.2,1015.8,1016.0,1015.4,1017.4,1016.7,1015.9,1018.0,1016.2,1015.4,1016.9,1016.1,1015.3,1015.8,1016.0,1015.2,1016.1,1017.4,1015.5,1015.6,1017.2,1015.3,1015.5,1015.9,1015.9,1016.0,1015.4,1017.9,1017.9,1017.9,1019.1,1018.4,1017.1,1017.0,1018.3,1019.5,1016.6,1018.7,1017.6,1016.6,1016.9,1017.8,1019.1,1017.6,1017.0,1017.8,1017.2,1019.2,1017.7,1018.9,1016.6,1017.3,1018.3,1018.5,1017.6,1018.0,1018.9,1019.9,1017.5,1018.8,1017.9,1019.2,1017.6,1017.5,1019.6,1020.0,1020.1,1019.8,1018.3,1017.8,1017.8,1017.8,1017.5,1019.2,1018.8,1018.9,1019.6,1019.7,1019.8,1017.5,1017.9,1019.7,1017.8,1019.1,1017.8,1019.1,1018.0,1019.4,1017.5,1019.6,1018.4,1018.5,1018.6,1018.4,1019.5,1019.4,1017.5,1019.0,1018.0,1020.4,1019.2,1017.0,1017.7,1017.9,1018.1,1018.7,1017.0,1018.0,1019.5,1018.4,1017.1,1017.8,1018.5,1017.8,1018.0,1017.7,1017.5,1019.8,1018.6,1019.5,1017.8,1018.8,1018.6,1018.0,1017.7,1018.4,1017.7,1017.4,1017.3,1017.8,1016.8,1018.0,1017.6,1016.8,1016.4,1018.4,1016.0,1017.1,1017.5,1017.1,1018.6,1017.2,1015.9,1017.5,1017.0,1017.4,1018.0,1017.6,1015.9,1017.1,1015.2,1015.6,1015.8,1015.2,1014.4,1016.2,1017.1,1014.8,1016.6,1016.6,1016.4,1015.3,1015.4,1014.3,1014.9,1016.9,1014.6,1016.2,1016.2,1016.1,1015.5,1016.1,1012.9,1012.7,1013.8,1013.1,1015.1,1014.2,1014.0,1014.6,1012.9,1013.4,1012.6,1015.3,1015.3,1014.4,1013.1,1014.2,1015.2,1015.2,1013.7,1013.3,1012.7,1012.8,1015.3,1012.7],"cloud_cover":[27,33,31,28,23,24,23,19,26,23,28,32,31,23,36,32,29,26,23,36,26,37,33,21,31,33,23,20,36,24,28,29,26,20,18,36,21,28,25,32,27,31,32,17,25,25,35,36,38,25,21,33,34,35,32,37,30,37,34,23,24,30,29,20,20,25,35,25,33,30,22,34,0,11,2,5,0,7,10,8,0,12,0,11,11,3,1,8,4,9,3,0,0,6,5,14,22,19,3,8,17,18,8,5,16,20,3,15,18,15,13,2,17,2,17,13,11,9,5,7,10,25,23,16,17,6,16,24,17,17,22,19,22,9,16,19,21,17,14,26,8,15,18,17,22,24,30,23,38,24,38,23,20,27,28,23,34,27,20,34,38,22,36,20,38,29,26,36,12,7,21,18,14,13,9,5,23,22,10,18,12,16,15,21,8,23,7,10,10,18,15,6,18,12,12,18,17,5,19,21,21,7,11,8,23,10,22,10,22,21,17,18,21,23,7,25,16,2,2,6,16,3,1,0,15,3,12,7,11,15,7,8,11,12,12,11,5,1,7,12],"wind_speed_10m":[11.1,13.5,13.6,12.2,10.4,12.7,12.9,14.6,11.1,11.0,13.9,12.0,14.0,12.2,11.0,12.6,12.9,13.9,12.5,11.3,10.6,14.6,12.8,11.1,13.6,12.9,12.3,14.0,9.9,12.8,10.2,12.0,11.0,12.7,12.9,10.5,10.3,10.3,11.1,12.3,13.8,10.2,11.3,13.1,10.8,11.5,13.2,13.8,12.9,11.8,14.6,14.6,12.7,10.7,13.6,12.5,12.4,10.4,12.6,12.0,11.1,10.2,14.1,10.6,10.2,13.6,13.8,11.3,10.6,12.0,13.6,13.5,8.8,7.1,9.0,5.5,7.0,6.0,6.9,5.5,6.6,8.1,4.7,5.9,5.7,8.6,7.0,8.2,7.6,7.7,5.7,7.5,8.7,5.3,6.7,7.6,10.6,7.7,7.5,6.2,9.4,7.8,6.4,8.9,9.7,7.9,7.4,7.2,10.0,6.4,7.5,10.0,7.3,8.9,7.5,7.8,9.0,9.4,10.5,6.5,10.7,10.9,11.1,11.4,11.0,11.3,7.5,10.4,8.3,8.0,9.0,8.8,10.8,9.3,8.1,10.4,9.2,7.5,11.4,11.5,9.0,8.2,9.3,11.1,13.8,14.4,12.8,13.3,14.4,11.1,11.2,12.7,14.2,11.6,10.8,14.0,12.2,14.3,13.1,10.8,10.1,10.9,12.3,11.6,11.3,13.0,13.2,10.9,8.0,7.8,6.9,10.7,8.6,6.9,11.0,7.3,10.2,9.3,9.7,7.2,9.9,8.1,9.9,10.6,9.4,8.9,9.7,8.4,7.1,7.4,7.9,7.0,10.0,7.5,8.3,8.0,7.1,9.1,7.0,9.9,9.9,7.9,8.9,9.2,8.4,8.9,9.9,7.4,8.5,7.6,11.2,8.8,7.3,7.3,10.5,10.6,8.9,6.3,8.8,5.7,8.5,5.6,8.8,9.1,9.3,6.6,8.4,5.8,6.0,5.6,6.4,6.0,9.2,9.4,6.5,5.9,9.0,9.9,8.9,6.8],"wind_gusts_10m":[15.3,18.1,18.3,17.8,13.6,16.6,20.4,22.2,13.7,15.6,21.7,18.1,18.2,18.1,15.2,16.6,17.0,19.3,15.6,18.0,15.9,22.8,19.3,15.2,21.7,19.4,16.8,19.8,15.2,18.8,12.5,15.3,17.4,15.8,20.4,15.7,16.4,15.6,16.3,19.6,21.0,14.3,17.6,19.6,16.1,16.9,19.5,17.4,17.6,18.5,20.0,21.5,18.2,13.3,18.8,18.9,18.5,16.1,16.0,19.0,13.7,13.8,18.4,16.3,14.3,21.5,21.2,17.7,14.9,14.9,21.4,21.4,12.6,8.7,13.2,7.0,9.4,7.9,9.9,6.6,10.6,12.0,7.0,7.6,8.8,12.7,11.0,12.6,10.7,10.6,7.9,10.1,10.7,7.0,8.8,10.9,14.1,11.6,10.3,8.1,13.0,11.3,9.9,11.7,13.5,11.8,10.2,9.0,15.9,8.0,10.1,13.4,9.4,13.6,11.0,12.2,11.8,11.7,13.9,10.0,13.3,14.8,14.4,16.3,15.9,17.0,11.8,13.6,13.2,11.4,14.0,13.8,16.9,13.2,12.8,14.2,13.3,9.2,16.7,18.3,13.8,11.1,14.0,13.4,18.3,21.1,16.3,17.8,22.7,14.8,15.7,17.1,19.3,18.5,16.5,19.6,16.9,21.3,16.4,16.5,13.6,13.8,17.0,15.8,16.5,20.7,17.2,16.9,11.8,10.8,8.9,13.9,12.4,9.7,15.3,10.5,15.1,14.8,14.6,9.9,15.7,10.1,15.6,15.2,13.8,13.3,13.9,11.9,9.5,10.9,12.5,8.8,14.2,10.5,11.4,10.3,10.5,10.9,8.9,15.1,15.6,10.5,13.1,14.7,11.8,13.0,14.5,9.9,12.2,10.1,16.6,12.9,10.6,10.0,15.0,13.5,12.2,9.3,12.1,9.1,10.6,7.9,11.5,10.9,12.2,8.6,10.7,7.1,8.3,7.1,10.2,9.3,12.3,13.8,10.4,8.8,13.7,13.8,11.9,9.2],"uv_index":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.1,2.4,3.6,4.6,5.2,5.6,5.7,5.4,4.8,3.9,2.8,1.5,0.1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.2,2.6,3.9,4.9,5.7,6.1,6.1,5.8,5.2,4.2,3.0,1.6,0.1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.1,2.4,3.6,4.5,5.2,5.6,5.6,5.3,4.7,3.8,2.7,1.4,0.1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,2.0,4.5,6.7,8.5,9.8,10.5,10.6,10.1,8.9,7.2,5.1,2.7,0.1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.7,3.9,5.9,7.4,8.6,9.2,9.3,8.8,7.8,6.3,4.4,2.3,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.5,3.5,5.2,6.7,7.7,8.2,8.3,7.9,6.9,5.6,3.9,2.0,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,2.4,3.6,4.6,5.3,5.7,5.8,5.4,4.8,3.9,2.7,1.4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.5,3.6,5.4,6.9,7.9,8.5,8.6,8.1,7.2,5.8,4.0,2.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.5,3.6,5.4,6.9,8.0,8.6,8.6,8.2,7.2,5.8,4.0,2.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.7,4.0,6.1,7.9,9.1,9.8,9.9,9.3,8.2,6.6,4.6,2.3,0.0,0.0,0.0,0.0,0.0],"weather_code":[1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,2,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,2,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,0,0,0,0,0,0,1,61,63,1,61,63,63,61,0,0,0,0,0,0,1,1,1,0,0,1,1,0,0,1,1,0,1,1,1,1,0,1,0,1,1,1,0,0,0,0,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,1,0,1,1,1,1,1,1,1,2,1,2,1,1,1,1,1,1,1,1,1,2,1,2,1,2,1,1,2,1,0,1,1,1,1,0,0,1,1,0,1,1,1,1,1,0,1,0,0,0,1,1,0,1,1,1,1,1,0,1,1,1,0,1,0,1,0,1,0,1,1,1,1,1,1,0,1,1,0,0,0,1,0,0,0,1,0,1,0,1,1,0,0,1,1,1,1,0,0,0,1],"soil_moisture_0_to_1cm":[0.256,0.25,0.27,0.255,0.27,0.252,0.254,0.285,0.266,0.28,0.275,0.27,0.285,0.248,0.264,0.283,0.26,0.27,0.266,0.273,0.263,0.255,0.28,0.26,0.282,0.264,0.253,0.268,0.259,0.254,0.262,0.257,0.244,0.28,0.268,0.272,0.243,0.257,0.267,0.268,0.277,0.257,0.261,0.249,0.262,0.258,0.247,0.255,0.261,0.279,0.283,0.287,0.282,0.265,0.277,0.279,0.284,0.271,0.272,0.282,0.255,0.277,0.279,0.269,0.273,0.27,0.276,0.25,0.257,0.28,0.258,0.287,0.223,0.22,0.214,0.203,0.214,0.214,0.208,0.206,0.23,0.207,0.226,0.202,0.221,0.215,0.23,0.216,0.222,0.204,0.213,0.24,0.239,0.205,0.21,0.211,0.248,0.248,0.25,0.251,0.22,0.233,0.228,0.225,0.22,0.235,0.222,0.227,0.237,0.24,0.22,0.243,0.234,0.235,0.242,0.221,0.231,0.214,0.224,0.219,0.224,0.255,0.224,0.246,0.236,0.239,0.223,0.224,0.255,0.226,0.237,0.234,0.228,0.25,0.252,0.259,0.251,0.229,0.261,0.244,0.258,0.242,0.262,0.25,0.277,0.286,0.248,0.274,0.252,0.252,0.259,0.277,0.249,0.286,0.267,0.277,0.255,0.25,0.267,0.247,0.25,0.267,0.254,0.267,0.268,0.252,0.265,0.284,0.225,0.244,0.234,0.232,0.221,0.237,0.226,0.254,0.253,0.249,0.258,0.249,0.251,0.255,0.23,0.243,0.237,0.255,0.222,0.246,0.246,0.25,0.253,0.251,0.227,0.251,0.225,0.224,0.237,0.236,0.253,0.246,0.245,0.247,0.221,0.224,0.245,0.236,0.237,0.234,0.257,0.222,0.225,0.232,0.229,0.249,0.253,0.222,0.219,0.215,0.242,0.209,0.216,0.219,0.237,0.234,0.209,0.234,0.212,0.221,0.221,0.213,0.212,0.216,0.22,0.237,0.237,0.242,0.231,0.236,0.246,0.227],"soil_moisture_3_to_9cm":[0.286,0.28,0.3,0.285,0.3,0.282,0.284,0.315,0.296,0.31,0.305,0.3,0.315,0.278,0.294,0.313,0.29,0.3,0.296,0.303,0.293,0.285,0.31,0.29,0.312,0.294,0.283,0.298,0.289,0.284,0.292,0.287,0.274,0.31,0.298,0.302,0.273,0.287,0.297,0.298,0.307,0.287,0.291,0.279,0.292,0.288,0.277,0.285,0.291,0.309,0.313,0.317,0.312,0.295,0.307,0.309,0.314,0.301,0.302,0.312,0.285,0.307,0.309,0.299,0.303,0.3,0.306,0.28,0.287,0.31,0.288,0.317,0.253,0.25,0.244,0.233,0.244,0.244,0.238,0.236,0.26,0.237,0.256,0.232,0.251,0.245,0.26,0.246,0.252,0.234,0.243,0.27,0.269,0.235,0.24,0.241,0.278,0.278,0.28,0.281,0.25,0.263,0.258,0.255,0.25,0.265,0.252,0.257,0.267,0.27,0.25,0.273,0.264,0.265,0.272,0.251,0.261,0.244,0.254,0.249,0.254,0.285,0.254,0.276,0.266,0.269,0.253,0.254,0.285,0.256,0.267,0.264,0.258,0.28,0.282,0.289,0.281,0.259,0.291,0.274,0.288,0.272,0.292,0.28,0.307,0.316,0.278,0.304,0.282,0.282,0.289,0.307,0.279,0.316,0.297,0.307,0.285,0.28,0.297,0.277,0.28,0.297,0.284,0.297,0.298,0.282,0.295,0.314,0.255,0.274,0.264,0.262,0.251,0.267,0.256,0.284,0.283,0.279,0.288,0.279,0.281,0.285,0.26,0.273,0.267,0.285,0.252,0.276,0.276,0.28,0.283,0.281,0.257,0.281,0.255,0.254,0.267,0.266,0.283,0.276,0.275,0.277,0.251,0.254,0.275,0.266,0.267,0.264,0.287,0.252,0.255,0.262,0.259,0.279,0.283,0.252,0.249,0.245,0.272,0.239,0.246,0.249,0.267,0.264,0.239,0.264,0.242,0.251,0.251,0.243,0.242,0.246,0.25,0.267,0.267,0.272,0.261,0.266,0.276,0.257],"soil_temperature_0cm":[81.4,82.0,83.1,83.5,84.7,84.7,92.0,92.3,96.3,98.6,99.5,101.9,102.2,102.5,102.1,101.0,100.5,97.1,94.4,92.5,91.7,83.1,85.0,83.0,81.7,81.9,82.1,85.1,84.8,83.0,90.3,94.8,96.0,99.3,99.2,100.1,103.8,103.6,103.2,100.8,99.6,97.9,95.3,93.6,91.7,84.9,84.5,83.5,82.5,82.0,83.2,84.9,83.1,85.3,90.7,94.9,97.6,97.4,101.3,101.8,102.8,103.0,101.7,100.7,101.0,97.5,96.5,95.4,90.4,84.7,83.1,81.8,84.7,83.8,86.0,85.6,87.3,85.6,93.2,95.1,96.3,100.5,100.4,104.4,104.7,105.8,104.0,103.5,100.9,100.0,95.9,95.3,93.2,85.0,85.9,83.9,81.4,83.1,82.9,84.6,85.7,83.9,90.3,95.6,95.9,99.2,101.3,101.4,102.5,101.7,102.3,101.4,100.7,97.9,95.2,92.6,92.4,84.6,83.7,82.8,81.7,82.7,83.1,85.7,85.3,86.0,91.0,94.7,96.0,98.5,99.1,101.3,102.2,103.0,103.3,101.5,101.3,97.5,96.6,92.5,92.0,85.0,85.8,84.3,84.3,85.3,86.8,85.7,87.0,86.3,93.9,96.9,98.1,102.0,104.1,105.0,104.9,106.3,104.7,104.8,101.5,100.5,99.1,95.3,92.4,87.7,87.1,84.3,85.3,84.7,83.9,86.5,86.7,86.5,91.8,95.3,98.6,100.4,102.4,102.4,105.3,106.8,104.4,103.0,102.5,101.7,99.6,96.5,93.4,87.5,85.8,85.1,86.3,88.4,88.2,90.6,89.0,90.7,95.3,98.9,100.8,102.6,105.3,106.1,108.7,107.7,106.7,107.5,103.3,101.8,100.7,97.3,95.3,87.5,90.6,87.9,88.3,88.6,86.7,91.2,89.7,91.5,98.1,100.2,100.5,105.1,107.9,106.7,109.6,107.8,108.0,106.0,105.0,104.7,102.3,98.5,97.3,90.4,92.4,89.0]},"daily":{"time":["2026-09-07","2026-09-08","2026-09-09","2026-09-10","2026-09-11","2026-09-12","2026-09-13","2026-09-14","2026-09-15","2026-09-16"],"weather_code":[1,1,1,0,1,1,1,1,1,0],"temperature_2m_max":[110.0,110.4,110.9,112.1,110.4,111.0,113.3,113.2,115.0,115.7],"temperature_2m_min":[82.4,83.4,82.7,84.5,82.8,83.3,86.2,85.8,88.0,88.6],"apparent_temperature_max":[107.0,107.4,107.9,109.1,107.4,108.0,110.3,110.2,112.0,112.7],"apparent_temperature_min":[85.4,86.4,85.7,87.5,85.8,86.3,89.2,88.8,91.0,91.6],"precipitation_sum":[0.0,0.0,0.0,0.44,0.0,0.0,0.0,0.0,0.0,0.0],"snowfall_sum":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"precipitation_probability_max":[20,20,20,55,12,15,20,14,14,10],"uv_index_max":[5.7,6.1,5.6,10.6,9.3,8.3,5.8,8.6,8.6,9.9],"shortwave_radiation_sum":[1596.0,1708.0,1568.0,2968.0,2604.0,2324.0,1624.0,2408.0,2408.0,2772.0],"sunrise":["2026-09-07T06:10","2026-09-08T06:11","2026-09-09T06:12","2026-09-10T06:13","2026-09-11T06:14","2026-09-12T06:15","2026-09-13T06:16","2026-09-14T06:17","2026-09-15T06:18","2026-09-16T06:19"],"sunset":["2026-09-07T19:05","2026-09-08T19:04","2026-09-09T19:03","2026-09-10T19:02","2026-09-11T19:01","2026-09-12T19:00","2026-09-13T18:59","2026-09-14T18:58","2026-09-15T18:57","2026-09-16T18:56"]},"current":{"time":"2026-09-10T14:00","temperature_2m":108.6,"precipitation":0.053,"rain":0.053,"showers":0,"snowfall":0.0,"weather_code":63,"cloud_cover":1}},"aq":{"latitude":33.4484,"longitude":-112.074,"timezone":"America/Phoenix","hourly":{"time":["2026-09-07T00:00","2026-09-07T01:00","2026-09-07T02:00","2026-09-07T03:00","2026-09-07T04:00","2026-09-07T05:00","2026-09-07T06:00","2026-09-07T07:00","2026-09-07T08:00","2026-09-07T09:00","2026-09-07T10:00","2026-09-07T11:00","2026-09-07T12:00","2026-09-07T13:00","2026-09-07T14:00","2026-09-07T15:00","2026-09-07T16:00","2026-09-07T17:00","2026-09-07T18:00","2026-09-07T19:00","2026-09-07T20:00","2026-09-07T21:00","2026-09-07T22:00","2026-09-07T23:00","2026-09-08T00:00","2026-09-08T01:00","2026-09-08T02:00","2026-09-08T03:00","2026-09-08T04:00","2026-09-08T05:00","2026-09-08T06:00","2026-09-08T07:00","2026-09-08T08:00","2026-09-08T09:00","2026-09-08T10:00","2026-09-08T11:00","2026-09-08T12:00","2026-09-08T13:00","2026-09-08T14:00","2026-09-08T15:00","2026-09-08T16:00","2026-09-08T17:00","2026-09-08T18:00","2026-09-08T19:00","2026-09-08T20:00","2026-09-08T21:00","2026-09-08T22:00","2026-09-08T23:00","2026-09-09T00:00","2026-09-09T01:00","2026-09-09T02:00","2026-09-09T03:00","2026-09-09T04:00","2026-09-09T05:00","2026-09-09T06:00","2026-09-09T07:00","2026-09-09T08:00","2026-09-09T09:00","2026-09-09T10:00","2026-09-09T11:00","2026-09-09T12:00","2026-09-09T13:00","2026-09-09T14:00","2026-09-09T15:00","2026-09-09T16:00","2026-09-09T17:00","2026-09-09T18:00","2026-09-09T19:00","2026-09-09T20:00","2026-09-09T21:00","2026-09-09T22:00","2026-09-09T23:00","2026-09-10T00:00","2026-09-10T01:00","2026-09-10T02:00","2026-09-10T03:00","2026-09-10T04:00","2026-09-10T05:00","2026-09-10T06:00","2026-09-10T07:00","2026-09-10T08:00","2026-09-10T09:00","2026-09-10T10:00","2026-09-10T11:00","2026-09-10T12:00","2026-09-10T13:00","2026-09-10T14:00","2026-09-10T15:00","2026-09-10T16:00","2026-09-10T17:00","2026-09-10T18:00","2026-09-10T19:00","2026-09-10T20:00","2026-09-10T21:00","2026-09-10T22:00","2026-09-10T23:00","2026-09-11T00:00","2026-09-11T01:00","2026-09-11T02:00","2026-09-11T03:00","2026-09-11T04:00","2026-09-11T05:00","2026-09-11T06:00","2026-09-11T07:00","2026-09-11T08:00","2026-09-11T09:00","2026-09-11T10:00","2026-09-11T11:00","2026-09-11T12:00","2026-09-11T13:00","2026-09-11T14:00","2026-09-11T15:00","2026-09-11T16:00","2026-09-11T17:00","2026-09-11T18:00","2026-09-11T19:00","2026-09-11T20:00","2026-09-11T21:00","2026-09-11T22:00","2026-09-11T23:00","2026-09-12T00:00","2026-09-12T01:00","2026-09-12T02:00","2026-09-12T03:00","2026-09-12T04:00","2026-09-12T05:00","2026-09-12T06:00","2026-09-12T07:00","2026-09-12T08:00","2026-09-12T09:00","2026-09-12T10:00","2026-09-12T11:00","2026-09-12T12:00","2026-09-12T13:00","2026-09-12T14:00","2026-09-12T15:00","2026-09-12T16:00","2026-09-12T17:00","2026-09-12T18:00","2026-09-12T19:00","2026-09-12T20:00","2026-09-12T21:00","2026-09-12T22:00","2026-09-12T23:00","2026-09-13T00:00","2026-09-13T01:00","2026-09-13T02:00","2026-09-13T03:00","2026-09-13T04:00","2026-09-13T05:00","2026-09-13T06:00","2026-09-13T07:00","2026-09-13T08:00","2026-09-13T09:00","2026-09-13T10:00","2026-09-13T11:00","2026-09-13T12:00","2026-09-13T13:00","2026-09-13T14:00","2026-09-13T15:00","2026-09-13T16:00","2026-09-13T17:00","2026-09-13T18:00","2026-09-13T19:00","2026-09-13T20:00","2026-09-13T21:00","2026-09-13T22:00","2026-09-13T23:00","2026-09-14T00:00","2026-09-14T01:00","2026-09-14T02:00","2026-09-14T03:00","2026-09-14T04:00","2026-09-14T05:00","2026-09-14T06:00","2026-09-14T07:00","2026-09-14T08:00","2026-09-14T09:00","2026-09-14T10:00","2026-09-14T11:00","2026-09-14T12:00","2026-09-14T13:00","2026-09-14T14:00","2026-09-14T15:00","2026-09-14T16:00","2026-09-14T17:00","2026-09-14T18:00","2026-09-14T19:00","2026-09-14T20:00","2026-09-14T21:00","2026-09-14T22:00","2026-09-14T23:00","2026-09-15T00:00","2026-09-15T01:00","2026-09-15T02:00","2026-09-15T03:00","2026-09-15T04:00","2026-09-15T05:00","2026-09-15T06:00","2026-09-15T07:00","2026-09-15T08:00","2026-09-15T09:00","2026-09-15T10:00","2026-09-15T11:00","2026-09-15T12:00","2026-09-15T13:00","2026-09-15T14:00","2026-09-15T15:00","2026-09-15T16:00","2026-09-15T17:00","2026-09-15T18:00","2026-09-15T19:00","2026-09-15T20:00","2026-09-15T21:00","2026-09-15T22:00","2026-09-15T23:00","2026-09-16T00:00","2026-09-16T01:00","2026-09-16T02:00","2026-09-16T03:00","2026-09-16T04:00","2026-09-16T05:00","2026-09-16T06:00","2026-09-16T07:00","2026-09-16T08:00","2026-09-16T09:00","2026-09-16T10:00","2026-09-16T11:00","2026-09-16T12:00","2026-09-16T13:00","2026-09-16T14:00","2026-09-16T15:00","2026-09-16T16:00","2026-09-16T17:00","2026-09-16T18:00","2026-09-16T19:00","2026-09-16T20:00","2026-09-16T21:00","2026-09-16T22:00","2026-09-16T23:00"],"pm2_5":[18.1,14.6,14.0,15.9,12.0,17.4,13.5,15.6,17.2,13.0,10.8,14.5,18.4,15.9,15.4,14.4,11.9,15.0,12.8,18.1,16.0,10.9,11.7,14.6,13.4,15.7,16.4,12.5,12.6,17.3,13.2,15.0,10.4,18.1,12.3,10.2,12.5,15.8,13.5,17.4,13.1,12.7,17.6,14.2,14.1,14.3,10.6,11.2,11.6,12.2,12.6,13.0,15.8,16.7,14.3,14.5,18.3,14.0,16.0,18.1,14.2,13.1,16.6,17.6,16.8,15.5,18.3,10.9,10.8,11.5,13.4,17.6,5.9,9.3,10.9,8.5,11.5,10.3,8.5,12.2,6.9,10.2,12.0,8.1,7.3,8.8,8.9,10.7,9.1,11.4,7.4,11.7,7.9,11.1,7.5,9.2,12.7,7.9,10.4,8.3,7.7,10.6,14.5,11.6,10.8,9.7,13.8,13.6,7.2,9.6,11.3,7.8,7.3,10.1,7.3,14.6,14.0,8.9,9.8,10.3,9.2,11.0,14.4,11.1,10.7,8.4,7.8,10.2,8.1,15.3,8.4,9.3,11.2,10.5,13.2,10.4,11.5,12.1,12.5,15.7,8.6,12.9,15.2,15.0,14.4,17.2,12.2,13.2,15.2,12.5,15.1,12.0,10.9,14.0,16.8,13.4,17.5,17.2,11.8,16.5,11.3,11.8,15.0,16.6,10.8,14.8,11.4,11.9,9.7,10.0,8.7,7.4,10.7,14.2,11.1,10.7,15.4,11.1,13.6,15.4,7.9,12.4,14.2,8.7,14.6,9.0,9.7,8.6,15.1,14.0,13.8,13.4,12.4,11.8,14.0,13.0,11.3,9.3,13.4,14.5,9.5,15.4,10.0,15.0,10.4,12.4,11.4,8.5,14.4,7.6,10.0,13.9,12.6,10.2,13.8,12.7,13.4,8.2,11.3,7.7,10.2,7.3,13.1,13.3,13.1,7.6,8.1,7.2,9.2,9.0,7.0,7.7,9.3,13.8,13.2,7.8,6.8,8.7,10.0,12.8],"ozone":[35.7,38.6,30.3,29.7,23.4,34.2,27.3,39.9,27.8,29.7,35.1,27.3,32.1,40.4,39.2,34.1,42.0,27.1,31.3,28.7,40.9,25.8,23.8,36.1,38.9,25.8,34.8,27.1,43.9,27.7,26.5,30.0,28.7,38.4,28.2,42.3,35.3,26.2,36.8,40.5,34.7,42.9,27.1,30.1,31.4,31.9,33.2,42.1,23.7,23.9,29.8,40.4,36.0,28.7,39.3,40.6,37.0,27.4,42.2,26.9,39.4,38.8,35.3,25.5,38.7,38.3,32.6,30.9,33.2,42.0,37.3,32.2,43.0,42.8,41.6,48.0,54.4,50.1,55.1,46.1,41.2,46.7,45.2,39.8,50.1,54.2,55.5,37.3,55.2,39.4,38.5,45.4,43.4,51.1,56.4,38.1,43.5,36.2,40.1,49.4,40.0,41.8,46.9,45.7,44.8,45.9,36.8,34.6,38.4,42.7,46.9,52.5,35.1,51.6,48.0,49.9,48.8,33.1,34.6,38.0,41.3,46.0,31.4,48.4,44.5,49.6,31.1,47.5,49.5,48.0,31.9,45.1,32.0,30.7,40.1,46.3,45.3,42.6,46.3,38.4,49.7,39.2,48.8,30.5,36.4,38.1,27.4,24.5,36.7,42.5,36.2,29.9,42.0,37.8,23.3,39.9,24.4,29.4,34.2,28.4,31.6,29.0,34.9,32.7,41.3,31.4,28.0,31.3,48.0,38.5,42.6,36.0,42.1,47.8,49.4,32.8,50.6,35.9,36.6,46.0,50.4,36.2,34.3,34.8,43.1,32.7,32.2,44.4,34.2,48.8,47.9,48.1,40.1,38.9,45.3,32.0,38.5,35.7,36.3,43.3,41.4,38.6,31.8,39.4,34.7,41.8,39.7,37.1,37.4,46.1,38.5,49.5,49.4,32.4,32.5,40.0,50.0,44.4,41.1,42.8,38.9,38.7,51.2,40.2,52.6,40.1,37.4,50.8,41.8,49.8,48.4,48.6,41.9,46.8,47.9,36.5,48.1,53.3,53.9,48.0],"us_aqi":[74,63,62,61,54,65,50,70,75,59,43,56,72,66,70,55,46,57,50,81,66,40,45,56,50,58,70,54,57,70,55,58,44,71,57,47,47,73,63,74,59,55,73,60,55,56,48,42,54,54,54,53,66,64,59,66,78,64,63,79,61,50,73,79,77,64,76,40,39,44,49,66,29,33,45,43,45,48,36,55,31,48,44,40,35,36,33,41,44,49,36,51,28,44,28,46,51,36,45,37,28,41,59,43,43,43,56,51,26,37,45,33,35,47,39,63,57,32,36,51,40,53,58,50,52,30,39,45,30,64,32,35,52,48,59,49,45,44,60,67,30,59,70,57,65,71,55,58,63,53,56,57,48,64,75,56,73,76,43,71,49,52,56,71,39,58,53,56,36,36,36,29,44,62,44,44,61,46,64,59,41,48,59,43,59,33,38,40,68,61,51,63,50,48,58,58,55,47,60,57,39,67,36,65,42,51,53,30,64,27,43,62,51,43,58,50,49,34,44,39,43,33,61,49,49,37,42,38,33,35,35,32,36,60,49,27,32,31,49,56]}},"name":"Demo Town (Hot)","lat":33.4484,"lon":-112.074,"tz":"America/Phoenix"},"moderate":{"wx":{"latitude":42.9634,"longitude":-85.6681,"timezone":"America/New_York","timezone_abbreviation":"EDT","utc_offset_seconds":-14400,"hourly":{"time":["2026-09-07T00:00","2026-09-07T01:00","2026-09-07T02:00","2026-09-07T03:00","2026-09-07T04:00","2026-09-07T05:00","2026-09-07T06:00","2026-09-07T07:00","2026-09-07T08:00","2026-09-07T09:00","2026-09-07T10:00","2026-09-07T11:00","2026-09-07T12:00","2026-09-07T13:00","2026-09-07T14:00","2026-09-07T15:00","2026-09-07T16:00","2026-09-07T17:00","2026-09-07T18:00","2026-09-07T19:00","2026-09-07T20:00","2026-09-07T21:00","2026-09-07T22:00","2026-09-07T23:00","2026-09-08T00:00","2026-09-08T01:00","2026-09-08T02:00","2026-09-08T03:00","2026-09-08T04:00","2026-09-08T05:00","2026-09-08T06:00","2026-09-08T07:00","2026-09-08T08:00","2026-09-08T09:00","2026-09-08T10:00","2026-09-08T11:00","2026-09-08T12:00","2026-09-08T13:00","2026-09-08T14:00","2026-09-08T15:00","2026-09-08T16:00","2026-09-08T17:00","2026-09-08T18:00","2026-09-08T19:00","2026-09-08T20:00","2026-09-08T21:00","2026-09-08T22:00","2026-09-08T23:00","2026-09-09T00:00","2026-09-09T01:00","2026-09-09T02:00","2026-09-09T03:00","2026-09-09T04:00","2026-09-09T05:00","2026-09-09T06:00","2026-09-09T07:00","2026-09-09T08:00","2026-09-09T09:00","2026-09-09T10:00","2026-09-09T11:00","2026-09-09T12:00","2026-09-09T13:00","2026-09-09T14:00","2026-09-09T15:00","2026-09-09T16:00","2026-09-09T17:00","2026-09-09T18:00","2026-09-09T19:00","2026-09-09T20:00","2026-09-09T21:00","2026-09-09T22:00","2026-09-09T23:00","2026-09-10T00:00","2026-09-10T01:00","2026-09-10T02:00","2026-09-10T03:00","2026-09-10T04:00","2026-09-10T05:00","2026-09-10T06:00","2026-09-10T07:00","2026-09-10T08:00","2026-09-10T09:00","2026-09-10T10:00","2026-09-10T11:00","2026-09-10T12:00","2026-09-10T13:00","2026-09-10T14:00","2026-09-10T15:00","2026-09-10T16:00","2026-09-10T17:00","2026-09-10T18:00","2026-09-10T19:00","2026-09-10T20:00","2026-09-10T21:00","2026-09-10T22:00","2026-09-10T23:00","2026-09-11T00:00","2026-09-11T01:00","2026-09-11T02:00","2026-09-11T03:00","2026-09-11T04:00","2026-09-11T05:00","2026-09-11T06:00","2026-09-11T07:00","2026-09-11T08:00","2026-09-11T09:00","2026-09-11T10:00","2026-09-11T11:00","2026-09-11T12:00","2026-09-11T13:00","2026-09-11T14:00","2026-09-11T15:00","2026-09-11T16:00","2026-09-11T17:00","2026-09-11T18:00","2026-09-11T19:00","2026-09-11T20:00","2026-09-11T21:00","2026-09-11T22:00","2026-09-11T23:00","2026-09-12T00:00","2026-09-12T01:00","2026-09-12T02:00","2026-09-12T03:00","2026-09-12T04:00","2026-09-12T05:00","2026-09-12T06:00","2026-09-12T07:00","2026-09-12T08:00","2026-09-12T09:00","2026-09-12T10:00","2026-09-12T11:00","2026-09-12T12:00","2026-09-12T13:00","2026-09-12T14:00","2026-09-12T15:00","2026-09-12T16:00","2026-09-12T17:00","2026-09-12T18:00","2026-09-12T19:00","2026-09-12T20:00","2026-09-12T21:00","2026-09-12T22:00","2026-09-12T23:00","2026-09-13T00:00","2026-09-13T01:00","2026-09-13T02:00","2026-09-13T03:00","2026-09-13T04:00","2026-09-13T05:00","2026-09-13T06:00","2026-09-13T07:00","2026-09-13T08:00","2026-09-13T09:00","2026-09-13T10:00","2026-09-13T11:00","2026-09-13T12:00","2026-09-13T13:00","2026-09-13T14:00","2026-09-13T15:00","2026-09-13T16:00","2026-09-13T17:00","2026-09-13T18:00","2026-09-13T19:00","2026-09-13T20:00","2026-09-13T21:00","2026-09-13T22:00","2026-09-13T23:00","2026-09-14T00:00","2026-09-14T01:00","2026-09-14T02:00","2026-09-14T03:00","2026-09-14T04:00","2026-09-14T05:00","2026-09-14T06:00","2026-09-14T07:00","2026-09-14T08:00","2026-09-14T09:00","2026-09-14T10:00","2026-09-14T11:00","2026-09-14T12:00","2026-09-14T13:00","2026-09-14T14:00","2026-09-14T15:00","2026-09-14T16:00","2026-09-14T17:00","2026-09-14T18:00","2026-09-14T19:00","2026-09-14T20:00","2026-09-14T21:00","2026-09-14T22:00","2026-09-14T23:00","2026-09-15T00:00","2026-09-15T01:00","2026-09-15T02:00","2026-09-15T03:00","2026-09-15T04:00","2026-09-15T05:00","2026-09-15T06:00","2026-09-15T07:00","2026-09-15T08:00","2026-09-15T09:00","2026-09-15T10:00","2026-09-15T11:00","2026-09-15T12:00","2026-09-15T13:00","2026-09-15T14:00","2026-09-15T15:00","2026-09-15T16:00","2026-09-15T17:00","2026-09-15T18:00","2026-09-15T19:00","2026-09-15T20:00","2026-09-15T21:00","2026-09-15T22:00","2026-09-15T23:00","2026-09-16T00:00","2026-09-16T01:00","2026-09-16T02:00","2026-09-16T03:00","2026-09-16T04:00","2026-09-16T05:00","2026-09-16T06:00","2026-09-16T07:00","2026-09-16T08:00","2026-09-16T09:00","2026-09-16T10:00","2026-09-16T11:00","2026-09-16T12:00","2026-09-16T13:00","2026-09-16T14:00","2026-09-16T15:00","2026-09-16T16:00","2026-09-16T17:00","2026-09-16T18:00","2026-09-16T19:00","2026-09-16T20:00","2026-09-16T21:00","2026-09-16T22:00","2026-09-16T23:00"],"apparent_temperature":[57.9,58.8,57.9,61.3,61.1,61.5,67.3,70.4,71.6,73.5,77.2,77.1,79.1,78.7,77.6,77.2,75.4,74.5,72.8,70.4,67.4,60.2,61.3,60.1,61.9,61.8,60.2,63.8,62.0,62.9,69.1,72.4,73.0,75.4,77.4,79.5,79.5,80.2,79.5,79.2,77.1,75.1,74.8,72.2,68.2,62.7,62.3,60.2,63.2,63.2,63.1,63.3,64.9,64.8,70.6,71.9,74.6,77.6,78.8,79.9,82.6,83.5,83.0,81.4,80.0,78.9,76.5,72.6,70.3,65.2,63.1,63.1,63.5,63.0,63.9,65.0,66.0,66.2,71.1,74.0,77.4,78.8,82.1,83.4,82.2,83.9,84.4,82.4,80.6,79.2,77.3,73.4,70.8,66.0,64.7,64.3,61.4,61.1,61.6,63.8,65.1,63.8,71.3,73.8,74.6,76.5,79.1,80.9,81.7,82.2,82.6,79.9,80.5,78.1,75.5,74.0,69.6,64.4,63.8,61.3,60.9,60.8,60.0,63.7,62.1,62.2,69.6,71.0,74.4,77.2,78.6,80.5,81.3,80.0,81.5,80.0,78.7,77.0,72.9,70.4,68.1,63.6,63.7,60.3,59.0,58.1,58.9,61.0,60.1,60.8,66.4,69.0,72.2,73.6,76.4,76.5,77.1,77.1,77.7,77.5,76.4,74.2,72.5,69.0,67.2,60.8,60.6,58.2,60.8,61.3,62.2,63.1,64.0,64.2,68.0,71.2,73.5,77.5,79.1,80.9,80.6,80.7,81.1,79.5,79.3,75.7,74.3,71.2,68.4,62.9,62.1,61.8,62.6,61.9,60.4,63.9,64.2,64.0,70.5,73.0,75.6,76.6,78.4,81.3,80.0,80.8,80.5,80.9,78.9,75.8,75.2,72.3,68.6,64.4,62.7,61.3,61.3,60.4,61.7,62.0,63.6,62.5,67.6,71.3,72.6,76.7,77.0,80.2,81.2,80.3,80.0,78.9,79.0,76.7,73.4,72.1,67.8,63.7,62.9,61.0],"relative_humidity_2m":[72,75,75,69,69,68,68,67,60,56,55,56,56,54,51,55,56,54,61,65,70,67,74,70,73,71,71,70,70,67,65,67,58,63,57,52,53,52,60,57,55,57,60,65,62,66,68,67,70,73,72,73,70,67,66,61,65,57,61,56,59,56,53,60,55,57,61,59,64,67,65,75,72,73,67,74,74,70,70,60,66,58,55,53,51,53,51,61,56,57,60,66,69,75,67,76,67,67,69,67,69,70,62,64,58,60,57,54,52,51,53,55,55,63,62,64,66,69,66,76,70,70,72,73,66,70,60,60,64,55,59,52,59,54,56,57,62,57,64,67,65,71,67,72,74,74,75,72,73,74,62,64,57,61,56,61,59,58,60,52,56,63,61,63,64,74,68,72,70,67,73,72,73,65,64,59,56,61,53,56,57,51,54,51,61,60,58,64,67,66,75,75,75,76,69,75,66,65,61,63,58,63,55,52,59,58,57,52,61,59,60,58,67,72,71,71,76,73,74,72,68,70,65,64,59,56,55,60,52,58,56,53,55,59,65,68,63,74,71,66],"dew_point_2m":[51.7,53.2,52.3,54.4,54.2,54.4,60.2,63.1,62.7,63.7,67.2,67.3,69.3,68.5,66.7,67.2,65.6,64.3,64.1,62.6,60.7,52.9,55.5,53.4,55.9,55.4,53.8,57.1,55.3,55.6,61.3,65.1,63.7,67.2,67.8,68.8,69.1,69.5,70.6,69.6,67.1,65.5,65.9,64.4,59.8,55.1,55.2,52.9,56.5,57.2,56.9,57.3,58.2,57.5,63.0,63.2,66.8,68.0,70.1,70.1,73.5,73.7,72.6,72.5,70.0,69.3,67.8,63.5,62.3,57.9,55.3,57.5,57.3,57.0,56.6,59.2,60.2,59.5,64.4,65.1,69.8,69.5,72.1,73.0,71.3,73.5,73.5,73.7,70.8,69.6,68.4,65.8,63.9,60.4,57.4,59.0,54.1,53.8,54.7,56.5,58.2,57.1,62.9,65.8,65.3,67.6,69.5,70.7,71.0,71.3,72.2,69.9,70.5,69.9,67.1,66.0,62.0,57.5,56.2,56.0,54.2,54.1,53.8,57.7,54.5,55.5,60.7,62.1,66.4,67.2,69.5,69.8,72.2,69.8,71.7,70.4,70.3,67.4,64.9,63.1,60.3,57.2,56.4,54.1,53.2,52.3,53.3,54.8,54.1,55.0,58.0,61.0,62.6,64.9,66.6,67.8,68.0,67.8,68.8,66.8,66.6,66.0,63.8,60.8,59.2,55.0,53.5,52.0,54.1,54.0,56.2,56.9,58.0,56.4,60.0,62.1,63.7,68.8,68.7,71.1,71.0,69.8,70.9,68.6,70.6,66.8,65.0,63.2,61.1,55.3,56.5,56.2,57.0,56.6,53.5,58.3,56.6,56.2,61.8,64.8,66.3,68.4,68.4,70.6,70.9,71.5,70.9,70.2,70.2,66.7,66.3,63.0,61.3,58.2,56.3,54.9,56.0,54.4,55.9,55.8,56.5,55.8,59.8,63.3,63.5,66.9,67.0,71.3,70.5,71.0,70.2,68.5,69.0,67.6,65.6,65.0,59.6,57.9,56.5,53.4],"precipitation_probability":[0,0,0,0,8,0,9,6,0,9,2,1,6,6,0,0,8,10,2,4,9,9,7,10,4,8,9,4,4,7,6,4,6,0,2,5,7,5,8,1,1,7,8,2,8,1,2,0,18,15,14,13,13,18,7,14,18,17,16,9,17,10,12,12,17,9,17,8,6,8,17,8,15,6,11,9,5,17,7,7,9,7,15,16,8,9,11,15,6,16,10,12,9,11,12,12,13,11,8,7,4,8,16,6,11,4,10,14,11,9,10,6,11,14,5,14,12,16,7,6,1,0,4,0,0,5,0,3,5,0,5,7,6,0,3,6,2,0,5,0,5,0,0,0,3,7,8,10,9,9,13,8,5,4,2,9,12,4,2,13,13,12,4,12,13,14,6,5,12,5,13,7,8,5,17,5,8,13,13,10,10,14,16,10,8,7,15,16,12,15,11,8,16,13,20,10,11,11,9,10,10,20,13,12,10,11,19,12,10,15,9,11,8,10,10,15,13,8,10,9,10,3,9,6,5,13,11,11,2,9,6,9,13,8,8,7,12,4,14,12],"precipitation":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"snowfall":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"pressure_msl":[1013.0,1013.4,1011.9,1011.7,1013.6,1012.8,1012.4,1011.7,1012.9,1011.7,1014.2,1011.5,1011.7,1011.7,1012.6,1014.0,1012.0,1014.1,1012.2,1012.6,1014.5,1014.0,1012.9,1013.7,1013.9,1014.1,1014.5,1013.5,1014.4,1015.0,1014.8,1016.3,1015.8,1016.3,1014.1,1015.0,1014.3,1015.6,1013.7,1013.9,1015.7,1015.1,1014.6,1014.5,1016.1,1016.3,1014.9,1013.5,1015.7,1015.6,1017.3,1017.1,1015.4,1016.7,1016.0,1017.2,1018.0,1015.8,1017.3,1015.6,1017.3,1016.0,1015.8,1017.4,1015.6,1016.9,1018.2,1016.9,1016.0,1016.4,1016.6,1015.5,1017.2,1016.8,1019.4,1016.6,1017.6,1017.5,1017.2,1016.7,1017.1,1016.6,1019.0,1016.6,1018.8,1017.4,1019.4,1018.8,1017.1,1019.5,1018.4,1017.7,1017.7,1019.0,1019.3,1018.4,1017.9,1019.2,1019.0,1017.3,1019.0,1018.9,1020.3,1019.7,1018.5,1019.8,1019.3,1018.7,1017.5,1020.2,1020.2,1020.0,1018.3,1017.7,1020.3,1018.7,1019.3,1017.7,1019.1,1017.6,1020.3,1019.8,1019.9,1020.0,1018.5,1019.0,1019.7,1019.6,1019.2,1020.3,1017.7,1020.3,1019.4,1018.2,1017.6,1017.7,1018.9,1018.1,1019.4,1018.3,1019.7,1018.8,1019.6,1018.0,1018.9,1018.9,1019.2,1018.9,1017.7,1019.3,1018.5,1018.2,1017.1,1017.6,1019.3,1019.4,1017.8,1017.9,1019.4,1018.9,1019.3,1017.5,1017.4,1017.0,1017.2,1018.5,1018.4,1019.4,1017.7,1016.4,1017.9,1015.9,1016.7,1016.2,1018.8,1017.9,1018.0,1018.0,1018.3,1017.6,1017.0,1018.3,1017.0,1017.6,1018.4,1018.1,1018.2,1017.4,1017.0,1016.3,1017.5,1016.0,1015.4,1015.6,1017.0,1016.5,1014.6,1014.4,1017.0,1014.9,1015.1,1014.4,1017.2,1017.2,1015.5,1014.5,1016.0,1016.8,1016.7,1014.6,1016.9,1014.8,1016.0,1015.7,1016.0,1015.4,1012.5,1012.6,1014.8,1015.1,1012.7,1012.7,1014.1,1013.1,1014.0,1013.7,1012.8,1014.6,1014.6,1013.5,1014.7,1012.6,1012.4,1013.9,1012.6,1014.2,1013.9,1013.2,1014.3,1014.1],"cloud_cover":[23,19,22,27,22,36,27,26,29,24,24,28,28,18,19,23,21,27,32,21,25,29,32,24,23,33,18,26,30,21,26,21,17,35,26,22,17,34,29,34,22,16,26,29,18,25,16,24,43,51,54,47,47,51,38,50,40,40,46,45,39,44,42,55,37,49,41,41,43,42,50,56,37,50,42,50,40,40,46,55,55,43,43,43,54,50,41,40,52,55,41,42,47,38,55,38,41,42,53,49,37,37,37,50,42,49,46,49,43,44,54,49,39,37,52,41,54,44,41,39,23,15,21,25,15,19,16,29,19,11,24,28,23,19,27,15,11,29,24,11,21,25,14,14,34,39,34,42,40,29,41,42,45,32,30,32,32,31,42,26,28,41,31,36,34,32,43,42,42,42,49,38,47,48,48,36,51,38,36,37,49,56,45,41,48,52,41,54,43,49,54,55,46,58,52,46,51,59,54,57,53,47,49,59,55,59,59,61,50,54,60,64,49,46,62,62,44,35,46,33,34,30,44,37,45,29,47,38,45,45,35,39,36,47,41,37,47,36,34,34],"wind_speed_10m":[5.9,10.0,7.1,6.6,6.8,9.1,8.8,8.9,6.5,7.7,10.0,7.6,9.8,6.0,5.8,10.2,5.8,8.8,9.4,5.8,10.0,7.9,6.5,6.5,5.7,6.8,7.7,7.6,8.0,8.2,8.1,9.4,9.7,7.5,7.1,6.0,6.3,6.1,9.5,8.0,7.0,6.5,7.9,5.9,8.7,10.0,7.9,7.0,13.0,12.1,10.8,12.8,13.1,11.5,13.1,11.1,9.8,12.4,10.8,11.3,13.8,10.0,11.4,10.0,11.9,11.5,11.8,13.8,14.1,11.8,12.4,10.5,13.8,12.0,12.6,11.9,11.6,13.4,11.6,9.9,13.9,10.9,11.6,11.5,13.7,9.7,14.0,13.4,13.1,10.9,12.7,13.0,14.1,13.5,11.4,10.7,10.7,9.7,10.9,13.4,12.2,13.5,11.5,10.3,9.8,9.8,11.3,10.1,12.2,9.9,13.4,10.5,9.5,11.7,12.1,10.1,10.7,10.3,11.9,12.2,7.9,4.6,5.4,7.9,8.0,5.8,8.8,7.6,6.0,6.1,7.2,5.1,5.9,5.9,6.5,8.3,8.2,7.7,6.2,8.6,7.5,8.1,8.4,9.0,8.1,9.7,9.5,9.6,9.5,9.3,8.0,11.8,8.8,10.9,11.2,11.2,9.3,9.7,11.6,8.7,8.3,10.7,9.8,11.4,10.4,9.8,9.9,9.4,13.3,13.9,12.4,13.2,11.6,13.4,11.9,10.3,10.6,11.8,10.1,11.7,13.3,11.2,12.8,13.4,13.4,13.9,11.8,11.9,12.1,12.4,10.9,10.6,12.0,12.2,15.2,15.7,13.6,15.6,15.3,11.7,15.2,15.5,16.0,11.5,15.6,11.9,12.4,15.4,13.1,14.7,15.8,11.9,14.1,13.7,14.8,15.7,10.3,9.9,12.0,10.8,10.7,9.3,10.9,9.0,10.2,8.3,9.5,11.4,10.6,10.0,11.8,12.1,8.2,11.1,9.7,12.5,8.5,10.3,8.2,11.0],"wind_gusts_10m":[8.1,14.3,10.8,9.7,9.7,11.5,12.7,13.0,8.1,10.9,12.6,10.2,14.8,7.7,9.0,14.1,9.2,11.5,15.0,7.0,13.5,11.5,9.9,8.1,9.1,9.0,11.0,9.7,11.4,12.3,11.3,11.8,12.2,10.5,10.6,9.6,8.6,7.5,11.7,10.4,9.8,9.0,11.7,7.4,11.4,14.2,10.1,9.1,18.9,17.0,13.1,17.9,17.0,16.0,17.3,15.6,13.6,15.6,16.8,15.0,18.2,12.4,18.0,14.9,15.9,14.6,14.8,20.7,17.6,18.7,14.9,14.8,20.1,17.2,19.6,17.5,17.1,17.3,17.0,13.4,20.8,14.6,14.1,17.5,18.3,14.6,19.0,20.2,17.0,13.4,19.0,16.6,19.8,21.1,17.6,14.4,13.7,12.3,14.9,18.4,19.1,16.8,14.0,14.0,12.7,14.1,15.5,14.0,15.0,15.3,17.0,16.0,12.1,17.0,16.4,15.1,12.8,15.1,15.3,18.9,10.3,6.5,7.1,11.0,11.8,8.4,13.2,12.1,7.7,7.7,9.7,6.5,7.3,8.8,8.9,10.5,10.4,10.8,8.4,12.0,10.0,11.6,10.6,13.4,10.4,12.2,12.3,12.7,13.1,13.0,11.4,15.2,12.0,17.2,16.3,15.5,12.1,13.3,17.6,10.8,12.9,15.1,12.0,15.8,15.1,15.3,14.9,13.2,16.2,20.1,18.3,20.7,15.4,19.2,16.2,16.3,12.9,18.6,13.4,17.2,21.0,16.2,18.4,20.8,19.7,18.0,14.6,17.1,15.2,16.6,16.5,13.5,19.0,19.4,18.5,23.1,17.2,20.1,22.2,17.4,20.3,22.7,25.1,17.5,20.1,17.2,15.2,21.5,16.6,22.4,22.1,15.5,19.9,18.0,18.7,23.7,16.3,13.9,18.6,14.0,16.9,12.7,14.0,12.6,13.4,11.2,12.7,15.8,14.8,13.8,16.5,16.1,11.7,15.0,13.2,16.7,13.2,14.4,11.2,14.1],"uv_index":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.7,3.5,5.1,6.4,7.3,7.8,7.8,7.4,6.6,5.3,3.8,2.0,0.2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.7,3.5,5.1,6.4,7.3,7.8,7.8,7.4,6.6,5.3,3.8,2.0,0.1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.2,2.5,3.7,4.6,5.3,5.7,5.7,5.4,4.7,3.8,2.7,1.4,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.2,2.5,3.7,4.7,5.3,5.7,5.7,5.4,4.8,3.8,2.7,1.4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.2,2.6,3.8,4.8,5.5,5.9,5.9,5.6,4.9,3.9,2.7,1.4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.7,3.7,5.4,6.8,7.8,8.4,8.4,7.9,6.9,5.6,3.8,1.9,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.4,3.0,4.4,5.6,6.4,6.8,6.8,6.4,5.6,4.5,3.1,1.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.1,2.5,3.7,4.6,5.3,5.7,5.7,5.3,4.7,3.7,2.5,1.2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.9,2.1,3.1,3.9,4.5,4.8,4.8,4.5,3.9,3.1,2.1,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.3,2.8,4.2,5.4,6.2,6.6,6.6,6.2,5.4,4.3,2.9,1.3,0.0,0.0,0.0,0.0],"weather_code":[1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,2,2,1,2,2,2,1,1,1,1,1,2,1,1,2,1,2,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2,1,1,1,2,2,2,1,2,2,2,2,1,2,2,2,2,2,2,2,1,1],"soil_moisture_0_to_1cm":[0.21,0.223,0.215,0.225,0.229,0.227,0.231,0.247,0.21,0.243,0.215,0.23,0.243,0.214,0.232,0.227,0.229,0.222,0.242,0.219,0.216,0.24,0.221,0.214,0.233,0.217,0.243,0.207,0.239,0.244,0.245,0.212,0.236,0.247,0.208,0.239,0.244,0.235,0.242,0.212,0.214,0.245,0.247,0.21,0.217,0.217,0.227,0.231,0.235,0.266,0.238,0.233,0.236,0.26,0.256,0.251,0.266,0.254,0.252,0.266,0.248,0.266,0.268,0.251,0.245,0.239,0.241,0.249,0.253,0.267,0.249,0.26,0.245,0.248,0.251,0.249,0.24,0.241,0.27,0.268,0.234,0.271,0.251,0.263,0.243,0.269,0.242,0.257,0.235,0.236,0.266,0.242,0.242,0.234,0.25,0.238,0.262,0.258,0.265,0.263,0.234,0.25,0.267,0.264,0.259,0.252,0.231,0.234,0.259,0.27,0.262,0.236,0.236,0.244,0.262,0.232,0.231,0.231,0.255,0.261,0.237,0.238,0.213,0.23,0.234,0.239,0.214,0.219,0.225,0.202,0.233,0.205,0.204,0.215,0.231,0.201,0.22,0.205,0.216,0.216,0.214,0.206,0.207,0.205,0.235,0.243,0.248,0.244,0.244,0.258,0.241,0.247,0.22,0.24,0.238,0.231,0.236,0.245,0.225,0.225,0.244,0.249,0.238,0.242,0.22,0.221,0.228,0.23,0.262,0.259,0.241,0.259,0.25,0.269,0.237,0.236,0.264,0.243,0.262,0.239,0.264,0.272,0.269,0.234,0.269,0.257,0.265,0.24,0.235,0.254,0.25,0.236,0.254,0.283,0.275,0.255,0.253,0.281,0.262,0.266,0.25,0.252,0.247,0.257,0.266,0.263,0.273,0.244,0.258,0.278,0.264,0.276,0.272,0.248,0.277,0.257,0.259,0.223,0.223,0.243,0.242,0.233,0.25,0.237,0.261,0.239,0.249,0.253,0.26,0.251,0.24,0.256,0.242,0.236,0.244,0.243,0.249,0.229,0.253,0.242],"soil_moisture_3_to_9cm":[0.24,0.253,0.245,0.255,0.259,0.257,0.261,0.277,0.24,0.273,0.245,0.26,0.273,0.244,0.262,0.257,0.259,0.252,0.272,0.249,0.246,0.27,0.251,0.244,0.263,0.247,0.273,0.237,0.269,0.274,0.275,0.242,0.266,0.277,0.238,0.269,0.274,0.265,0.272,0.242,0.244,0.275,0.277,0.24,0.247,0.247,0.257,0.261,0.265,0.296,0.268,0.263,0.266,0.29,0.286,0.281,0.296,0.284,0.282,0.296,0.278,0.296,0.298,0.281,0.275,0.269,0.271,0.279,0.283,0.297,0.279,0.29,0.275,0.278,0.281,0.279,0.27,0.271,0.3,0.298,0.264,0.301,0.281,0.293,0.273,0.299,0.272,0.287,0.265,0.266,0.296,0.272,0.272,0.264,0.28,0.268,0.292,0.288,0.295,0.293,0.264,0.28,0.297,0.294,0.289,0.282,0.261,0.264,0.289,0.3,0.292,0.266,0.266,0.274,0.292,0.262,0.261,0.261,0.285,0.291,0.267,0.268,0.243,0.26,0.264,0.269,0.244,0.249,0.255,0.232,0.263,0.235,0.234,0.245,0.261,0.231,0.25,0.235,0.246,0.246,0.244,0.236,0.237,0.235,0.265,0.273,0.278,0.274,0.274,0.288,0.271,0.277,0.25,0.27,0.268,0.261,0.266,0.275,0.255,0.255,0.274,0.279,0.268,0.272,0.25,0.251,0.258,0.26,0.292,0.289,0.271,0.289,0.28,0.299,0.267,0.266,0.294,0.273,0.292,0.269,0.294,0.302,0.299,0.264,0.299,0.287,0.295,0.27,0.265,0.284,0.28,0.266,0.284,0.313,0.305,0.285,0.283,0.311,0.292,0.296,0.28,0.282,0.277,0.287,0.296,0.293,0.303,0.274,0.288,0.308,0.294,0.306,0.302,0.278,0.307,0.287,0.289,0.253,0.253,0.273,0.272,0.263,0.28,0.267,0.291,0.269,0.279,0.283,0.29,0.281,0.27,0.286,0.272,0.266,0.274,0.273,0.279,0.259,0.283,0.272],"soil_temperature_0cm":[53.1,55.8,54.1,56.9,57.9,56.6,63.2,67.0,68.1,70.1,72.7,74.0,75.7,74.4,72.9,72.4,70.7,69.8,69.4,65.9,62.9,55.4,57.9,56.9,58.0,58.0,56.0,60.4,57.2,58.8,65.5,68.3,69.3,72.1,73.5,76.4,76.1,76.1,75.4,74.5,72.8,70.3,70.5,68.7,63.8,59.6,57.3,56.3,59.9,59.8,58.8,59.9,60.4,61.3,65.6,67.8,71.5,74.5,73.8,74.9,78.4,79.1,79.6,77.9,76.5,74.3,71.7,68.4,66.6,61.9,60.0,60.0,58.8,58.4,59.4,60.5,62.6,62.7,66.4,70.8,73.7,74.0,77.8,78.5,79.1,80.2,80.3,78.1,75.7,75.2,73.6,68.9,67.4,61.6,60.2,59.7,57.5,56.9,58.6,59.6,61.3,60.4,67.1,70.5,71.4,72.8,75.3,76.2,78.3,78.7,79.5,75.9,77.4,74.8,71.0,70.6,64.9,59.4,59.7,57.1,56.0,56.1,55.1,59.6,58.5,57.6,66.4,67.7,69.6,72.3,75.2,75.6,77.8,75.6,77.2,75.4,74.4,73.3,69.7,67.2,63.4,59.5,59.2,57.2,54.1,53.9,55.7,56.2,55.9,55.9,62.8,64.8,68.0,69.0,72.5,72.6,72.5,73.4,74.4,73.0,73.0,70.1,67.8,65.3,63.4,57.2,56.5,54.2,57.6,57.9,58.5,58.8,60.3,60.1,64.3,67.9,69.9,74.4,74.4,77.5,76.7,77.4,77.7,76.2,75.0,72.1,70.8,66.6,65.4,57.9,59.0,56.9,58.7,57.3,56.8,60.1,59.5,60.7,66.2,68.3,71.6,72.6,74.0,76.6,75.3,76.3,76.3,77.7,75.1,71.4,71.3,67.4,63.8,60.2,59.6,56.8,56.8,55.7,58.0,57.9,59.1,58.0,63.5,67.5,68.2,73.2,73.2,76.6,77.3,75.9,75.4,75.6,75.8,72.9,69.5,68.7,64.4,59.1,58.5,57.1]},"daily":{"time":["2026-09-07","2026-09-08","2026-09-09","2026-09-10","2026-09-11","2026-09-12","2026-09-13","2026-09-14","2026-09-15","2026-09-16"],"weather_code":[1,1,2,2,2,1,1,2,2,2],"temperature_2m_max":[82.1,83.2,86.5,87.4,85.6,84.5,80.7,84.1,84.3,84.2],"temperature_2m_min":[54.9,57.2,60.1,60.0,58.1,57.0,55.1,57.8,57.4,57.4],"apparent_temperature_max":[79.1,80.2,83.5,84.4,82.6,81.5,77.7,81.1,81.3,81.2],"apparent_temperature_min":[57.9,60.2,63.1,63.0,61.1,60.0,58.1,60.8,60.4,60.4],"precipitation_sum":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"snowfall_sum":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"precipitation_probability_max":[10,9,18,17,16,7,14,17,20,14],"uv_index_max":[7.8,7.8,5.7,5.7,5.9,8.4,6.8,5.7,4.8,6.6],"shortwave_radiation_sum":[2184.0,2184.0,1596.0,1596.0,1652.0,2352.0,1904.0,1596.0,1344.0,1848.0],"sunrise":["2026-09-07T07:05","2026-09-08T07:06","2026-09-09T07:07","2026-09-10T07:08","2026-09-11T07:09","2026-09-12T07:10","2026-09-13T07:11","2026-09-14T07:12","2026-09-15T07:13","2026-09-16T07:14"],"sunset":["2026-09-07T20:05","2026-09-08T20:03","2026-09-09T20:01","2026-09-10T19:59","2026-09-11T19:57","2026-09-12T19:55","2026-09-13T19:53","2026-09-14T19:51","2026-09-15T19:49","2026-09-16T19:47"]},"current":{"time":"2026-09-10T14:00","temperature_2m":84.4,"precipitation":0.0,"rain":0.0,"showers":0,"snowfall":0.0,"weather_code":2,"cloud_cover":41}},"aq":{"latitude":42.9634,"longitude":-85.6681,"timezone":"America/New_York","hourly":{"time":["2026-09-07T00:00","2026-09-07T01:00","2026-09-07T02:00","2026-09-07T03:00","2026-09-07T04:00","2026-09-07T05:00","2026-09-07T06:00","2026-09-07T07:00","2026-09-07T08:00","2026-09-07T09:00","2026-09-07T10:00","2026-09-07T11:00","2026-09-07T12:00","2026-09-07T13:00","2026-09-07T14:00","2026-09-07T15:00","2026-09-07T16:00","2026-09-07T17:00","2026-09-07T18:00","2026-09-07T19:00","2026-09-07T20:00","2026-09-07T21:00","2026-09-07T22:00","2026-09-07T23:00","2026-09-08T00:00","2026-09-08T01:00","2026-09-08T02:00","2026-09-08T03:00","2026-09-08T04:00","2026-09-08T05:00","2026-09-08T06:00","2026-09-08T07:00","2026-09-08T08:00","2026-09-08T09:00","2026-09-08T10:00","2026-09-08T11:00","2026-09-08T12:00","2026-09-08T13:00","2026-09-08T14:00","2026-09-08T15:00","2026-09-08T16:00","2026-09-08T17:00","2026-09-08T18:00","2026-09-08T19:00","2026-09-08T20:00","2026-09-08T21:00","2026-09-08T22:00","2026-09-08T23:00","2026-09-09T00:00","2026-09-09T01:00","2026-09-09T02:00","2026-09-09T03:00","2026-09-09T04:00","2026-09-09T05:00","2026-09-09T06:00","2026-09-09T07:00","2026-09-09T08:00","2026-09-09T09:00","2026-09-09T10:00","2026-09-09T11:00","2026-09-09T12:00","2026-09-09T13:00","2026-09-09T14:00","2026-09-09T15:00","2026-09-09T16:00","2026-09-09T17:00","2026-09-09T18:00","2026-09-09T19:00","2026-09-09T20:00","2026-09-09T21:00","2026-09-09T22:00","2026-09-09T23:00","2026-09-10T00:00","2026-09-10T01:00","2026-09-10T02:00","2026-09-10T03:00","2026-09-10T04:00","2026-09-10T05:00","2026-09-10T06:00","2026-09-10T07:00","2026-09-10T08:00","2026-09-10T09:00","2026-09-10T10:00","2026-09-10T11:00","2026-09-10T12:00","2026-09-10T13:00","2026-09-10T14:00","2026-09-10T15:00","2026-09-10T16:00","2026-09-10T17:00","2026-09-10T18:00","2026-09-10T19:00","2026-09-10T20:00","2026-09-10T21:00","2026-09-10T22:00","2026-09-10T23:00","2026-09-11T00:00","2026-09-11T01:00","2026-09-11T02:00","2026-09-11T03:00","2026-09-11T04:00","2026-09-11T05:00","2026-09-11T06:00","2026-09-11T07:00","2026-09-11T08:00","2026-09-11T09:00","2026-09-11T10:00","2026-09-11T11:00","2026-09-11T12:00","2026-09-11T13:00","2026-09-11T14:00","2026-09-11T15:00","2026-09-11T16:00","2026-09-11T17:00","2026-09-11T18:00","2026-09-11T19:00","2026-09-11T20:00","2026-09-11T21:00","2026-09-11T22:00","2026-09-11T23:00","2026-09-12T00:00","2026-09-12T01:00","2026-09-12T02:00","2026-09-12T03:00","2026-09-12T04:00","2026-09-12T05:00","2026-09-12T06:00","2026-09-12T07:00","2026-09-12T08:00","2026-09-12T09:00","2026-09-12T10:00","2026-09-12T11:00","2026-09-12T12:00","2026-09-12T13:00","2026-09-12T14:00","2026-09-12T15:00","2026-09-12T16:00","2026-09-12T17:00","2026-09-12T18:00","2026-09-12T19:00","2026-09-12T20:00","2026-09-12T21:00","2026-09-12T22:00","2026-09-12T23:00","2026-09-13T00:00","2026-09-13T01:00","2026-09-13T02:00","2026-09-13T03:00","2026-09-13T04:00","2026-09-13T05:00","2026-09-13T06:00","2026-09-13T07:00","2026-09-13T08:00","2026-09-13T09:00","2026-09-13T10:00","2026-09-13T11:00","2026-09-13T12:00","2026-09-13T13:00","2026-09-13T14:00","2026-09-13T15:00","2026-09-13T16:00","2026-09-13T17:00","2026-09-13T18:00","2026-09-13T19:00","2026-09-13T20:00","2026-09-13T21:00","2026-09-13T22:00","2026-09-13T23:00","2026-09-14T00:00","2026-09-14T01:00","2026-09-14T02:00","2026-09-14T03:00","2026-09-14T04:00","2026-09-14T05:00","2026-09-14T06:00","2026-09-14T07:00","2026-09-14T08:00","2026-09-14T09:00","2026-09-14T10:00","2026-09-14T11:00","2026-09-14T12:00","2026-09-14T13:00","2026-09-14T14:00","2026-09-14T15:00","2026-09-14T16:00","2026-09-14T17:00","2026-09-14T18:00","2026-09-14T19:00","2026-09-14T20:00","2026-09-14T21:00","2026-09-14T22:00","2026-09-14T23:00","2026-09-15T00:00","2026-09-15T01:00","2026-09-15T02:00","2026-09-15T03:00","2026-09-15T04:00","2026-09-15T05:00","2026-09-15T06:00","2026-09-15T07:00","2026-09-15T08:00","2026-09-15T09:00","2026-09-15T10:00","2026-09-15T11:00","2026-09-15T12:00","2026-09-15T13:00","2026-09-15T14:00","2026-09-15T15:00","2026-09-15T16:00","2026-09-15T17:00","2026-09-15T18:00","2026-09-15T19:00","2026-09-15T20:00","2026-09-15T21:00","2026-09-15T22:00","2026-09-15T23:00","2026-09-16T00:00","2026-09-16T01:00","2026-09-16T02:00","2026-09-16T03:00","2026-09-16T04:00","2026-09-16T05:00","2026-09-16T06:00","2026-09-16T07:00","2026-09-16T08:00","2026-09-16T09:00","2026-09-16T10:00","2026-09-16T11:00","2026-09-16T12:00","2026-09-16T13:00","2026-09-16T14:00","2026-09-16T15:00","2026-09-16T16:00","2026-09-16T17:00","2026-09-16T18:00","2026-09-16T19:00","2026-09-16T20:00","2026-09-16T21:00","2026-09-16T22:00","2026-09-16T23:00"],"pm2_5":[8.0,13.9,6.9,6.8,10.1,12.4,12.1,8.7,6.7,8.7,6.3,13.6,7.9,12.7,12.4,13.6,7.8,7.7,9.8,7.3,13.7,6.8,9.1,12.5,7.4,6.2,7.1,8.0,9.4,7.2,8.9,13.5,9.5,8.0,8.8,7.6,10.0,12.1,10.4,6.6,8.4,10.4,8.3,7.7,8.1,12.1,6.9,11.3,12.2,10.9,14.0,16.2,9.3,10.5,9.3,10.4,14.7,14.4,15.6,9.3,9.3,15.3,14.9,12.1,11.2,12.3,14.9,12.6,12.4,10.0,14.6,13.3,13.2,11.7,11.4,14.2,13.0,11.7,10.0,15.4,10.2,12.6,9.8,10.5,10.5,9.8,11.8,9.0,9.6,13.4,12.4,9.0,13.9,10.9,9.1,11.3,15.4,14.9,11.2,11.2,11.6,8.9,15.2,16.2,9.9,9.2,12.1,8.9,14.4,15.4,10.9,12.0,13.9,9.9,13.1,9.3,16.4,16.4,15.1,13.5,12.7,7.5,5.3,8.6,8.0,9.3,6.0,9.5,7.1,7.1,6.9,9.2,8.3,12.0,11.1,10.8,8.2,9.6,11.3,8.0,6.8,8.5,12.0,12.0,10.0,13.9,13.2,7.7,11.7,14.7,8.9,12.0,8.2,11.7,10.4,11.6,14.9,8.5,13.7,13.9,11.1,10.5,7.9,14.5,8.7,11.9,7.4,7.5,9.3,11.1,11.0,16.6,13.4,15.1,11.8,15.9,11.4,13.0,13.3,11.6,12.8,10.8,9.0,12.5,10.3,11.4,16.4,13.6,13.6,15.1,9.5,11.1,11.5,12.0,15.0,11.8,15.0,17.2,11.7,15.3,12.8,13.5,10.7,15.2,15.0,10.3,18.1,16.0,11.5,10.9,14.5,15.5,16.2,16.3,16.4,12.5,8.7,12.9,15.5,8.3,8.1,9.1,8.8,15.0,13.8,11.6,14.0,14.8,8.1,14.5,10.9,12.6,9.7,9.2,10.0,12.2,14.6,14.2,11.5,13.1],"ozone":[37.7,36.2,27.9,26.7,41.2,26.0,31.2,28.1,42.8,33.7,42.5,33.5,25.6,31.0,30.8,34.6,32.5,30.9,40.6,31.9,30.6,35.4,26.0,31.8,30.5,38.1,38.9,41.5,41.5,31.9,44.0,34.9,27.4,42.8,29.7,42.3,35.7,32.5,31.0,28.3,38.1,32.0,26.1,27.3,32.9,42.5,30.3,38.1,30.3,34.1,20.8,31.8,17.9,23.2,23.4,33.9,22.2,24.1,32.7,34.2,22.0,21.3,18.9,32.1,18.9,35.7,33.7,18.2,27.4,32.4,33.3,36.5,22.3,25.5,20.0,22.0,26.2,23.3,28.6,28.3,30.6,32.6,23.1,18.5,31.3,23.8,20.7,37.1,31.6,19.5,21.1,35.7,36.0,22.2,32.8,21.0,36.5,34.6,21.7,25.4,34.6,29.3,32.1,27.9,24.0,31.8,37.4,26.8,18.1,33.7,31.2,24.8,34.5,23.9,25.0,24.5,36.2,37.2,19.2,23.9,36.4,33.7,30.6,28.5,38.4,38.1,30.4,29.1,28.7,36.6,38.3,38.6,28.3,37.8,29.1,28.9,30.3,42.3,28.0,27.1,32.8,44.6,38.1,30.2,36.5,23.7,40.2,33.3,37.3,34.7,30.2,23.5,37.3,27.0,24.1,35.0,21.5,31.3,21.9,34.8,24.4,38.7,27.8,33.0,28.5,29.0,32.8,30.4,20.1,22.6,28.6,37.0,32.6,29.8,22.8,36.0,32.4,29.9,25.3,23.6,24.5,24.2,34.6,28.6,18.5,31.7,24.0,18.8,36.9,25.7,26.9,22.3,19.3,21.9,31.2,28.6,15.5,20.8,24.7,32.4,28.9,27.5,22.2,20.6,19.1,32.4,15.1,20.5,16.8,30.2,25.7,26.0,19.1,29.5,33.5,24.4,20.6,35.9,25.0,21.0,30.5,39.3,24.0,23.7,25.3,33.2,29.7,22.6,33.4,21.7,38.8,24.9,29.1,35.6,40.4,23.6,25.8,26.1,38.3,32.4],"us_aqi":[35,57,34,25,45,45,54,34,31,36,29,59,41,59,54,64,37,39,38,27,58,28,33,49,28,25,25,29,45,35,34,52,44,36,39,27,39,53,42,34,30,44,33,37,41,56,23,45,54,44,53,70,35,43,42,45,60,53,62,41,34,70,65,56,54,55,64,56,59,36,57,58,49,45,51,55,61,55,40,68,45,58,40,41,44,41,43,42,48,56,53,41,60,41,44,50,59,66,52,48,45,40,69,67,43,34,45,33,65,63,46,50,64,41,50,39,74,70,66,58,56,38,26,39,33,38,32,46,31,32,24,33,35,54,54,51,42,35,44,36,33,38,57,54,45,56,59,27,43,58,43,43,31,52,50,54,60,42,53,56,52,46,30,54,37,48,30,40,42,47,47,62,62,65,54,69,52,52,49,56,50,40,38,50,41,49,74,52,55,68,46,40,52,46,65,57,67,66,55,59,56,54,38,63,62,45,77,60,53,45,61,62,70,65,67,59,37,52,68,30,36,37,41,55,65,47,56,65,33,61,53,49,37,41,38,57,65,57,43,54]}},"name":"Demo Town (Moderate)","lat":42.9634,"lon":-85.6681,"tz":"America/New_York"}};
   function wxUrl(lat, lon, tz, past) {
     return FORECAST + '?latitude=' + lat + '&longitude=' + lon
       + '&timezone=' + encodeURIComponent(tz || 'auto')
@@ -3338,6 +3438,68 @@
       state.home = { error: (e && e.message) || 'Could not reach the weather service.' };
       renderHome(); host.classList.remove('busy');
     });
+  }
+
+  /* Sandbox/demo data \u2014 no network calls at all, so this works inside
+     a preview environment with no live access, not just as a
+     rendering shortcut on a real device. DEMO_WX/DEMO_AQ are hand-
+     generated but shaped exactly like a real Open-Meteo response
+     (same field names, a full past_days=3/forecast_days=7 span), so
+     everything downstream \u2014 derive(), every card builder \u2014 runs
+     through the exact same code a real place would. Google pollen/air,
+     water, virus, flag, and eBird all stay null, same as the normal
+     no-key/nothing-nearby fallback state already handles.
+     Deliberately not reachable by accident: no auto-trigger, no flag
+     to leave on, just an explicit option in the place picker. */
+  /* The baked-in DEMO_WX/DEMO_AQ arrays were generated for a fixed
+     date so the diurnal patterns in them are realistic, but derive()
+     finds "today" via dateStrIn(), which reads the real clock \u2014 left
+     as-is, this would work today and quietly break the moment the
+     calendar date changes, even by one day. Shifting every timestamp
+     by the same day-count each time it loads keeps the *pattern*
+     (the generated values, the day-to-day drift) but re-anchors which
+     calendar date counts as "today," so this stays usable indefinitely
+     rather than being a snapshot of one specific day. */
+  var DEMO_GENERATED_FOR = '2026-09-10';
+  function shiftDemoDate(iso, dayShift) {
+    var hasTime = iso.indexOf('T') > -1;
+    var datePart = iso.slice(0, 10), timePart = hasTime ? iso.slice(10) : '';
+    var d = new Date(datePart + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + dayShift);
+    var y = d.getUTCFullYear(), m = ('0' + (d.getUTCMonth() + 1)).slice(-2), day = ('0' + d.getUTCDate()).slice(-2);
+    return y + '-' + m + '-' + day + timePart;
+  }
+  function anchoredDemoData(key) {
+    var scen = DEMO_SCENARIOS[key];
+    var realToday = dateStrIn(scen.tz, 0);
+    var shift = Math.round((new Date(realToday + 'T00:00:00Z') - new Date(DEMO_GENERATED_FOR + 'T00:00:00Z')) / 86400000);
+    if (!shift) return { wx: scen.wx, aq: scen.aq };
+    var wx = JSON.parse(JSON.stringify(scen.wx)), aq = JSON.parse(JSON.stringify(scen.aq));
+    wx.hourly.time = wx.hourly.time.map(function (t) { return shiftDemoDate(t, shift); });
+    wx.daily.time = wx.daily.time.map(function (t) { return shiftDemoDate(t, shift); });
+    wx.daily.sunrise = wx.daily.sunrise.map(function (t) { return shiftDemoDate(t, shift); });
+    wx.daily.sunset = wx.daily.sunset.map(function (t) { return shiftDemoDate(t, shift); });
+    if (wx.current && wx.current.time) wx.current.time = shiftDemoDate(wx.current.time, shift);
+    aq.hourly.time = aq.hourly.time.map(function (t) { return shiftDemoDate(t, shift); });
+    return { wx: wx, aq: aq };
+  }
+  // key is 'cold' | 'hot' | 'moderate', matching DEMO_SCENARIOS.
+  function loadDemoHome(key) {
+    var scen = DEMO_SCENARIOS[key] || DEMO_SCENARIOS.moderate;
+    var place = { lat: scen.lat, lon: scen.lon, tz: scen.tz, name: scen.name };
+    state.place = place;
+    // Session-only, not store.recents \u2014 so the dropdown can show
+    // the demo name as the current selection without this ever
+    // touching saved state or showing up again after a real reload.
+    state.recents = [place];
+    var host = document.getElementById('homeBody');
+    var anchored = anchoredDemoData(key);
+    state.home = { wx: anchored.wx, aq: anchored.aq, alerts: [], kp: { max: key === 'cold' ? 5.2 : 3.7 }, pollen: null, airGoogle: null,
+                   current: anchored.wx.current || null,
+                   water: null, virus: null, flag: null, ebird: null };
+    state.tz = anchored.wx.timezone || place.tz;
+    buildDays(); buildSpan(); buildPlaces(); renderHome();
+    host.classList.remove('busy');
   }
 
   /* Optional, and billed to whoever owns the key. Without one the app
@@ -4013,7 +4175,7 @@
       // trip to Settings \u2014 a second-level reveal so it doesn't compete
       // with the card's actual weather information for attention.
       if (id === 'burn') {
-        disclosureRow(t, 'Skin Type', null, function (body) {
+        disclosureRow(t, 'Adjust Skin Type', null, function (body) {
           SKIN.forEach(function (sk) {
             var row = document.createElement('label'); row.className = 'opt sub';
             var r = document.createElement('input'); r.type = 'radio'; r.name = 'skin';
@@ -4091,11 +4253,356 @@
      drag in progress can trigger a re-render (finishing a drag, or
      dismissing a card) and the fresh containers need to come back
      already wiggling rather than needing a second pass to reapply it. */
-  var rearrange = { active: false, grabbedId: null, grabbedWhich: null };
+  var rearrange = { active: false, grabbedId: null, grabbedWhich: null, grabbedKind: null };
 
   function focusCardEl(id) {
     var elx = document.querySelector('[data-card-id="' + id + '"]');
     if (elx && elx.focus) elx.focus();
+  }
+  function focusBlockHead(blockId) {
+    var elx = document.querySelector('.blockHead[data-block-id="' + blockId + '"]');
+    if (elx && elx.focus) elx.focus();
+  }
+  function focusSectionHead(sec) {
+    var elx = document.querySelector('.todohead[data-sec-id="' + sec + '"]');
+    if (elx && elx.focus) elx.focus();
+  }
+
+  /* Blocks (Across the day / Tiles / To-do list) get the exact same
+     grab pattern as cards \u2014 Space/Enter to pick up, arrows to move,
+     Escape to leave \u2014 through moveBlock(), the same function the old
+     Page Order arrows called. Pointer dragging floats a small chip
+     sized to the heading rather than the whole (possibly very tall)
+     block underneath it: the real block stays hidden in place behind a
+     full-size placeholder so nothing else jumps, and only the compact
+     chip follows the finger. h is the always-visible heading, both the
+     handle and the focusable element; outerEl is the block's own
+     top-level container (col / grid / the todo card), which is what
+     actually moves in the DOM on drop. */
+  function blockHead(blockId, outerEl) {
+    outerEl.dataset.blockId = blockId;
+    var h = document.createElement('div'); h.className = 'blockHead';
+    h.dataset.blockId = blockId;
+    h.textContent = BLOCK_NAME[blockId];
+    h.tabIndex = 0; h.setAttribute('role', 'button');
+    h.setAttribute('aria-roledescription', 'reorderable section');
+    var grabbed = rearrange.grabbedKind === 'block' && rearrange.grabbedId === blockId;
+    h.setAttribute('aria-grabbed', grabbed ? 'true' : 'false');
+    if (grabbed) h.classList.add('grabbed');
+
+    // Anchored to the block itself, not the heading \u2014 sits at the
+    // corner of the whole dashed boundary, same relationship a tile's
+    // \u00d7 has to the tile. Hides the entire block, same on(id) flag
+    // Page Order's checkbox already used.
+    var badge = document.createElement('span'); badge.className = 'dismissBadge';
+    badge.textContent = '\u00d7';
+    badge.setAttribute('role', 'button');
+    badge.setAttribute('aria-label', 'Hide ' + BLOCK_NAME[blockId]);
+    badge.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+    badge.addEventListener('click', function (e) {
+      e.stopPropagation();
+      store.cards['block-' + blockId] = false;
+      saveStore(); renderHome(); updateRearrangeHint();
+    });
+    outerEl.appendChild(badge);
+
+    h.addEventListener('keydown', function (e) {
+      if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter') {
+        e.preventDefault();
+        if (rearrange.grabbedKind === 'block' && rearrange.grabbedId === blockId) {
+          rearrange.grabbedId = null; rearrange.grabbedKind = null;
+        } else {
+          if (!rearrange.active) enterRearrangeMode();
+          rearrange.grabbedId = blockId; rearrange.grabbedKind = 'block';
+        }
+        renderHome(); updateRearrangeHint(); focusBlockHead(blockId);
+      } else if (rearrange.grabbedKind === 'block' && rearrange.grabbedId === blockId
+                 && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        e.preventDefault();
+        moveBlock(blockId, e.key === 'ArrowUp' ? -1 : 1);
+        focusBlockHead(blockId);
+      } else if (e.key === 'Escape' && rearrange.active) {
+        e.preventDefault();
+        exitRearrangeMode();
+      }
+    });
+
+    var startX, startY, timer, dragging = false;
+    function cancelTimer() { if (timer) { clearTimeout(timer); timer = null; } }
+    h.addEventListener('pointerdown', function (e) {
+      if (e.button != null && e.button !== 0) return;
+      startX = e.clientX; startY = e.clientY;
+      if (rearrange.active) beginBlockDrag(e);
+      else timer = setTimeout(function () { beginBlockDrag(e); }, 500);
+    });
+    h.addEventListener('pointermove', function (e) {
+      if (timer && (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10)) cancelTimer();
+    });
+    h.addEventListener('pointerup', cancelTimer);
+    h.addEventListener('pointercancel', cancelTimer);
+
+    function beginBlockDrag(e) {
+      timer = null; dragging = true;
+      enterRearrangeMode();
+      var host = document.getElementById('homeBody');
+
+      var r0 = outerEl.getBoundingClientRect();
+      var placeholder = document.createElement('div');
+      placeholder.className = 'blockPlaceholder';
+      placeholder.dataset.blockId = blockId;
+      placeholder.style.cssText = 'width:' + r0.width + 'px;height:' + r0.height + 'px;'
+        + 'grid-column:' + outerEl.style.gridColumn + ';grid-row:' + (outerEl.style.gridRow || 'auto') + ';';
+      host.insertBefore(placeholder, outerEl);
+      outerEl.style.display = 'none';
+
+      var hr = h.getBoundingClientRect();
+      var chip = document.createElement('div'); chip.className = 'blockChip';
+      chip.textContent = BLOCK_NAME[blockId];
+      chip.style.left = hr.left + 'px'; chip.style.top = hr.top + 'px';
+      document.body.appendChild(chip);
+      var grabX = e.clientX - hr.left, grabY = e.clientY - hr.top;
+      try { h.setPointerCapture(e.pointerId); } catch (err) {}
+
+      function onMove(ev) {
+        if (!dragging) return;
+        chip.style.left = (ev.clientX - grabX) + 'px';
+        chip.style.top = (ev.clientY - grabY) + 'px';
+        reflowBlockSiblings(host, placeholder, ev.clientY);
+      }
+      function onUp(ev) {
+        dragging = false;
+        try { h.releasePointerCapture(ev.pointerId); } catch (err) {}
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        document.removeEventListener('pointercancel', onUp);
+        document.body.removeChild(chip);
+        outerEl.style.display = '';
+        host.insertBefore(outerEl, placeholder);
+        host.removeChild(placeholder);
+        commitBlockOrder(host);
+        updateRearrangeHint();
+      }
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+      document.addEventListener('pointercancel', onUp);
+    }
+    return h;
+  }
+  function reflowBlockSiblings(host, placeholder, clientY) {
+    var sibs = Array.prototype.slice.call(host.children).filter(function (c) {
+      return c !== placeholder && c.dataset && c.dataset.blockId;
+    });
+    var before = sibs.map(function (c) { return c.getBoundingClientRect(); });
+    var target = null;
+    for (var i = 0; i < sibs.length; i++) {
+      if (clientY < before[i].top + before[i].height / 2) { target = sibs[i]; break; }
+    }
+    var already = target ? target.previousSibling === placeholder : host.lastChild === placeholder;
+    if (already) return;
+    if (target) host.insertBefore(placeholder, target); else host.appendChild(placeholder);
+  }
+  function commitBlockOrder(host) {
+    var ids = Array.prototype.slice.call(host.children)
+      .filter(function (c) { return c.dataset && c.dataset.blockId; })
+      .map(function (c) { return c.dataset.blockId; });
+    var full = blockOrder();
+    var before = full.filter(function (b) { return on('block-' + b); });
+    var changed = ids.length !== before.length || ids.some(function (x, i) { return x !== before[i]; });
+    if (changed) {
+      // Blocks currently off don't appear on the page to be dragged, so
+      // they're not in ids \u2014 keep them in whatever relative spot they
+      // already held rather than dropping them off the end regardless.
+      store.blocks = ids.concat(full.filter(function (b) { return ids.indexOf(b) < 0; }));
+      saveStore();
+    }
+    renderHome();
+  }
+
+  /* All of what follows \u2014 the page-level strip (emoji, light/dark,
+     color presets/Custom) and the per-block extras below Across the
+     Day and Tiles \u2014 render ONLY while rearrange mode is on. These are
+     settings people touch rarely, not on every visit; surfacing them
+     permanently was the clutter this whole redesign was about in the
+     first place. Wiggly mode is already "I'm here to change how the
+     page is arranged," so it's the one moment these earn their space.
+     Plain checkboxes throughout, no toggle switches, no preview
+     graphics \u2014 brevity over polish, matching how the rest of wiggly
+     mode already reads. */
+  function wiggleCheck(label, checked, onChange) {
+    var row = document.createElement('label'); row.className = 'opt';
+    var box = document.createElement('input'); box.type = 'checkbox'; box.checked = checked;
+    box.addEventListener('change', function () { onChange(box.checked); });
+    var sp = document.createElement('span'); sp.textContent = label;
+    row.appendChild(box); row.appendChild(sp);
+    return row;
+  }
+
+  var wiggleCustomOpen = false;
+  function buildWiggleStrip() {
+    var strip = document.createElement('div'); strip.className = 'wiggleStrip';
+
+    strip.appendChild(wiggleCheck('Use Emojis', showEmoji(), function (v) {
+      store.emoji = v; saveStore(); renderHome();
+    }));
+
+    // Lives here rather than under Across the Day, and always shows
+    // rather than only when span > 1. It was conditional before, which
+    // meant it only appeared in exactly the view where the rest of
+    // wiggly mode didn't work at all \u2014 effectively unreachable. As a
+    // page-level control alongside the other always-present ones, the
+    // multi-day style can be set before switching into multi-day view,
+    // not only once already there.
+    // Shown as two labelled miniatures flanking a switch, not a
+    // sentence: "pills" tested badly \u2014 people didn't know what the word
+    // meant \u2014 and the difference is purely visual anyway, so showing
+    // the two shapes says it without needing a word for either.
+    strip.appendChild(mdStyleToggle());
+
+    var dm = document.createElement('div'); dm.className = 'presets';
+    [['light', 'Light Mode'], ['dark', 'Dark Mode'], ['auto', 'Match System']].forEach(function (opt) {
+      var b = document.createElement('button');
+      b.className = 'preset' + ((store.darkMode || 'auto') === opt[0] ? ' sel' : '');
+      b.textContent = opt[1];
+      b.addEventListener('click', function () {
+        store.darkMode = opt[0]; saveStore(); applyTheme();
+      });
+      dm.appendChild(b);
+    });
+    strip.appendChild(dm);
+
+    var t = store.theme || {};
+    var custom = t.cold || t.good || t.warm || t.danger || t.night || t.dawn || t.day;
+    var pr = document.createElement('div'); pr.className = 'presets';
+    Object.keys(PRESETS).forEach(function (k) {
+      var b = document.createElement('button');
+      b.className = 'preset' + ((t.preset || 'default') === k && !custom ? ' sel' : '');
+      b.textContent = PRESETS[k].name;
+      var sw = document.createElement('span'); sw.className = 'sw';
+      ['cold', 'good', 'warm', 'danger'].forEach(function (a) {
+        var d2 = document.createElement('i'); d2.style.background = PRESETS[k][a]; sw.appendChild(d2);
+      });
+      b.appendChild(sw);
+      b.addEventListener('click', function () {
+        store.theme = { preset: k }; saveStore(); buildRamps(); renderHome();
+      });
+      pr.appendChild(b);
+    });
+    var cb = document.createElement('button');
+    cb.className = 'preset' + (custom || wiggleCustomOpen ? ' sel' : '');
+    cb.textContent = 'Custom';
+    var cbsw = document.createElement('span'); cbsw.className = 'sw';
+    var A0 = anchors();
+    [A0.cold, A0.good, A0.warm, A0.danger].forEach(function (c) {
+      var d3 = document.createElement('i'); d3.style.background = custom ? c : 'transparent';
+      d3.style.border = '1px dashed currentColor'; cbsw.appendChild(d3);
+    });
+    cb.appendChild(cbsw);
+    cb.addEventListener('click', function () {
+      wiggleCustomOpen = !wiggleCustomOpen; renderHome();
+    });
+    pr.appendChild(cb);
+    strip.appendChild(pr);
+    var addBlk = addBlockAffordance();
+    if (addBlk) strip.appendChild(addBlk);
+
+    if (custom || wiggleCustomOpen) {
+      var pickers = document.createElement('div');
+      var A = anchors();
+      swatchRow('cold', 'Cold and dry', A.cold, pickers);
+      swatchRow('good', 'Fine', A.good, pickers);
+      swatchRow('warm', 'Warm', A.warm, pickers);
+      swatchRow('danger', 'Dangerous', A.danger, pickers);
+      var dh = document.createElement('h3'); dh.textContent = 'Sunrise and sunset'; dh.style.cssText = 'font-size:12px;margin:10px 0 4px;';
+      pickers.appendChild(dh);
+      var TH = store.theme || {};
+      swatchRow('night', 'Night', TH.night || rgb2hex(NIGHT), pickers);
+      swatchRow('dawn', 'Dawn and dusk', TH.dawn || rgb2hex(TWILIGHT), pickers);
+      swatchRow('day', 'Midday', TH.day || rgb2hex(DAYLIT), pickers);
+      var warn = document.createElement('p'); warn.className = 'lede contrast'; warn.id = 'contrastNote';
+      pickers.appendChild(warn);
+      var reset = document.createElement('button'); reset.className = 'reset';
+      reset.textContent = 'Reset colours';
+      reset.addEventListener('click', function () {
+        store.theme = { preset: 'default' }; saveStore(); buildRamps(); renderHome();
+      });
+      pickers.appendChild(reset);
+      strip.appendChild(pickers);
+      updateContrast();
+    }
+    return strip;
+  }
+
+  /* Two miniatures of the actual thing, with a switch between them \u2014
+     the words "pills" and "strips" both tested poorly, and the whole
+     difference is visual, so the shapes carry it instead. Same sample
+     gradient the other previews use; the point is the SHAPE (three
+     separate rounded blocks vs. one unbroken bar), not the colors. */
+  /* Sample gradient for the multi-day miniatures \u2014 a cool-to-warm
+     sweep so the "continuous" version visibly flows across where the
+     "day-by-day" version breaks. Fixed, not theme-derived: the point
+     is the shape, not today's colors. */
+  var PREVIEW_MD_BG = 'linear-gradient(90deg,#A8C89A,#9DBBD6,#A8C89A,#9DBBD6)';
+  function mdStyleToggle() {
+    var pills = (store.mdStyle || 'strip') === 'pills';
+    function mini(sep) {
+      var box = document.createElement('div'); box.className = 'mdMini';
+      if (sep) {
+        for (var i = 0; i < 3; i++) {
+          var seg = document.createElement('span'); seg.className = 'mdMiniSeg';
+          seg.style.background = PREVIEW_MD_BG;
+          box.appendChild(seg);
+        }
+      } else {
+        var bar = document.createElement('span'); bar.className = 'mdMiniBar';
+        bar.style.background = PREVIEW_MD_BG;
+        box.appendChild(bar);
+      }
+      return box;
+    }
+    function side(labelText, sep, active) {
+      var col = document.createElement('div'); col.className = 'mdSide' + (active ? ' sel' : '');
+      col.appendChild(mini(sep));
+      var lb = document.createElement('div'); lb.className = 'mdSideLabel'; lb.textContent = labelText;
+      col.appendChild(lb);
+      col.addEventListener('click', function () {
+        store.mdStyle = sep ? 'pills' : 'strip'; saveStore(); renderHome();
+      });
+      return col;
+    }
+    var row = document.createElement('div'); row.className = 'mdToggleRow';
+    row.appendChild(side('Day-by-Day', true, pills));
+    var sw = document.createElement('label'); sw.className = 'toggleSwitch';
+    var input = document.createElement('input'); input.type = 'checkbox'; input.checked = !pills;
+    input.setAttribute('aria-label', 'Multi-day style: off is day-by-day, on is continuous');
+    input.addEventListener('change', function () {
+      store.mdStyle = input.checked ? 'strip' : 'pills'; saveStore(); renderHome();
+    });
+    var track = document.createElement('span'); track.className = 'track';
+    var thumb = document.createElement('span'); thumb.className = 'thumb';
+    sw.appendChild(input); sw.appendChild(track); sw.appendChild(thumb);
+    row.appendChild(sw);
+    row.appendChild(side('Continuous', false, !pills));
+    return row;
+  }
+
+  function hourMarkerSlider() {
+    var wrap = document.createElement('div'); wrap.className = 'hmSlider';
+    var label = document.createElement('div'); label.className = 'hmLabel'; label.textContent = 'Hour Markers';
+    wrap.appendChild(label);
+    var track = document.createElement('div'); track.className = 'hmTrack';
+    [[0, 'none'], [3, '3 hr'], [4, '4 hr'], [6, '6 hr']].forEach(function (opt, i, arr) {
+      var dot = document.createElement('button'); dot.type = 'button';
+      dot.className = 'hmDot' + ((store.tickHours || 0) === opt[0] ? ' sel' : '');
+      var circ = document.createElement('span'); circ.className = 'hmCirc';
+      var txt = document.createElement('span'); txt.className = 'hmTxt'; txt.textContent = opt[1];
+      dot.appendChild(circ); dot.appendChild(txt);
+      dot.addEventListener('click', function () {
+        store.tickHours = opt[0]; saveStore(); renderHome();
+      });
+      track.appendChild(dot);
+    });
+    wrap.appendChild(track);
+    return wrap;
   }
 
   /* The other half of rearrange mode: dragging only ever works on a
@@ -4104,36 +4611,28 @@
      present only while rearrange mode is on, listing whatever's
      currently off for this context \u2014 tap a name to turn it on, right
      where you're already working. */
-  function addCardAffordance(which) {
-    var def = which === 'hourly' ? DEFAULT_HOURLY_ORDER : DEFAULT_TILE_ORDER;
-    var hidden = def.filter(function (id) {
-      var meta = cardMeta(id);
-      return !meta.always && !on(id);
-    });
-    if (!hidden.length) return null;
+  /* One "+ Add" affordance, three uses: hidden cards in the hourly row
+     or tile grid, hidden to-do items inside the to-do block, and \u2014
+     since the Page Order tab is gone \u2014 hidden blocks and to-do
+     sections, which otherwise had no way back at all. entries is
+     [{label, onPick}]; nothing renders when nothing is hidden. */
+  function addAffordance(entries, label, smallCard) {
+    if (!entries.length) return null;
     var wrap = document.createElement('div');
-    wrap.className = 'card sm addCard';
+    wrap.className = (smallCard ? 'card sm addCard' : 'addCard addCardWide');
     wrap.tabIndex = 0;
     wrap.setAttribute('role', 'button');
     wrap.setAttribute('aria-expanded', 'false');
-    wrap.setAttribute('aria-label', 'Add a card');
+    wrap.setAttribute('aria-label', label || 'Add');
     var face = document.createElement('div'); face.className = 'face';
-    var b = document.createElement('b'); b.textContent = '+ Add';
+    var b = document.createElement('b'); b.textContent = label || '+ Add';
     face.appendChild(b);
     wrap.appendChild(face);
     var list = document.createElement('div'); list.className = 'addCardList';
-    hidden.forEach(function (id) {
+    entries.forEach(function (en) {
       var item = document.createElement('button'); item.type = 'button'; item.className = 'addCardItem';
-      item.textContent = cardMeta(id).name;
-      item.addEventListener('click', function (e) {
-        e.stopPropagation();
-        store.cards[id] = true;
-        var o = orderOf(which);
-        if (o.indexOf(id) < 0) o.push(id);
-        if (which === 'hourly') store.orderH = o; else store.order = o;
-        saveStore(); renderHome(); updateRearrangeHint();
-        focusCardEl(id);
-      });
+      item.textContent = en.label;
+      item.addEventListener('click', function (e) { e.stopPropagation(); en.onPick(); });
       list.appendChild(item);
     });
     wrap.appendChild(list);
@@ -4150,6 +4649,58 @@
     return wrap;
   }
 
+  function addCardAffordance(which) {
+    var def = which === 'hourly' ? DEFAULT_HOURLY_ORDER : DEFAULT_TILE_ORDER;
+    var entries = def.filter(function (id) {
+      return !cardMeta(id).always && !on(id);
+    }).map(function (id) {
+      return { label: cardMeta(id).name, onPick: function () {
+        store.cards[id] = true;
+        var o = orderOf(which);
+        if (o.indexOf(id) < 0) o.push(id);
+        if (which === 'hourly') store.orderH = o; else store.order = o;
+        saveStore(); renderHome(); updateRearrangeHint();
+        focusCardEl(id);
+      } };
+    });
+    return addAffordance(entries, '+ Add', true);
+  }
+
+  /* Hidden to-do items, plus hidden to-do sections. Both end up back in
+     the same list, so they belong in the same picker rather than two
+     separate ones sitting next to each other. */
+  function addTodoAffordance() {
+    var entries = PILL_ONLY.filter(function (id) {
+      return !cardMeta(id).always && !on(id);
+    }).map(function (id) {
+      return { label: cardMeta(id).name, onPick: function () {
+        store.cards[id] = true; saveStore(); renderHome(); updateRearrangeHint();
+      } };
+    });
+    sectionOrder().forEach(function (sec) {
+      if (on('sec-' + sec)) return;
+      entries.push({ label: sectionName(sec) + ' (section)', onPick: function () {
+        store.cards['sec-' + sec] = true; saveStore(); renderHome(); updateRearrangeHint();
+      } });
+    });
+    return addAffordance(entries, '+ Add to list', false);
+  }
+
+  /* Whole blocks \u2014 Across the Day, Tiles, To-do list. With Page Order
+     retired this is the only route back once one is hidden, so it sits
+     at page level in the wiggle strip rather than inside any block
+     (a hidden block has no on-page presence to attach to). */
+  function addBlockAffordance() {
+    var entries = blockOrder().filter(function (b) {
+      return !on('block-' + b);
+    }).map(function (b) {
+      return { label: BLOCK_NAME[b], onPick: function () {
+        store.cards['block-' + b] = true; saveStore(); renderHome(); updateRearrangeHint();
+      } };
+    });
+    return addAffordance(entries, '+ Add a section back', false);
+  }
+
   function updateRearrangeHint() {
     var hint = document.getElementById('tipHint');
     if (!hint) return;
@@ -4157,13 +4708,17 @@
       hint.style.display = '';
       hint.className = 'rearrangeBar';
       hint.innerHTML = '';
-      var span = document.createElement('span');
-      span.textContent = rearrange.grabbedId
-        ? 'Arrow keys to move, Space to drop.'
-        : 'Drag to reorder, tap \u00d7 to hide, or + Add to bring something back \u2014 or Tab to a card and press Space to move it with arrow keys.';
+      var lines = document.createElement('div'); lines.className = 'rearrangeLines';
+      var l1 = document.createElement('p');
+      l1.textContent = 'Long press to select. Drag to reorder. X to hide. + to add.';
+      var l2 = document.createElement('p');
+      l2.textContent = rearrange.grabbedId
+        ? 'Arrow keys to move. Space to drop.'
+        : 'Tab to select. Space to grab. Arrow keys to move.';
+      lines.appendChild(l1); lines.appendChild(l2);
       var done = document.createElement('button'); done.type = 'button'; done.textContent = 'Done';
       done.addEventListener('click', exitRearrangeMode);
-      hint.appendChild(span); hint.appendChild(done);
+      hint.appendChild(lines); hint.appendChild(done);
     } else {
       hint.className = 'tiphint';
       hint.textContent = 'Tap any card for the numbers behind it.';
@@ -4190,7 +4745,7 @@
   function exitRearrangeMode() {
     if (!rearrange.active) return;
     rearrange.active = false;
-    rearrange.grabbedId = null; rearrange.grabbedWhich = null;
+    rearrange.grabbedId = null; rearrange.grabbedWhich = null; rearrange.grabbedKind = null;
     document.body.classList.remove('rearranging');
     renderHome();
     updateRearrangeHint();
@@ -4252,6 +4807,7 @@
     var changed = ids.length !== before.length || ids.some(function (x, i) { return x !== before[i]; });
     if (changed) {
       if (which === 'hourly') store.orderH = ids; else store.order = ids;
+      if (which === 'tiles' && store.colorSort) store.colorSort = false;
       saveStore();
     }
     renderHome();
@@ -4272,7 +4828,7 @@
     if (el.tabIndex < 0 || el.tagName !== 'BUTTON') el.tabIndex = 0;
     if (el.tagName !== 'BUTTON') el.setAttribute('role', 'button');
     el.setAttribute('aria-roledescription', 'reorderable card');
-    var grabbed = rearrange.grabbedId === id;
+    var grabbed = rearrange.grabbedKind === 'card' && rearrange.grabbedId === id;
     el.setAttribute('aria-grabbed', grabbed ? 'true' : 'false');
     if (grabbed) el.classList.add('grabbed');
 
@@ -4312,14 +4868,15 @@
     el.addEventListener('keydown', function (e) {
       if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter') {
         e.preventDefault();
-        if (rearrange.grabbedId === id) {
-          rearrange.grabbedId = null; rearrange.grabbedWhich = null;
+        if (rearrange.grabbedKind === 'card' && rearrange.grabbedId === id) {
+          rearrange.grabbedId = null; rearrange.grabbedKind = null; rearrange.grabbedWhich = null;
         } else {
           if (!rearrange.active) enterRearrangeMode();
-          rearrange.grabbedId = id; rearrange.grabbedWhich = which;
+          rearrange.grabbedId = id; rearrange.grabbedKind = 'card'; rearrange.grabbedWhich = which;
         }
         renderHome(); updateRearrangeHint(); focusCardEl(id);
-      } else if (rearrange.grabbedId === id && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      } else if (rearrange.grabbedKind === 'card' && rearrange.grabbedId === id
+                 && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
         e.preventDefault();
         moveCard(id, e.key === 'ArrowUp' ? -1 : 1, which);
         focusCardEl(id);
@@ -4507,15 +5064,78 @@
       if (sec === 'week') {
         items = weekItems || [];
       } else {
+        // cardId has to survive this map. It used to build objects with
+        // only `text`, which silently dropped it \u2014 and the pill dismiss
+        // badge is created behind `if (t.cardId && ...)`, so the badge
+        // was never built at all, for any pill, ever. Every read of the
+        // rendering code checked out because the rendering code was
+        // fine; the data had already been stripped one step upstream.
         items = todos.filter(function (t) { return t.when === sec; })
                      .sort(function (a, b) { return a.rank - b.rank; })
-                     .map(function (t) { return { text: t.text }; });
+                     .map(function (t) { return { text: t.text, cardId: t.cardId }; });
       }
       if (!items.length) return;
       any = true;
+      // Each section is now its own wrapper element holding both its
+      // heading and its content, rather than the heading and its list
+      // being loose siblings inside the shared todo card. That's what
+      // lets the dashed rearrange boundary wrap the whole section
+      // (the boundary is drawn on this wrapper), and it's also the
+      // structural precondition for pointer-dragging a section as a
+      // unit, which previously wasn't possible for exactly this reason.
+      var secWrap = document.createElement('div');
+      secWrap.className = 'todosection';
+      secWrap.dataset.secId = sec;
       var h = document.createElement('div'); h.className = 'todohead';
       h.textContent = sectionName(sec);
-      el.appendChild(h);
+      h.dataset.secId = sec;
+      h.tabIndex = 0; h.setAttribute('role', 'button');
+      h.setAttribute('aria-roledescription', 'reorderable section');
+      var secGrabbed = rearrange.grabbedKind === 'section' && rearrange.grabbedId === sec;
+      h.setAttribute('aria-grabbed', secGrabbed ? 'true' : 'false');
+      if (secGrabbed) secWrap.classList.add('grabbed');
+        (function () {
+        var secBadge = document.createElement('span'); secBadge.className = 'dismissBadge';
+        secBadge.textContent = '\u00d7';
+        secBadge.setAttribute('role', 'button');
+        secBadge.setAttribute('aria-label', 'Hide ' + sectionName(sec));
+        secBadge.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+        secBadge.addEventListener('click', function (e) {
+          e.stopPropagation();
+          store.cards['sec-' + sec] = false;
+          saveStore(); renderHome(); updateRearrangeHint();
+        });
+        secWrap.appendChild(secBadge);
+      })();
+      // Keyboard only for now, same grab pattern as cards and blocks \u2014
+      // through moveSection(), the same function the old Page Order
+      // arrows called. Pointer dragging for sections is not built yet:
+      // unlike a block, a section isn't its own DOM element (the
+      // heading and its list are separate siblings inside the shared
+      // todo card), so dragging one as a unit needs the same kind of
+      // wrapping this pass gave blocks \u2014 deliberately left for its own
+      // pass rather than rushed into this one.
+      h.addEventListener('keydown', function (e) {
+        if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter') {
+          e.preventDefault();
+          if (rearrange.grabbedKind === 'section' && rearrange.grabbedId === sec) {
+            rearrange.grabbedId = null; rearrange.grabbedKind = null;
+          } else {
+            if (!rearrange.active) enterRearrangeMode();
+            rearrange.grabbedId = sec; rearrange.grabbedKind = 'section';
+          }
+          renderHome(); updateRearrangeHint(); focusSectionHead(sec);
+        } else if (rearrange.grabbedKind === 'section' && rearrange.grabbedId === sec
+                   && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+          e.preventDefault();
+          moveSection(sec, e.key === 'ArrowUp' ? -1 : 1);
+          focusSectionHead(sec);
+        } else if (e.key === 'Escape' && rearrange.active) {
+          e.preventDefault();
+          exitRearrangeMode();
+        }
+      });
+      secWrap.appendChild(h);
 
       // Grouped by day, always-visible text \u2014 not a pill, no tap
       // needed. These are forecasts to read, not to check off or dig
@@ -4541,8 +5161,9 @@
             if (w.detail) note.appendChild(document.createTextNode(' ' + w.detail));
             grp.appendChild(note);
           });
-          el.appendChild(grp);
+          secWrap.appendChild(grp);
         });
+        el.appendChild(secWrap);
         return;
       }
 
@@ -4583,35 +5204,18 @@
           li.addEventListener('pointerdown', function (e) {
             if (e.button != null && e.button !== 0) return;
             pStartX = e.clientX; pStartY = e.clientY;
-            if (window.DEBUG_REARRANGE) console.log('[pill] pointerdown, timer armed', t.text);
             pTimer = setTimeout(function () {
               pTimer = null;
-              if (window.DEBUG_REARRANGE) console.log('[pill] 500ms reached, calling enterRearrangeMode()', t.text);
               enterRearrangeMode();
-              if (window.DEBUG_REARRANGE) {
-                requestAnimationFrame(function () {
-                  var b = li.querySelector('.dismissBadge');
-                  console.log('[pill] body.rearranging=', document.body.classList.contains('rearranging'),
-                              'badge found=', !!b,
-                              'badge display=', b ? getComputedStyle(b).display : 'n/a');
-                });
-              }
             }, 500);
           });
           li.addEventListener('pointermove', function (e) {
             if (pTimer && (Math.abs(e.clientX - pStartX) > 10 || Math.abs(e.clientY - pStartY) > 10)) {
-              if (window.DEBUG_REARRANGE) console.log('[pill] pointermove cancelled timer (moved >10px)', t.text);
               cancelPTimer();
             }
           });
-          li.addEventListener('pointerup', function () {
-            if (window.DEBUG_REARRANGE && pTimer) console.log('[pill] pointerup cancelled timer (released early)', t.text);
-            cancelPTimer();
-          });
-          li.addEventListener('pointercancel', function () {
-            if (window.DEBUG_REARRANGE && pTimer) console.log('[pill] pointercancel fired \u2014 browser took the gesture (likely scroll)', t.text);
-            cancelPTimer();
-          });
+          li.addEventListener('pointerup', cancelPTimer);
+          li.addEventListener('pointercancel', cancelPTimer);
         })();
         // Same dismiss badge as a tile, same underlying action \u2014 turn
         // the card that produced this pill off entirely. Removal only,
@@ -4627,6 +5231,11 @@
           pillBadge.textContent = '\u00d7';
           pillBadge.setAttribute('role', 'button');
           pillBadge.setAttribute('aria-label', 'Hide ' + cardMeta(t.cardId).name);
+          // Matches every other dismiss badge (tile, block, section):
+          // without this, a tap here also bubbles into the pill's own
+          // pointerdown handler above and arms a redundant
+          // rearrange-entry timer.
+          pillBadge.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
           pillBadge.addEventListener('click', function (e) {
             e.stopPropagation();
             store.cards[t.cardId] = false; saveStore(); renderHome(); updateRearrangeHint();
@@ -4635,8 +5244,13 @@
         }
         ul.appendChild(li);
       });
-      el.appendChild(ul);
+      secWrap.appendChild(ul);
+      el.appendChild(secWrap);
     });
+    if (rearrange.active) {
+      var addTodo = addTodoAffordance();
+      if (addTodo) { el.appendChild(addTodo); any = true; }
+    }
     return any ? el : null;
   }
 
@@ -4810,6 +5424,25 @@
   function renderMultiDay(p, lat, lon, cal, span) {
     var host = document.getElementById('homeBody');
     host.innerHTML = ''; host.className = 'multiday';
+    // Rearrange mode had never been wired into this view at all \u2014 this
+    // function returns before any of renderHome()'s wiggle handling
+    // runs, so entering the mode here did nothing visible, and
+    // switching into multi-day while already in the mode silently
+    // dropped every control. The page-level strip is the part that
+    // makes sense here: the multi-day view has no tiles, no to-do
+    // block, and its day-strips aren't individually reorderable, so
+    // per-block extras and drag handles have nothing to attach to.
+    // What it does have is exactly what the strip holds \u2014 emoji,
+    // light/dark, colors, and the pills-vs-strips toggle this view is
+    // the whole audience for.
+    var oldStripMd = document.getElementById('wiggleStripHost');
+    if (oldStripMd) oldStripMd.remove();
+    if (rearrange.active) {
+      var stripMd = buildWiggleStrip();
+      stripMd.id = 'wiggleStripHost';
+      host.parentNode.insertBefore(stripMd, host);
+    }
+    updateRearrangeHint();
     var xn = document.getElementById('xercesNote');
     if (xn) { xn.style.display = 'none'; xn.innerHTML = ''; }
     var days = [];
@@ -4870,12 +5503,14 @@
       b3.appendChild(nm); b3.appendChild(dt);
       b3.setAttribute('aria-expanded', 'false');
       b3.addEventListener('click', function () {
+        if (rearrange.active) return;
         var wasOpen = openDay === x.off && dayPanel.style.display !== 'none';
         Array.prototype.forEach.call(head.children, function (c) { c.setAttribute('aria-expanded', 'false'); });
         if (wasOpen) { dayPanel.style.display = 'none'; openDay = null; return; }
         showDayPanel(x); dayPanel.style.display = 'block';
         b3.setAttribute('aria-expanded', 'true'); openDay = x.off;
       });
+      wireMultiDayLongPress(b3);
       head.appendChild(b3);
     });
     col.appendChild(head);
@@ -4920,6 +5555,7 @@
       el.appendChild(body);
       el.setAttribute('aria-expanded', 'false');
       el.addEventListener('click', function () {
+        if (rearrange.active) return;
         var open = body.style.display === 'none';
         body.style.display = open ? 'block' : 'none';
         el.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -4930,7 +5566,29 @@
         // and overflowed outside its own box on top of everything below it.
         el.className = open ? el.className + ' open' : el.className.replace(/ open/g, '');
       });
+      wireMultiDayLongPress(el);
       col.appendChild(el);
+    }
+
+    /* The only way into rearrange mode from this view. The single-day
+       page gets it from tiles, cards, block headings and to-do pills,
+       none of which exist here \u2014 which is why long-pressing in
+       multi-day view did nothing at all before. Entry only: there's
+       nothing in this view to reorder or hide, so no drag or badge
+       follows, just access to the page-level strip. */
+    function wireMultiDayLongPress(el) {
+      var mTimer = null, mX, mY;
+      function cancelM() { if (mTimer) { clearTimeout(mTimer); mTimer = null; } }
+      el.addEventListener('pointerdown', function (e) {
+        if (e.button != null && e.button !== 0) return;
+        mX = e.clientX; mY = e.clientY;
+        mTimer = setTimeout(function () { mTimer = null; enterRearrangeMode(); renderHome(); }, 500);
+      });
+      el.addEventListener('pointermove', function (e) {
+        if (mTimer && (Math.abs(e.clientX - mX) > 10 || Math.abs(e.clientY - mY) > 10)) cancelM();
+      });
+      el.addEventListener('pointerup', cancelM);
+      el.addEventListener('pointercancel', cancelM);
     }
 
     /* Pills mode: the same three rows, but each day is its own discrete
@@ -4966,10 +5624,12 @@
           body.textContent = tipFor(x.d);
           p2.appendChild(body);
           p2.addEventListener('click', function () {
+            if (rearrange.active) return;
             var open = body.style.display === 'none';
             body.style.display = open ? 'block' : 'none';
           });
         }
+        wireMultiDayLongPress(p2);
         row.appendChild(p2);
       });
       wrap.appendChild(row);
@@ -5112,24 +5772,102 @@
       flag:      function () { return flagCard(p.flag); },
       moon:      function () { return moonCard(d.date, state.tz, lat, lon); }
     };
-    // Color order: only while nobody has ever dragged a tile by hand.
-    // The moment store.order holds a real saved order, that wins
-    // permanently \u2014 this is a starting default, not a mode that
-    // fights manual reordering for control. Recomputed fresh each
-    // render, from each tile's real severity today, not a fixed list:
-    // a tile with no severity of its own (Flag, Eclipse, Bird
-    // Migration, eBird \u2014 nothing graduated to sort by) sits in the
-    // neutral middle rather than being arbitrarily called green or red.
+    // Color order: the actual bug ("checking the box does nothing")
+    // was that this used to also require store.order to be completely
+    // untouched \u2014 a fine idea in principle (dragging by hand should
+    // win) but it meant the checkbox only ever worked before the very
+    // first drag or "+ Add", since either one writes a real order and
+    // permanently locked color-sort out with no way back, even though
+    // the box still showed as checked and re-checking it did nothing.
+    // Manual control now wins the other way round instead: moving a
+    // tile (moveCard, or a completed drag in commitOrder) turns this
+    // setting off itself at the moment you've expressed a preference,
+    // so the checkbox always does what it currently says. Recomputed
+    // fresh each render, from each tile's real severity today, not a
+    // fixed list: a tile with no severity of its own (Flag, Eclipse,
+    // Bird Migration, eBird \u2014 nothing graduated to sort by) sits in
+    // the neutral middle rather than being arbitrarily called green or
+    // red.
     var renderTileOrder = tileOrder();
-    if (store.colorSort && !(store.order && store.order.length)) {
-      var sevCache = {};
+    if (store.colorSort) {
+      /* Spectral sort: Blue \u2192 Gray \u2192 Green \u2192 Yellow \u2192 Orange \u2192 Red.
+         Goal is visual harmony by hue, not urgency. Each tile's actual
+         rendered background color is the source, so this follows the
+         theme, not a hardcoded severity scale.
+         Approach: parse the computed `row.bg` CSS value back to RGB,
+         convert to HSL, map hue to a sort key that produces the
+         desired spectral order. Informational tiles (no `.bg`, or bg
+         is a gradient whose colors are hard to collapse) get a
+         blue-green-gray target so they float to the cool end without
+         crowding the genuinely-colored tiles. Gradient tiles (`.timeline`
+         or `linear-gradient` in bg) extract the most-severe end of the
+         gradient \u2014 that's the condition the card is warning about. */
+      function parseRgb(cssColor) {
+        if (!cssColor) return null;
+        // linear-gradient: grab the last color stop (most severe end)
+        var flat = cssColor;
+        if (flat.indexOf('gradient') > -1) {
+          var stops = flat.match(/rgb\([^)]+\)/g);
+          flat = stops ? stops[stops.length - 1] : null;
+        }
+        if (!flat) return null;
+        var m = flat.match(/rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+        return m ? [+m[1], +m[2], +m[3]] : null;
+      }
+      function rgbToHsl(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        var max = Math.max(r,g,b), min = Math.min(r,g,b), h, s, l = (max+min)/2;
+        if (max === min) { h = s = 0; }
+        else {
+          var d = max - min;
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            default: h = (r - g) / d + 4; break;
+          }
+          h /= 6;
+        }
+        return [h * 360, s, l];
+      }
+      /* Map HSL to sort key in spectral order: Blue(220\u2013270) \u2192
+         Gray(low-sat) \u2192 Green(80\u2013165) \u2192 Yellow(45\u201380) \u2192
+         Orange(20\u201345) \u2192 Red(0\u201320 or 330\u2013360).
+         Low-saturation colors (gray, beige) are detected first and
+         placed after blue, before green, since they read as neutral
+         and benefit from clustering between the cool and warm ends. */
+      function hueKey(hsl) {
+        var h = hsl[0], s = hsl[1], l = hsl[2];
+        if (s < 0.12) return 1.5;       // gray / beige \u2014 between blue and green
+        if (h >= 200 && h < 280) return h / 360; // blue zone: ~0.55\u20130.78
+        if (h >= 80  && h < 200) return 2 + (h - 80) / 120;   // green: 2.0\u20133.0
+        if (h >= 45  && h < 80)  return 3 + (80 - h) / 35;    // yellow: 3.0\u20134.0
+        if (h >= 20  && h < 45)  return 4 + (45 - h) / 25;    // orange: 4.0\u20135.0
+        // red (h 0\u201320 or 330\u2013360)
+        var redH = h >= 330 ? h - 360 : h;
+        return 5 + (20 - Math.abs(redH)) / 20;                 // red: 5.0\u20136.0
+      }
+      // Informational-only tiles with no natural color of their own
+      // (flag at half staff, eclipse prediction, eBird): nudge to
+      // blue-green-gray so they cluster at the cool end. Bird
+      // Migration and Aurora both produce their own strongly-colored
+      // backgrounds and sort fine by hue without help.
+      var INFO_KEY = 1.8;
+      var INFO_IDS = { flag: 1, eclipse: 1, ebird: 1 };
       var ranked = renderTileOrder.map(function (id) {
         var row = null;
         if (on(id) && builders[id]) { try { row = builders[id](); } catch (e) {} }
-        sevCache[id] = row;
-        return { id: id, sev: row && row.severity != null ? row.severity : 50 };
+        var key = INFO_KEY;
+        if (row && row.bg) {
+          var rgb = parseRgb(row.bg);
+          if (rgb) key = hueKey(rgbToHsl(rgb[0], rgb[1], rgb[2]));
+          else if (INFO_IDS[id]) key = INFO_KEY;
+        } else if (INFO_IDS[id]) {
+          key = INFO_KEY;
+        }
+        return { id: id, key: key, row: row };
       });
-      ranked.sort(function (a, b) { return a.sev - b.sev; });
+      ranked.sort(function (a, b) { return a.key - b.key; });
       renderTileOrder = ranked.map(function (r) { return r.id; });
     }
     // A tile that is on but returned nothing is quiet, not off: it goes
@@ -5175,7 +5913,7 @@
       if (on('frost')) {
         var fc = frostCard(tm);
         if (fc) weekItems.push({ off: 1, text: fc.bold,
-          detail: 'Frost expected overnight; scrape or defrost before driving tomorrow.' });
+          detail: 'Frost expected overnight; plan time to scrape or defrost before driving tomorrow.' });
       }
       if (on('mow')) {
         var mc = mowCard(tm, lat);
@@ -5195,8 +5933,11 @@
         var lc = lightCard(tm);
         if (lc && lc.todo && lc.todo.indexOf('Morning Light') === 0) {
           var win = lc.todo.replace('Morning Light \u2014 ', '');
-          weekItems.push({ off: 1, text: 'Morning Light ' + win,
-            detail: 'Tomorrow\u2019s clearest light window, so you can plan to be up for it.' });
+          var winText = (win === 'any time, AM')
+            ? 'Morning Light'
+            : 'Morning Light \u2014 ' + win;
+          weekItems.push({ off: 1, text: winText,
+            detail: 'Tomorrow\u2019s clearest light window.' });
         }
       }
     })();
@@ -5256,9 +5997,45 @@
     // it takes the left column and the cards move right; otherwise it
     // stays on the right where it started.
     var todoFirst = order.indexOf('todo') === 0;
+    // A sibling of host, not a child \u2014 appending it INTO host made it
+    // a grid item subject to the same auto-placement rules as the
+    // blocks, and with no explicit grid-row of its own it collided
+    // with todoEl's explicit `grid-row:1/span 3`, which is what threw
+    // the whole two-column layout out (confirmed from a screenshot:
+    // the strip landed between To-Do and Across the Day instead of
+    // above everything, and Across the Day was pushed to the bottom).
+    // As a sibling it's never part of the grid at all, so there's
+    // nothing for it to collide with.
+    var oldStrip = document.getElementById('wiggleStripHost');
+    if (oldStrip) oldStrip.remove();
+    if (rearrange.active) {
+      var stripEl = buildWiggleStrip();
+      stripEl.id = 'wiggleStripHost';
+      host.parentNode.insertBefore(stripEl, host);
+    }
     order.forEach(function (b) {
       var el = blocks[b];
       if (!el || (b === 'tiles' && !el.children.length)) return;
+      el.insertBefore(blockHead(b, el), el.firstChild);
+      if (rearrange.active && b === 'cards') {
+        el.appendChild(wiggleCheck('Move text below color blocks for enhanced legibility',
+          !!store.stripHourly, function (v) { store.stripHourly = v; saveStore(); renderHome(); }));
+        el.appendChild(hourMarkerSlider());
+      }
+      if (rearrange.active && b === 'tiles') {
+        var extra = document.createElement('div'); extra.className = 'wiggleTileExtras';
+        extra.appendChild(wiggleCheck('Move text below color blocks for enhanced legibility',
+          !!store.stripTiles, function (v) { store.stripTiles = v; saveStore(); renderHome(); }));
+        extra.appendChild(wiggleCheck('Sort by Color',
+          !!store.colorSort, function (v) { store.colorSort = v; saveStore(); renderHome(); }));
+        var orderReset = document.createElement('button'); orderReset.className = 'reset';
+        orderReset.textContent = 'Reset Tile Order to Default';
+        orderReset.addEventListener('click', function () {
+          store.order = null; saveStore(); renderHome();
+        });
+        extra.appendChild(orderReset);
+        el.appendChild(extra);
+      }
       if (b === 'todo') {
         el.style.gridColumn = todoFirst ? '1' : '2';
         el.style.gridRow = '1 / span 3';
@@ -5316,6 +6093,11 @@
       placeSel.appendChild(ph);
       var f = document.createElement('option'); f.value = '__search';
       f.textContent = 'Search a town'; placeSel.appendChild(f);
+      [['cold', 'Try a demo \u2014 cold'], ['moderate', 'Try a demo \u2014 moderate'], ['hot', 'Try a demo \u2014 hot']]
+        .forEach(function (d) {
+          var dm = document.createElement('option'); dm.value = '__demo_' + d[0];
+          dm.textContent = d[1] + ' (no location needed)'; placeSel.appendChild(dm);
+        });
       return;
     }
     var seen = {};
@@ -5338,6 +6120,9 @@
     if (placeSel.value === '__search') {
       searchBox.style.display = 'block'; results.innerHTML = ''; qIn.value = ''; qIn.focus(); return;
     }
+    if (placeSel.value.indexOf('__demo_') === 0) {
+      searchBox.style.display = 'none'; loadDemoHome(placeSel.value.slice(7)); return;
+    }
     searchBox.style.display = 'none';
     var o = placeSel.options[placeSel.selectedIndex];
     if (o && o._place) loadHome(o._place);
@@ -5346,6 +6131,32 @@
   function wireSearch(input, list, onPick) {
     function go() {
       var q = input.value.trim(); if (q.length < 2) return;
+      // Recognized here too, not just as a dropdown option \u2014 typing
+      // into the search box is the obvious first thing to try, and a
+      // dropdown option nobody notices isn't actually discoverable.
+      // Word-boundary match, not a plain substring: Demopolis, Alabama
+      // is a real town, and "demo" is a substring of its name.
+      if (/\bdemo\b/i.test(q)) {
+        list.innerHTML = '';
+        var opts = [['cold', 'Try a demo \u2014 cold'], ['moderate', 'Try a demo \u2014 moderate'], ['hot', 'Try a demo \u2014 hot']];
+        // "demo cold" / "hot demo" jumps straight to that one instead
+        // of making you pick it out of three identical-looking rows.
+        ['cold', 'hot', 'moderate'].forEach(function (k) {
+          if (new RegExp('\\b' + k + '\\b', 'i').test(q)) opts = opts.filter(function (d) { return d[0] === k; });
+        });
+        opts.forEach(function (d) {
+          var li = document.createElement('li');
+          li.style.cssText = 'padding:9px 4px;border-top:1px solid #E4E4E4;cursor:pointer';
+          li.textContent = d[1] + ' (no location needed)';
+          li.addEventListener('click', function () {
+            list.innerHTML = ''; input.value = '';
+            searchBox.style.display = 'none';
+            loadDemoHome(d[0]);
+          });
+          list.appendChild(li);
+        });
+        return;
+      }
       list.innerHTML = '<li style="padding:8px 4px">Searching</li>';
       search(q).then(function (r) {
         list.innerHTML = '';
@@ -5374,13 +6185,12 @@
   var settingsPanel = document.getElementById('settingsPanel');
   var aboutPanel = document.getElementById('aboutPanel');
 
-  var TABS = [['cards', 'Daily Cards'], ['tiles', 'Tiles'], ['todo', 'To-Do List'],
-              ['order', 'Page Order'], ['colour', 'Color'], ['key', 'API Key']];
+  var TABS = [['todo', 'To-Do List'], ['key', 'API Key']];
 
   function buildSettings() {
     settingsPanel.innerHTML = '';
-    var tab = store.tab || 'cards';
-    if (!TABS.some(function (t) { return t[0] === tab; })) tab = 'cards';
+    var tab = store.tab || 'todo';
+    if (!TABS.some(function (t) { return t[0] === tab; })) tab = 'todo';
     var isOpen = store.tabOpen !== false;
 
     var bar = document.createElement('div'); bar.className = 'tabs';
@@ -5403,11 +6213,7 @@
     settingsPanel.appendChild(bar);
     if (!isOpen) return;
 
-    if (tab === 'cards') buildCardsTab();
-    else if (tab === 'tiles') buildTilesTab();
-    else if (tab === 'todo') buildTodoTab();
-    else if (tab === 'order') buildOrderTab();
-    else if (tab === 'colour') buildColourTab();
+    if (tab === 'todo') buildTodoTab();
     else buildKeyTab();
   }
 
@@ -5446,58 +6252,6 @@
      to do something already done better elsewhere. What stayed is what
      rearrange mode has no equivalent for and never did: time markers,
      multi-day style, color-sort, and the order reset. */
-  function buildCardsTab() {
-    var th = document.createElement('h3'); th.textContent = 'Time markers';
-    settingsPanel.appendChild(th);
-    [[0, 'Off'], [6, 'Every 6 hours'], [4, 'Every 4 hours'], [3, 'Every 3 hours']]
-      .forEach(function (opt) {
-        var row = document.createElement('label'); row.className = 'opt sub';
-        var r = document.createElement('input'); r.type = 'radio'; r.name = 'ticks';
-        r.checked = (store.tickHours || 0) === opt[0];
-        r.addEventListener('change', function () {
-          store.tickHours = opt[0]; saveStore(); renderHome();
-        });
-        var sp = document.createElement('span'); sp.textContent = opt[1];
-        row.appendChild(r); row.appendChild(sp); settingsPanel.appendChild(row);
-      });
-
-    var mh = document.createElement('h3'); mh.textContent = 'Multi-day style';
-    settingsPanel.appendChild(mh);
-    [['strip', 'Continuous strips'], ['pills', 'Pills, one per day']]
-      .forEach(function (opt) {
-        var row = document.createElement('label'); row.className = 'opt sub';
-        var r = document.createElement('input'); r.type = 'radio'; r.name = 'mdstyle';
-        r.checked = (store.mdStyle || 'strip') === opt[0];
-        r.addEventListener('change', function () {
-          store.mdStyle = opt[0]; saveStore(); renderHome();
-        });
-        var sp = document.createElement('span'); sp.textContent = opt[1];
-        row.appendChild(r); row.appendChild(sp); settingsPanel.appendChild(row);
-      });
-  }
-
-  function buildTilesTab() {
-    var csRow = document.createElement('label'); csRow.className = 'opt';
-    var csBox = document.createElement('input'); csBox.type = 'checkbox';
-    csBox.checked = !!store.colorSort;
-    csBox.addEventListener('change', function () {
-      store.colorSort = csBox.checked; saveStore(); renderHome();
-    });
-    var csSp = document.createElement('span');
-    csSp.textContent = 'Start each day sorted green to red, by how much today\u2019s condition needs attention';
-    csRow.appendChild(csBox); csRow.appendChild(csSp);
-    settingsPanel.appendChild(csRow);
-    var csNote = document.createElement('p'); csNote.className = 'lede';
-    csNote.textContent = 'Re-sorts fresh every day from real conditions, not a fixed list. Rearranging tiles by hand always overrides this \u2014 once you\u2019ve set an order yourself, that order sticks instead.';
-    settingsPanel.appendChild(csNote);
-    var orderReset = document.createElement('button'); orderReset.className = 'reset';
-    orderReset.textContent = 'Reset tile order';
-    orderReset.addEventListener('click', function () {
-      store.order = null; saveStore(); buildSettings(); renderHome();
-    });
-    settingsPanel.appendChild(orderReset);
-  }
-
   /* Alphabetical, and no arrows: order in the to-do list comes from how
      urgent a thing is, not from a list you drag. */
   function buildTodoTab() {
@@ -5526,9 +6280,7 @@
     ['mask', 'swim', 'shoe'].forEach(function (id) { todoRow(id, settingsPanel); });
 
     [
-      ['Yard', ['mow', 'garden']],
-      ['Home', ['pipe', 'mold']],
-      ['Vehicle', ['rust', 'frost']],
+      ['Home, Yard & Vehicle', ['mow', 'garden', 'pipe', 'mold', 'rust', 'frost']],
       ['Safety', ['fire', 'ice', 'power']],
       ['Outdoor', ['tick', 'firefly', 'leaves']]
     ].forEach(function (g) {
@@ -5537,219 +6289,6 @@
         g[1].forEach(function (id) { todoRow(id, body); });
       });
     });
-  }
-
-  function buildOrderTab() {
-    var h = document.createElement('h3'); h.textContent = 'Order on the page';
-    settingsPanel.appendChild(h);
-    function orderRow(label, checked, onToggle, onUp, onDown, first, last, indent) {
-      var row = document.createElement('div'); row.className = 'ord' + (indent ? ' sub' : '');
-      var box = document.createElement('input'); box.type = 'checkbox'; box.checked = checked;
-      box.addEventListener('change', function () { onToggle(box.checked); });
-      var nm = document.createElement('span'); nm.textContent = label;
-      var up = document.createElement('button'); up.textContent = '\u2191';
-      up.setAttribute('aria-label', 'Move ' + label + ' up'); up.disabled = first;
-      up.addEventListener('click', onUp);
-      var dn = document.createElement('button'); dn.textContent = '\u2193';
-      dn.setAttribute('aria-label', 'Move ' + label + ' down'); dn.disabled = last;
-      dn.addEventListener('click', onDown);
-      row.appendChild(box); row.appendChild(nm); row.appendChild(up); row.appendChild(dn);
-      settingsPanel.appendChild(row);
-    }
-    blockOrder().forEach(function (b, i, arr) {
-      orderRow(BLOCK_NAME[b], on('block-' + b),
-        function (v) { store.cards['block-' + b] = v; saveStore(); renderHome(); },
-        function () { moveBlock(b, -1); }, function () { moveBlock(b, 1); },
-        i === 0, i === arr.length - 1, false);
-      if (b === 'todo' && on('block-todo')) {
-        sectionOrder().forEach(function (sec, si, sarr) {
-          orderRow(sectionName(sec), on('sec-' + sec),
-            function (v) { store.cards['sec-' + sec] = v; saveStore(); renderHome(); },
-            function () { moveSection(sec, -1); }, function () { moveSection(sec, 1); },
-            si === 0, si === sarr.length - 1, true);
-        });
-      }
-    });
-  }
-
-  function buildColourTab() {
-    var dh0 = document.createElement('h3'); dh0.textContent = 'Light or dark';
-    settingsPanel.appendChild(dh0);
-    var dm = document.createElement('div'); dm.className = 'presets';
-    [['auto', 'Match device'], ['light', 'Light'], ['dark', 'Dark']].forEach(function (opt) {
-      var b = document.createElement('button');
-      b.className = 'preset' + ((store.darkMode || 'auto') === opt[0] ? ' sel' : '');
-      b.textContent = opt[1];
-      b.addEventListener('click', function () {
-        store.darkMode = opt[0]; saveStore(); applyTheme();
-      });
-      dm.appendChild(b);
-    });
-    settingsPanel.appendChild(dm);
-    var dmNote = document.createElement('p'); dmNote.className = 'lede';
-    dmNote.textContent = 'The condition colors below (cold, fine, warm, dangerous) stay the same either way \u2014 only the page itself changes.';
-    settingsPanel.appendChild(dmNote);
-
-    var emRow = document.createElement('label'); emRow.className = 'opt';
-    var emBox = document.createElement('input'); emBox.type = 'checkbox';
-    emBox.checked = showEmoji();
-    emBox.addEventListener('change', function () {
-      store.emoji = emBox.checked; saveStore(); renderHome();
-    });
-    var emSp = document.createElement('span');
-    emSp.textContent = 'Show an emoji on each tile';
-    emRow.appendChild(emBox); emRow.appendChild(emSp);
-    settingsPanel.appendChild(emRow);
-    settingsPanel.appendChild(labeledPair(miniEmojiCard(false), miniEmojiCard(true)));
-
-    // Plain and always visible: three toggles is not enough to be worth
-    // a click to even see, and the whole point of a preview is that you
-    // see it, not that you find it.
-    var lh = document.createElement('h3'); lh.textContent = 'Legibility';
-    settingsPanel.appendChild(lh);
-    [
-      ['neutralDetail', 'Neutral background when a card is expanded', 'Keeps the headline color; the detail underneath gets a plain background instead.'],
-      ['stripHourly', 'Color as an accent strip on the daily cards', 'Feels Like, Sky, Sunrise and Sunset, and Moon \u2014 color becomes a thin bar, text sits below it.'],
-      ['stripTiles', 'Color as an accent strip on tiles', 'Same treatment, for the grid of tiles below the daily cards.']
-    ].forEach(function (opt) {
-      var lRow = document.createElement('label'); lRow.className = 'opt';
-      var lBox = document.createElement('input'); lBox.type = 'checkbox';
-      lBox.checked = !!store[opt[0]];
-      lBox.addEventListener('change', function () {
-        store[opt[0]] = lBox.checked; saveStore(); renderHome(); updateContrast();
-      });
-      var lSp = document.createElement('span'); lSp.textContent = opt[1];
-      if (opt[2]) { var sm = document.createElement('small'); sm.textContent = opt[2]; lSp.appendChild(sm); }
-      lRow.appendChild(lBox); lRow.appendChild(lSp);
-      settingsPanel.appendChild(lRow);
-      if (opt[0] === 'neutralDetail') {
-        settingsPanel.appendChild(labeledPair(miniDetailCard(false), miniDetailCard(true)));
-      } else {
-        settingsPanel.appendChild(labeledPair(miniStripCard(false, opt[0] === 'stripTiles'), miniStripCard(true, opt[0] === 'stripTiles')));
-      }
-    });
-
-    var t = store.theme || {};
-    var custom = t.cold || t.good || t.warm || t.danger || t.night || t.dawn || t.day;
-    var ch = document.createElement('h3'); ch.textContent = 'Colors'; ch.style.marginTop = '18px';
-    settingsPanel.appendChild(ch);
-    // The presets ARE the visual part of this \u2014 gating them behind a
-    // click meant you couldn't see any color at all without one, which
-    // defeats the point of a swatch. Only the six individual pickers,
-    // genuinely rare, go behind Customize.
-    var pr = document.createElement('div'); pr.className = 'presets';
-    Object.keys(PRESETS).forEach(function (k) {
-      var b = document.createElement('button');
-      b.className = 'preset' + ((t.preset || 'default') === k && !custom ? ' sel' : '');
-      b.textContent = PRESETS[k].name;
-      var sw = document.createElement('span'); sw.className = 'sw';
-      ['cold','good','warm','danger'].forEach(function (a) {
-        var d2 = document.createElement('i'); d2.style.background = PRESETS[k][a]; sw.appendChild(d2);
-      });
-      b.appendChild(sw);
-      b.addEventListener('click', function () {
-        store.theme = { preset: k }; saveStore(); buildRamps();
-        buildSettings(); renderHome();
-      });
-      pr.appendChild(b);
-    });
-    settingsPanel.appendChild(pr);
-
-    collapseSection('colourCustomize', 'Customize colors further', custom ? 'Custom' : null, !!custom, function (body) {
-      var A = anchors();
-      swatchRow('cold', 'Cold and dry', A.cold, body);
-      swatchRow('good', 'Fine', A.good, body);
-      swatchRow('warm', 'Warm', A.warm, body);
-      swatchRow('danger', 'Dangerous', A.danger, body);
-
-      var dh = document.createElement('h3'); dh.textContent = 'Sunrise and sunset';
-      body.appendChild(dh);
-      var TH = store.theme || {};
-      swatchRow('night', 'Night', TH.night || rgb2hex(NIGHT), body);
-      swatchRow('dawn', 'Dawn and dusk', TH.dawn || rgb2hex(TWILIGHT), body);
-      swatchRow('day', 'Midday', TH.day || rgb2hex(DAYLIT), body);
-
-      var warn = document.createElement('p'); warn.className = 'lede contrast'; warn.id = 'contrastNote';
-      body.appendChild(warn);
-
-      var reset = document.createElement('button'); reset.className = 'reset';
-      reset.textContent = 'Reset colours';
-      reset.addEventListener('click', function () {
-        store.theme = { preset: 'default' }; saveStore(); buildRamps();
-        buildSettings(); renderHome();
-      });
-      body.appendChild(reset);
-      updateContrast();
-    });
-  }
-
-  /* Miniature, non-interactive renderings that reuse the same classes
-     the real cards use \u2014 .card/.coloured/.striped/.colorStrip/.tip.
-     neutralDetail \u2014 so a preview can never quietly drift out of sync
-     with what the setting actually produces on a live card. Sample
-     colors are fixed rather than pulled from the live theme, since the
-     point is to show the STRUCTURE of the effect (where the line goes,
-     what moves), not today's actual color values. */
-  var PREVIEW_BG = 'linear-gradient(90deg,#F2C86D,#E2894F)';
-  function labeledPair(offNode, onNode) {
-    var wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex;gap:10px;margin:2px 0 14px;';
-    [['Off', offNode], ['On', onNode]].forEach(function (pair) {
-      var col = document.createElement('div'); col.style.cssText = 'flex:1;min-width:0;';
-      var lab = document.createElement('div'); lab.textContent = pair[0];
-      lab.style.cssText = 'font-size:11px;color:var(--mid);text-align:center;margin-bottom:3px;';
-      col.appendChild(lab); col.appendChild(pair[1]);
-      wrap.appendChild(col);
-    });
-    return wrap;
-  }
-  function miniStripCard(strip, thin) {
-    var mini = document.createElement('div');
-    mini.className = 'card sm' + (strip ? ' striped' : ' coloured');
-    mini.style.cssText = 'margin:0;pointer-events:none;';
-    if (strip) {
-      var s = document.createElement('div'); s.className = 'colorStrip';
-      if (thin) s.style.height = '14px';
-      s.style.background = PREVIEW_BG;
-      mini.appendChild(s);
-    } else {
-      mini.style.background = PREVIEW_BG;
-    }
-    var face = document.createElement('div'); face.className = 'face';
-    var b = document.createElement('b'); b.textContent = 'Warm';
-    face.appendChild(b);
-    mini.appendChild(face);
-    return mini;
-  }
-  function miniDetailCard(neutral) {
-    var mini = document.createElement('div');
-    mini.className = 'card sm coloured';
-    mini.style.cssText = 'margin:0;pointer-events:none;';
-    mini.style.background = PREVIEW_BG;
-    var face = document.createElement('div'); face.className = 'face';
-    var b = document.createElement('b'); b.textContent = 'Warm';
-    face.appendChild(b);
-    mini.appendChild(face);
-    var t = document.createElement('p'); t.className = 'tip' + (neutral ? ' neutralDetail' : '');
-    t.style.display = 'block';
-    t.textContent = 'Feels warmer than the air.';
-    mini.appendChild(t);
-    return mini;
-  }
-  function miniEmojiCard(withEmoji) {
-    var mini = document.createElement('div');
-    mini.className = 'card sm plain';
-    mini.style.cssText = 'margin:0;pointer-events:none;background:var(--card2);';
-    var face = document.createElement('div'); face.className = 'face';
-    if (withEmoji) {
-      var e = document.createElement('span'); e.className = 'emo';
-      e.setAttribute('aria-hidden', 'true'); e.textContent = '\uD83E\uDD75';
-      face.appendChild(e);
-    }
-    var b = document.createElement('b'); b.textContent = 'Warm';
-    face.appendChild(b);
-    mini.appendChild(face);
-    return mini;
   }
 
   function swatchRow(key, label, value, container) {
