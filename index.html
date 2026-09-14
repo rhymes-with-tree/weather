@@ -266,7 +266,7 @@
      row of water tiles swell to the height of the whole column. Only a
      card opened by tapping is allowed to grow. */
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);margin-top:17px;
-        grid-auto-rows:minmax(var(--tileh),auto);align-content:start;align-items:start;grid-auto-flow:dense;}
+        grid-auto-rows:minmax(var(--tileh),auto);align-content:start;align-items:start;}
   .card.sm{min-height:var(--tileh);display:flex;flex-direction:column;
            align-items:center;justify-content:center;text-align:center;
            padding:8px 26px 8px 11px;font-size:14px;border-radius:12px;margin:0;width:auto;
@@ -342,7 +342,7 @@
     .hourly > .card:not(.open){height:var(--rowh);}
     .hourly > .card.open{height:auto;}
     .card.sm{aspect-ratio:auto;min-height:var(--tileh);font-size:15px;}
-    .grid{grid-template-columns:repeat(3,1fr);margin-top:0;grid-auto-flow:dense;}
+    .grid{grid-template-columns:repeat(3,1fr);margin-top:0;}
     .card.sm.open{grid-column:span 3;min-height:0;}
   }
   @media (min-width:1180px){
@@ -1002,7 +1002,13 @@
       };
     });
     var feelsPeak = null, fpv = -999;
-    idx.forEach(function (i) {
+    // Daytime hours only \u2014 1 AM is not a meaningful "daily high". The
+    // API returns the max apparent temperature as a daily summary field,
+    // but the hour of that max can be the tail end of the prior night's
+    // warmth bleeding into the midnight-to-midnight window. Restricting
+    // to hours between sunrise and sunset keeps the reported time sensible.
+    var peakIdx = dayIdx.length ? dayIdx : idx;
+    peakIdx.forEach(function (i) {
       var v = H.apparent_temperature[i];
       if (v != null && v > fpv) { fpv = v; feelsPeak = hourOf(H.time[i]); }
     });
@@ -2616,7 +2622,7 @@
     // rather than naming five hours as if they were a slot.
     if (startH != null) {
       todo = (endH - startH >= 4)
-        ? 'Morning Light \u2014 any time, AM'
+        ? 'Morning Light'
         : 'Morning Light \u2014 ' + half(startH) + DASH + half(endH);
     }
     else if (d.cloudDay < 55) todo = 'Daylight at Lunch';
@@ -5933,10 +5939,7 @@
         var lc = lightCard(tm);
         if (lc && lc.todo && lc.todo.indexOf('Morning Light') === 0) {
           var win = lc.todo.replace('Morning Light \u2014 ', '');
-          var winText = (win === 'any time, AM')
-            ? 'Morning Light'
-            : 'Morning Light \u2014 ' + win;
-          weekItems.push({ off: 1, text: winText,
+          weekItems.push({ off: 1, text: lc.todo,
             detail: 'Tomorrow\u2019s clearest light window.' });
         }
       }
@@ -6529,8 +6532,29 @@
     if (state.place) loadHome(state.place);
   else if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(function (pos) {
-      loadHome({ name: 'Your location', region: '', country: 'US',
-                 lat: pos.coords.latitude, lon: pos.coords.longitude, tz: 'auto' });
+      var lat = pos.coords.latitude, lon = pos.coords.longitude;
+      var place = { name: 'Your location', region: '', country: 'US',
+                    lat: lat, lon: lon, tz: 'auto' };
+      // Reverse-geocode to fill in a real city name so "Your location"
+      // doesn't remain a placeholder when GPS is accurate. Falls back
+      // gracefully \u2014 if the lookup fails or returns nothing, the generic
+      // name is still used, so nothing breaks, just less descriptive.
+      j('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat='
+        + lat + '&lon=' + lon + '&zoom=10')
+        .then(function (r) {
+          if (r && r.address) {
+            var city = r.address.city || r.address.town || r.address.village
+                    || r.address.suburb || r.address.county || '';
+            var state = r.address.state || '';
+            if (city) {
+              place.name = city;
+              place.region = state;
+              place.country = r.address.country_code ? r.address.country_code.toUpperCase() : 'US';
+            }
+          }
+        })
+        .catch(function () {})
+        .then(function () { loadHome(place); });
     }, function () {
       searchBox.style.display = 'block';
     }, { timeout: 8000 });
