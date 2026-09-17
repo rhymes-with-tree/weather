@@ -482,6 +482,7 @@
      new row styles. */
   .wiggleStrip{margin-bottom:14px;padding-bottom:10px;border-bottom:1px dashed var(--line);}
   .wiggleTileExtras{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);}
+  .wiggleSortLabel{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mid);margin:10px 0 4px;}
   .hourly > .wiggleTileExtras{border-top:1px solid var(--line);}
   /* A stepped dot-slider: same idea as a range input, but with named
      stops instead of a continuous drag, since there are only four
@@ -551,7 +552,8 @@
      carries \u2014 a number, a reason \u2014 goes in .pillDetail instead, so the
      two never compete for the same glance. */
   .pillLead{font-weight:600;font-size:14.5px;}
-  .pillDetail{font-weight:400;font-size:11px;opacity:.58;letter-spacing:.01em;}
+  .pillDetail{font-weight:400;font-size:11px;opacity:.75;letter-spacing:.01em;}
+  .pillIcon{display:inline-block;width:1.4em;height:1.4em;vertical-align:-0.28em;margin-right:6px;}
   .card.todo li:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
   .card.todo li.done{opacity:.38;text-decoration:line-through;background:transparent;}
   .card.todo li.done .pillLead{font-weight:400;}
@@ -658,6 +660,7 @@
   }
   var store = loadStore();
   if (!store.cards) store.cards = {};          // absent means on
+  if (!store.pillCards) store.pillCards = {};  // absent means on, independent of store.cards
   if (!store.recents) store.recents = [];
   if (!store.keys) store.keys = {};
   if (!store.done) store.done = {};
@@ -714,7 +717,18 @@
   }
 
   function on(id) { return store.cards[id] !== false; }
-  function showEmoji() { return store.emoji === true; }
+  // A tile's on/off and its to-do pill's on/off used to be the same flag
+  // (addCard bailed before ever calling collectTodos if the tile was
+  // hidden), so hiding Sunburn silently killed its sunscreen reminder
+  // too, and there was no way to keep one without the other. Separate
+  // storage now, defaulting on, so the two are genuinely independent.
+  function pillOn(id) { return !store.pillCards || store.pillCards[id] !== false; }
+  // Every icon is now a real fetched glyph, not emoji, but the same
+  // on/off control people had for emoji is worth keeping \u2014 not
+  // everyone wants a picture next to every line. Name kept to avoid
+  // touching every call site; it now means "show the icon layer," not
+  // literal emoji, and defaults on.
+  function showEmoji() { return store.icons !== false; }
 
   /* Fitzpatrick scale. It classifies how skin RESPONDS to sun rather
      than what colour it is, which is why each option is written as a
@@ -791,6 +805,41 @@
   }
   function blend(a, b, t) { return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
   function lighten(c, t) { return blend(c, [255, 255, 255], t); }
+  // Small RGB<->HSL round trip, used only to push the top of the danger
+  // ramp a bit more saturated and dark than the raw anchor color \u2014
+  // enough to catch the eye at a glance without breaking from the rest
+  // of the gradient it sits at the end of.
+  function rgb2hsl(c) {
+    var r = c[0] / 255, g = c[1] / 255, b = c[2] / 255;
+    var max = Math.max(r, g, b), min = Math.min(r, g, b);
+    var h, s, l = (max + min) / 2;
+    if (max === min) { h = s = 0; }
+    else {
+      var d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h /= 6;
+    }
+    return [h, s, l];
+  }
+  function hsl2rgb(h, s, l) {
+    if (s === 0) return [l * 255, l * 255, l * 255];
+    var hue2rgb = function (p, q, t) {
+      if (t < 0) t += 1; if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+    var q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+    return [hue2rgb(p, q, h + 1 / 3) * 255, hue2rgb(p, q, h) * 255, hue2rgb(p, q, h - 1 / 3) * 255];
+  }
+  function intensify(c, satBoost, lightCut) {
+    var hsl = rgb2hsl(c);
+    return hsl2rgb(hsl[0], Math.min(1, hsl[1] + satBoost), Math.max(0, hsl[2] - lightCut));
+  }
 
   var RAMP = {};
   var NIGHT, TWILIGHT, DAYLIT;
@@ -806,7 +855,11 @@
   function buildRamps() {
     var A = anchors();
     var COLD = hex2rgb(A.cold), GOOD = hex2rgb(A.good),
-        WARM = hex2rgb(A.warm), DANGER = hex2rgb(A.danger);
+        WARM = hex2rgb(A.warm),
+        // Danger is where a glance-based product most needs to land, so
+        // it gets a deliberate push past the raw anchor color \u2014 the
+        // settings swatch above still shows exactly what was picked.
+        DANGER = intensify(hex2rgb(A.danger), 0.08, 0.05);
     var MIDCOOL = blend(COLD, GOOD, 0.5);
     RAMP = {
       // cold at the bottom, danger at both practical extremes of heat
@@ -1199,6 +1252,15 @@
       // Low end on the left, high end on the right, humidity riding with the high.
       icons: [STATE_EMOJI.temp[lo] || '',
               (hi !== lo ? STATE_EMOJI.temp[hi] || '' : '') + (hum ? STATE_EMOJI.hum[hum] || '' : '')],
+      iconUrls: [
+        (function () { var u = stateIconUrl('temp', lo); return u ? [u] : null; })(),
+        (function () {
+          var arr = [];
+          if (hi !== lo) { var u1 = stateIconUrl('temp', hi); if (u1) arr.push(u1); }
+          if (hum) { var u2 = stateIconUrl('hum', hum); if (u2) arr.push(u2); }
+          return arr.length ? arr : null;
+        })()
+      ],
       todos: (function () {
         var out = [];
         var swing = d.feelsMax - d.feelsMin;
@@ -1213,7 +1275,7 @@
           out.push({ text: 'Dress in Layers \u2014 ' + Math.round(swing) + DEG + ' swing',
                      when: 'out', rank: 11 });
         }
-        if (dp >= 75) out.push({ text: 'Heat Risk \u2014 ' + Math.round(dp) + DEG + ' dew point', when: 'day', rank: 8 });
+        if (dp >= 75) out.push({ text: 'Heat Risk \u2014 ' + Math.round(dp) + DEG + ' dew point', when: 'day', rank: 8, icon: ['lucide', 'thermometer-sun'] });
         if (d.feelsMax >= 85) out.push({ text: 'Water Bottle \u2014 ' + Math.round(d.feelsMax) + DEG, when: 'out', rank: 9 });
         if (d.feelsMax > 92) out.push({ text: 'Seek Shade \u2014 midday', when: 'day', rank: 9 });
         if (swing >= 20 && d.feelsMin < 55) {
@@ -1239,6 +1301,7 @@
   function burnCard(d) {
     var uv = d.uvNoon, sk = skin();
     if (uv < 2) return { bg: bgFlat('burn', uv), icon: '\uD83D\uDE0E', bold: 'No Sunburn Risk',
+      iconUrls: [[iconUrl('mdi', 'shield-off')], null],
       tip: 'UV only reaches ' + uv.toFixed(1) + ' at solar noon. Nothing to protect against.' };
     var mins = Math.max(5, Math.round(sk.med / (uv * 1.5)));
     var face = mins >= 90 ? Math.round(mins / 60 * 10) / 10 + ' hr to Sunburn' : mins + ' min to Sunburn';
@@ -1254,7 +1317,6 @@
       lines.push(['A longer window is not the same as no risk \u2014 UV still ages and damages skin that rarely burns.']);
     }
     return { bg: bgFlat('burn', uv), bold: face, rows: lines,
-             icon: uv < 3 ? '\uD83E\uDD76\uFE0F' : uv < 6 ? '\uD83E\uDDF4' : uv < 8 ? '\uD83E\uDDE2' : '\uD83D\uDD25',
              severity: uv < 3 ? 20 : uv < 6 ? 45 : uv < 8 ? 70 : 95,
              // Without a tile, the minutes only survive if the pill
              // carries them \u2014 and they are the reason the skin setting
@@ -1394,6 +1456,13 @@
       // falling, in which case that is the part of the day worth showing.
       icons: [STATE_EMOJI.sky[wAM] || '',
               wet ? STATE_EMOJI.precip[kind] || '' : (wPM !== wAM ? STATE_EMOJI.sky[wPM] || '' : '')],
+      iconUrls: [
+        (function () { var u = stateIconUrl('sky', wAM); return u ? [u] : null; })(),
+        (function () {
+          var u = wet ? stateIconUrl('precip', kind) : (wPM !== wAM ? stateIconUrl('sky', wPM) : null);
+          return u ? [u] : null;
+        })()
+      ],
       rows: [
         ['Morning', '', wAM],
         ['Afternoon', '', wPM],
@@ -1414,7 +1483,8 @@
       advice = sens ? (g.lungAdvice || g.generalAdvice || '') : (g.generalAdvice || '');
       dom = g.dominant || '';
     } else if (gAir && gAir.error && d.aqiMax == null) {
-      return { plain: true, icon: STATE_EMOJI.unavailable, bold: 'Air Quality Unavailable', tip: gAir.error };
+      return { plain: true, icon: STATE_EMOJI.unavailable, bold: 'Air Quality Unavailable', tip: gAir.error,
+        iconUrls: [[iconUrl('lucide', gAir.error ? 'help-circle' : 'circle-alert')], null] };
     } else { a = d.aqiMax; }
     if (a == null) return null;
 
@@ -1490,7 +1560,6 @@
     var smokeLink = (domKey === 'pm25' && a > 75)
       ? { href: 'https://fire.airnow.gov/', text: 'Check the smoke outlook at fire.airnow.gov' } : null;
     return { bg: bgFlat('aqi', a), bold: word, tip: tip, todos: out, link: smokeLink,
-             icon: a <= 50 ? '\uD83D\uDE0A' : a <= 100 ? '\uD83D\uDE10' : a <= 150 ? '\uD83D\uDE15' : a <= 200 ? '\uD83D\uDE37' : a <= 300 ? '\uD83E\uDD22' : '\u2620\uFE0F',
              severity: a <= 50 ? 10 : a <= 100 ? 30 : a <= 150 ? 50 : a <= 200 ? 70 : a <= 300 ? 85 : 100,
              rowsHead: ['AQI', ''], rows: bandRows, hiRow: hiRow };
   }
@@ -1611,20 +1680,22 @@
           })(),
           bold: filtered ? 'Nothing You Track' : plants.length ? level(sc) + ' Allergies' : 'No Pollen in Season',
           icon: filtered ? STATE_EMOJI.allergy.none : plants.length ? STATE_EMOJI.allergy[level(sc)] : STATE_EMOJI.allergy.season,
+          iconUrls: [[iconUrl('healthicons', 'nose')], null],
           severity: filtered ? 15 : plants.length ? sc : 10,
           tip: (filtered ? 'Pollen is out there, just not a category you track.' : idx + ' out of 5 on Pollen Index.')
              + settingsHint,
           rows: plants.length ? [[listJoin(plants)]] : [] };
       }
     }
-    if (pollen && pollen.error) return { plain: true, icon: STATE_EMOJI.unavailable, bold: 'Allergens Unavailable', tip: pollen.error };
+    if (pollen && pollen.error) return { plain: true, icon: STATE_EMOJI.unavailable, bold: 'Allergens Unavailable', tip: pollen.error,
+      iconUrls: [[iconUrl('lucide', pollen.error ? 'help-circle' : 'circle-alert')], null] };
 
     cal = cal || CALENDARS.great_lakes;
     var m = parseInt(d.date.slice(5, 7), 10), namesAll = cal.m[m];
     var names = namesAll.filter(function (n) { return allergyCatOn(n); });
-    if (!namesAll.length) return { bg: bgFlat('risk', 4), icon: STATE_EMOJI.allergy.quiet, severity: 10, bold: 'Pollen Quiet',
+    if (!namesAll.length) return { bg: bgFlat('risk', 4), icon: STATE_EMOJI.allergy.quiet, iconUrls: [[iconUrl('healthicons', 'nose')], null], severity: 10, bold: 'Pollen Quiet',
       tip: 'Little is in bloom this time of year.' };
-    if (!names.length) return { bg: bgFlat('risk', 4), icon: STATE_EMOJI.allergy.none, severity: 15, bold: 'Nothing You Track',
+    if (!names.length) return { bg: bgFlat('risk', 4), icon: STATE_EMOJI.allergy.none, iconUrls: [[iconUrl('healthicons', 'nose')], null], severity: 15, bold: 'Nothing You Track',
       tip: 'In bloom this month: ' + listJoin(namesAll.map(cap)) + ', but none of that is a category you track.'
          + settingsHint };
     var s2 = cal.s[m];
@@ -1636,6 +1707,7 @@
     return { bg: bgFlat('risk', sc2),
       bold: level(sc2) + ' Allergies',
       icon: STATE_EMOJI.allergy[level(sc2)],
+      iconUrls: [[iconUrl('healthicons', 'nose')], null],
       severity: sc2,
       todos: (function () {
         var out = [];
@@ -1678,7 +1750,6 @@
     });
     return { bg: bgFlat('risk', s),
       bold: 'Migraine ' + (s >= 45 ? 'Likely' : 'Possible'),
-      icon: s >= 45 ? '\uD83E\uDD2F' : '\uD83E\uDD15',
       severity: s,
       todos: [ s >= 45
         ? { text: 'Migraine Meds', when: 'out', rank: 25 }
@@ -1715,7 +1786,6 @@
     });
     return { bg: bgFlat('risk', s),
       bold: 'Arthritis Flare ' + (s >= 45 ? 'Likely' : 'Possible'),
-      icon: s >= 45 ? '\uD83D\uDE23' : '\uD83E\uDDB4',
       severity: s,
       todos: s >= 45 ? [{ text: 'Arthritis Meds', when: 'out', rank: 25 }] : [],
       tip: cap(topOf(why) || 'settled, warm and dry') + '. '
@@ -1734,6 +1804,7 @@
     } else if (water.kind === 'buoy') {
       if (!water.available) {
         return { bold: 'Water Temperature Unavailable', icon: STATE_EMOJI.unavailable, plain: true,
+          iconUrls: [[iconUrl('lucide', 'help-circle')], null],
           tip: water.station + ' is not reporting. Buoys come out of the lake for the winter. Assume the water is cold.' };
       }
       w = water.waterF; waveFt = water.waveFt;
@@ -1742,6 +1813,7 @@
       var day = water.days && water.days[dateStr];
       if (!day) {
         return { bold: 'Water Temperature Unavailable', icon: STATE_EMOJI.unavailable, plain: true,
+          iconUrls: [[iconUrl('lucide', 'help-circle')], null],
           tip: 'No sea surface reading for that day.' };
       }
       w = day.waterF; waveFt = day.waveFt;
@@ -1752,8 +1824,8 @@
              : w < 74 ? 'Bracing Water' : 'Pleasant Water';
     var reading = w + DEG + (waveFt != null ? ' and ' + waveFt + ' ft waves' : '') + '.';
     return { bg: bgFlat('water', w), bold: word, tip: tip,
-             icon: w < 60 ? '\uD83E\uDD76' : w < 68 ? '\uD83E\uDD76\uFE0F' : w < 74 ? '\uD83C\uDF0A' : '\uD83C\uDFCA',
              severity: w < 60 ? 90 : w < 68 ? 60 : w < 74 ? 30 : 10,
+             iconUrls: [[iconUrl('mdi', w < 60 ? 'thermometer-low' : w < 68 ? 'thermometer-minus' : w < 74 ? 'thermometer' : 'thermometer-check')], null],
              rows: [[reading]],
              todo2: w < 65 ? { text: 'Ease Into Water \u2014 cold shock risk', when: 'out', rank: 15 } : null,
              todo: (w >= 70 && on('swim')) ? 'Go Swimming \u2014 ' + w + DEG : null, todoWhen: 'day', todoRank: 95, todoOutdoor: true };
@@ -1875,6 +1947,7 @@
     return { timeline: true, bg: bg,
       split: { left: [hr(srF) + ' Sunrise'], right: [hr(ssF) + ' Sunset'] },
       icons: ['\uD83C\uDF05', '\uD83C\uDF07'],
+      iconUrls: [[iconUrl('lucide', 'sunrise')], [iconUrl('lucide', 'sunset')]],
       rows: rows,
       tip: lenLine };
   }
@@ -2063,7 +2136,7 @@
       todos.push({ text: 'Wash Hands', when: 'day', rank: 22 });
     }
     return { bg: bgFlat('risk', worst.rank), bold: face, tip: tip, rows: rows, todos: todos,
-             icon: worst.rank >= 95 ? '\uD83D\uDE37' : worst.rank >= 78 ? '\uD83E\uDD12' : '\uD83E\uDDA0', severity: worst.rank };
+             severity: worst.rank };
   }
 
   /* Times are the instant of greatest eclipse, UTC.
@@ -2186,6 +2259,7 @@
     // not worth claiming \u2014 the whole event is a soft, easy-to-miss dimming.
     if (e.kind === 'lunar' && !e.greatest) {
       return { bg: bgFlat('risk', 15), icon: '\uD83C\uDF12', bold: 'Penumbral Lunar Eclipse Today',
+        iconUrls: [[iconUrl('wi', 'lunar-eclipse')], null],
         tip: 'A subtle shading across part of the moon, not the dramatic red of a total eclipse. '
            + 'Easy to miss even when the sky is clear. Visible in general from ' + e.region + '.' };
     }
@@ -2206,11 +2280,13 @@
         ? 'The moon is above your horizon then, so it should be visible if the sky is clear.'
         : 'The moon is below your horizon at that point, so this one is not visible from here.';
       tip += ' Visible in general from ' + e.region + '.';
-      return { bg: bgFlat('risk', up ? 60 : 20), bold: face, icon: '\uD83C\uDF15', tip: tip };
+      return { bg: bgFlat('risk', up ? 60 : 20), bold: face, icon: '\uD83C\uDF15',
+               iconUrls: [[iconUrl('wi', 'lunar-eclipse')], null], tip: tip };
     }
 
     var face2 = e.type + ' Solar Eclipse ' + (e.dateUTC === dateStrIn(tz, 0) ? 'Today' : 'This Week');
-    return { bg: bgFlat('burn', 6), bold: face2, icon: '\uD83C\uDF1E',
+    return { bg: bgFlat('burn', 6), bold: face2,
+             iconUrls: [[iconUrl('mdi', 'brightness-7')], null],
              tip: 'Greatest eclipse around ' + localTime + ' local time \u2014 this app does not tell you '
                 + 'if it will be visible in your location.',
              // Kept even though it is not in the trimmed version elsewhere:
@@ -2265,6 +2341,10 @@
 
     return { timeline: true, bg: bg, bold: name,
       icons: [STATE_EMOJI.moon[name] || '', STATE_EMOJI.moon[toFull < toNew ? 'Full Moon' : 'New Moon'] || ''],
+      iconUrls: [
+        (function () { var u = stateIconUrl('moon', name); return u ? [u] : null; })(),
+        (function () { var u = stateIconUrl('moon', toFull < toNew ? 'Full Moon' : 'New Moon'); return u ? [u] : null; })()
+      ],
       rows: rows,
       tip: next + '.' };
   }
@@ -2365,7 +2445,7 @@
     var bands = [[0, 19, 'Bug-Free'], [20, 39, 'A Few Bugs'], [40, 64, 'Bring Bug Spray'], [65, 100, 'Bugs Are Brutal']];
     var hiRow = -1;
     var bandRows = bands.map(function (b, i) { if (s >= b[0] && s <= b[1]) hiRow = i; return [b[0] + '\u2013' + b[1], b[2]]; });
-    return { bg: bgFlat('risk', s), bold: word, icon: s >= 65 ? '\uD83D\uDE16' : '\uD83E\uDD9F', severity: s,
+    return { bg: bgFlat('risk', s), bold: word, severity: s,
       todo: 'Bug Spray \u2014 worst at dawn & dusk', todoWhen: 'out', todoRank: 40,
       tip: (why.length ? cap(listJoin(why)) + '. ' : '')
          + 'Worst at dawn and dusk. Repellent on exposed skin, and long sleeves after sunset. '
@@ -2415,7 +2495,6 @@
       ['6\u00b0 or warmer', 'Unlikely']
     ];
     return { bg: bgFlat('feels', wc), bold: word, tip: tip,
-             icon: ['\uD83E\uDDCA', '\uD83E\uDDCA', '\uD83E\uDD76', '\uD83E\uDDE3', '\uD83D\uDE42'][hiRow],
              severity: [100, 90, 70, 45, 15][hiRow],
              todos: (function () {
                var out = wc <= -18
@@ -2454,7 +2533,6 @@
       ['66\u00b0 and up', 'Frizz Guaranteed']
     ];
     return { bg: bgFlat('sweat', dp), bold: w,
-      icon: ['\u26A1', '\uD83D\uDE0A', '\uD83D\uDE10', '\uD83E\uDE81', '\uD83E\uDE81'][hiRow],
       severity: [70, 10, 30, 55, 80][hiRow],
       tip: 'Dew point peaks near ' + Math.round(dp) + DEG + '. ' + why,
       rowsHead: ['Dew Point', ''], rows: bandRows, hiRow: hiRow };
@@ -2564,14 +2642,13 @@
     if (!hot && !cold) return null;
 
     if (cold) {
-      return { bg: bgFlat('feels', d.feelsMin), bold: 'Pavement Is Freezing', icon: '\uD83E\uDDCA', severity: 70,
+      return { bg: bgFlat('feels', d.feelsMin), bold: 'Pavement Is Freezing', severity: 70,
         todo: 'Short Dog Walk \u2014 rinse paws after', todoWhen: 'day', todoRank: 55,
         tip: 'Wind chill near ' + Math.round(d.feelsMin) + DEG
            + '. Ice and road salt split pads at this range. Keep walks short, and rinse paws afterwards.' };
     }
     return { bg: bgFlat('risk', Math.min(100, (surface - 110) * 3)),
       bold: surface >= 140 ? 'Pavement Burns Paws' : 'Hot Pavement',
-      icon: surface >= 140 ? '\uD83D\uDD25' : '\u2600\uFE0F',
       severity: surface >= 140 ? 95 : 70,
       todo: 'Walk Dog Early or Late \u2014 ' + Math.round(surface) + DEG + ' pavement', todoWhen: 'day', todoRank: 55,
       tip: Math.round(surface) + DEG + ' Pavement. This is not safe for paws. Stay on grass, walk early '
@@ -2592,7 +2669,6 @@
             : gust > 30 ? 'Too much for recreational sailing, and a kite will not survive it.'
             : 'A kite or small sail can handle it, but the gusts will fight you.';
     return { bg: bgFlat('risk', Math.min(100, gust * 2.2)), bold: word + (steady ? '; ' + steady : ''),
-      icon: gust < 8 ? '\uD83D\uDE34' : gust < 15 ? '\uD83C\uDF43' : gust < 25 ? '\uD83C\uDFF4' : gust < 38 ? '\uD83D\uDCA8' : '\uD83C\uDF2A\uFE0F',
       severity: gust < 8 ? 15 : gust < 15 ? 30 : gust < 25 ? 50 : gust < 38 ? 75 : 95,
       todo: (gust >= 8 && gust <= 22 && factor < 1.9) ? 'Fly a Kite \u2014 ' + Math.round(mean) + ' mph' : null,
       todoWhen: 'out', todoRank: 90, todoOutdoor: true,
@@ -2633,7 +2709,7 @@
          : half(startH) + DASH + half(endH) + ' is the clearest morning stretch.')
       : 'No clear morning window today \u2014 take whatever the middle of the day offers.';
     return { bg: bgFlat('sky', Math.min(100, d.cloudDay)), bold: word,
-             icon: d.cloudDay >= 80 ? '\uD83C\uDF25\uFE0F' : d.cloudDay >= 55 ? '\u26C5' : d.cloudDay >= 25 ? '\uD83C\uDF24\uFE0F' : '\u2600\uFE0F',
+             iconUrls: [[stateIconUrl('sky', d.cloudDay >= 80 ? 'Cloudy' : d.cloudDay >= 25 ? 'Partly Cloudy' : 'Sunny')], null],
              severity: d.cloudDay >= 80 ? 75 : d.cloudDay >= 55 ? 55 : d.cloudDay >= 25 ? 35 : 15,
              rows: [
                ['Roughly ' + hm(mins) + ' of usable outdoor light.'],
@@ -2676,7 +2752,6 @@
           text: 'Check light pollution near you \u2014 try "Find closest dark site" there' }
       : null;
     return { bg: bgFlat('sky', 60), bold: word,
-      icon: goodOdds ? '\uD83C\uDF0C' : strong ? '\u2601\uFE0F' : '\uD83D\uDC40',
       severity: goodOdds ? 90 : strong ? 50 : 15,
       todo: goodOdds ? 'Drive North \u2014 Kp ' + kp.max.toFixed(1) : null,
       todoWhen: 'night', todoRank: 85, todoOutdoor: true,
@@ -2749,7 +2824,6 @@
     lines.push(['Radiant rises in ' + best.radiant + '; meteors can streak anywhere in the sky, not just near it.']);
 
     return { bg: bgFlat('risk', goodOdds ? 15 : 50), bold: word,
-      icon: goodOdds ? '\uD83C\uDF20' : clear ? '\uD83C\uDF15' : '\u2601\uFE0F',
       severity: goodOdds ? 90 : clear ? 50 : 15,
       todo: goodOdds ? 'Watch for Meteors \u2014 ' + best.name : null,
       todoWhen: 'night', todoRank: 87, todoOutdoor: true,
@@ -3174,6 +3248,7 @@
     // differs from the forecast" explanations already live \u2014 the tap
     // only needs the two facts someone actually wants mid-glance.
     return { alert: true, bold: noun + ' Right Now', icon: STATE_EMOJI.precip[kind] || '',
+      iconUrls: [(function () { var u = stateIconUrl('precip', kind); return u ? [u] : null; })(), null],
       det: current.temperature_2m != null ? ' (' + Math.round(current.temperature_2m) + DEG + ')' : '',
       tip: 'As of ' + t + ' local time.' };
   }
@@ -3181,6 +3256,7 @@
   function alertCard(al, tz) {
     var until = al.ends ? shortTime(al.ends, tz) : '';
     return { alert: true, icon: '\u26A0\uFE0F', bold: al.event, det: until ? ' (until ' + until + ')' : '',
+             iconUrls: [[iconUrl('lucide', 'alert-triangle')], null],
              tip: al.headline || null };
   }
 
@@ -3324,7 +3400,7 @@
     // fighting for control \u2014 see the fix note by that setting itself
     // for why this needs to happen here now, not just be implied by a
     // saved order existing.
-    if (which === 'tiles' && store.colorSort) store.colorSort = false;
+    if (which === 'tiles' && store.tileSort) store.tileSort = null;
     saveStore(); buildSettings(); renderHome();
   }
 
@@ -4030,9 +4106,183 @@
       });
     });
   }
-  function emoSpan(text, side) {
+  // Real icons for the tiles we've decided on, fetched live from each
+  // library's own API rather than baked in \u2014 keeps the file dependency-free
+  // in spirit (no npm, no build step) while trading a small runtime request
+  // for accuracy. Color tracks the current theme; a failed fetch (offline,
+  // API hiccup) falls back to the original emoji rather than a broken image.
+  function isDarkNow() {
+    var attr = document.documentElement.getAttribute('data-theme');
+    if (attr === 'dark') return true;
+    if (attr === 'light') return false;
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  }
+  function iconUrl(prefix, name) {
+    var color = isDarkNow() ? '%23E7E9EC' : '%2316232F';
+    return 'https://api.iconify.design/' + prefix + '/' + name + '.svg?color=' + color;
+  }
+  // Tile *identity* icons only \u2014 the glyph a card shows in its default
+  // state. State-triggered glyphs (moon phases, temp/humidity/sky/precip
+  // states, allergy levels) are a separate, later pass: they're set at
+  // ~15 different builder call sites rather than this one chokepoint, and
+  // several share emoji characters with unrelated concepts (e.g. the
+  // Eclipse tile and the New Moon state both use \\uD83C\\uDF11), so fixing
+  // them here by emoji text alone would risk swapping the wrong icon in.
+  var ICON_URL_TILE = {
+    flag: ['lucide', 'flag'],
+    air: ['healthicons', 'lungs'],
+    allergy: ['healthicons', 'nose'],
+    migraine: ['mdi', 'head-flash-outline'],
+    arthritis: ['healthicons', 'joints'],
+    frostbite: ['lucide', 'thermometer-snowflake'],
+    bug: ['lucide', 'spray-can'],
+    frizz: ['mdi', 'hair-dryer-outline'],
+    virus: ['healthicons', 'virus'],
+    burn: ['mdi', 'shield-sun'],
+    light: ['lucide', 'sun'],
+    water: ['lucide', 'thermometer'],
+    pavement: ['lucide', 'paw-print'],
+    wind: ['lucide', 'wind'],
+    aurora: ['mdi', 'aurora'],
+    meteor: ['wi', 'meteor'],
+    eclipse: ['wi', 'lunar-eclipse'],
+    bird: ['lucide', 'bird'],
+    ebird: ['lucide', 'binoculars'],
+    rust: ['mdi', 'car-wash'],
+    frost: ['mdi', 'car-windshield-outline'],
+    ice: ['mdi', 'skate'],
+    shoe: ['lucide', 'footprints'],
+    pipe: ['mdi', 'pipe-leak'],
+    mow: ['mdi', 'grass'],
+    garden: ['mdi', 'watering-can'],
+    tick: ['healthicons', 'animal-tick'],
+    power: ['lucide', 'plug-zap'],
+    leaves: ['lucide', 'leaf'],
+    fire: ['lucide', 'flame'],
+    mold: ['lucide', 'home'],
+    mask: ['mdi', 'face-mask-outline'],
+    swim: ['mdi', 'swim'],
+    sky: ['mdi', 'weather-partly-cloudy'],
+    feels: ['lucide', 'thermometer']
+  };
+  // A tile whose icon is drawn from memory rather than fetched \u2014 a custom
+  // SVG we authored ourselves, embedded inline. currentColor means it
+  // follows the theme automatically, no dark/light URL param needed.
+  var ICON_INLINE_TILE = {
+    firefly: '<svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">'
+      + '<path d="m42.966183 18.504967c0 -2.4961548 2.2138977 -4.5196857 4.9448814 -4.5196857c2.73098 0 4.9448814 2.023531 4.9448814 4.5196857c0 2.4961529 -2.2139015 4.519684 -4.9448814 4.519684c-2.7309837 0 -4.9448814 -2.023531 -4.9448814 -4.519684z"/>'
+      + '<path d="m44.039375 35.58106c-0.40229797 2.257637 -2.1118507 9.638386 -2.4137878 13.545807c-0.3019333 3.907421 0.013290405 6.950653 0.60217285 9.898724c0.58888626 2.9480743 1.5114784 6.493683 2.9311333 7.789711c1.4196587 1.2960205 4.1679 1.2824097 5.5868073 -0.013557434c1.4189072 -1.2959671 2.340004 -4.823738 2.9266396 -7.762253c0.5866356 -2.9385147 0.82907486 -5.9655876 0.5931778 -9.868839c-0.23589325 -3.9032516 -1.6737823 -11.292225 -2.008541 -13.550671"/>'
+      + '<path d="m54.27051 26.576092c1.75811 0.086818695 6.8971596 -0.6778698 10.548664 0.5209122c3.651497 1.198782 8.890511 4.528475 11.360352 6.6717796c2.4698334 2.143303 3.344368 4.5978584 3.4586716 6.1880493c0.11429596 1.5901909 -1.1329575 2.9324913 -2.772873 3.3530884c-1.6399155 0.4206009 -4.573143 0.15736389 -7.0666122 -0.8294945c-2.4934692 -0.9868622 -5.2951126 -3.0232506 -7.894188 -5.091667c-2.5990753 -2.0684166 -6.4168816 -6.0990314 -7.7002563 -7.318836"/>'
+      + '<path d="m62.366203 37.773407c0.6794548 1.1369858 2.9199448 4.717808 4.076729 6.821903c1.1567917 2.1040916 2.212616 3.9360313 2.8639908 5.802662c0.65138245 1.8666344 1.3525696 4.379509 1.0442886 5.3971252c-0.30828094 1.0176163 -1.5315628 1.2089195 -2.8939667 0.70856476c-1.3624039 -0.50035095 -3.3888855 -1.8092918 -5.2804756 -3.7106743c-1.8915939 -1.9013824 -4.393055 -4.779316 -6.069084 -7.6976166c-1.676033 -2.9183044 -3.3225937 -8.17683 -3.9871101 -9.812195"/>'
+      + '<path d="m42.08324 46.032055l11.716534 0"/>'
+      + '<path d="m41.882847 54.37422l12.409451 0"/>'
+      + '<path d="m42.96618 61.49356l10.110237 0"/>'
+      + '<path d="m47.937622 23.045422c0.64609146 0.038583755 2.8910446 -0.15929031 3.876564 0.23149681c0.9855156 0.39078712 1.6522636 1.1578102 2.0365372 2.1132278c0.3842697 0.95541763 0.27391815 2.6533852 0.26908875 3.619276c-0.0048294067 0.965889 -0.13894272 1.4442043 -0.2980652 2.1760616c-0.15912247 0.7318592 -0.3634262 1.5514088 -0.656662 2.215086c-0.29323578 0.6636772 -0.58192825 1.1247406 -1.1027527 1.7669792c-0.52082443 0.6422348 -1.3213539 1.6629677 -2.022194 2.086441c-0.70084 0.42346954 -1.8190346 0.3786583 -2.1828423 0.45439148"/>'
+      + '<path d="m47.943714 23.06565c-0.6460953 0.03858185 -2.8910484 -0.15929222 -3.876564 0.2314949c-0.9855156 0.39078712 -1.6522675 1.1578121 -2.0365372 2.1132298c-0.3842697 0.9554157 -0.27391815 2.6533852 -0.26908875 3.6192741c0.0048294067 0.9658909 0.13894272 1.4442062 0.2980652 2.1760635c0.15911865 0.7318592 0.3634224 1.5514088 0.6566582 2.215086c0.29323578 0.6636772 0.58192825 1.1247406 1.1027527 1.7669754c0.52082825 0.6422386 1.3213539 1.6629715 2.022194 2.086441c0.70084 0.42347336 1.8190384 0.3786621 2.182846 0.4543953"/>'
+      + '<path d="m63.123528 2.85021c-3.4073029 0 -6.661522 1.2810128 -8.984898 3.5368755c-2.3233757 2.2558627 -3.507141 5.283874 -3.2683716 8.360336"/>'
+      + '<path d="m41.729538 26.576092c-1.75811 0.086818695 -6.8971596 -0.6778698 -10.548664 0.5209122c-3.6515026 1.198782 -8.890514 4.528475 -11.360352 6.6717796c-2.4698372 2.143303 -3.3443718 4.5978584 -3.4586716 6.1880493c-0.114299774 1.5901909 1.1329575 2.9324913 2.772871 3.3530884c1.6399155 0.4206009 4.573147 0.15736389 7.0666122 -0.8294945c2.4934673 -0.9868622 5.2951145 -3.0232506 7.894186 -5.091667c2.5990753 -2.0684166 6.4168816 -6.0990314 7.70026 -7.318836"/>'
+      + '<path d="m34.05861 37.426598c-0.7154236 1.1947823 -3.0997868 5.006813 -4.2925415 7.1687126c-1.1927567 2.1618958 -2.212614 3.9360313 -2.8639927 5.802662c-0.65138054 1.8666344 -1.3525658 4.379509 -1.0442867 5.3971252c0.30828094 1.0176163 1.531559 1.2089195 2.8939667 0.70856476c1.3624077 -0.50035095 3.3888817 -1.8092918 5.2804756 -3.7106743c1.8915939 -1.9013824 4.393055 -4.779316 6.069088 -7.6976166c1.6760292 -2.9183044 3.3225899 -8.17683 3.9871063 -9.812195"/>'
+      + '<path d="m33.085476 2.85021c3.407299 0 6.661518 1.2810128 8.984894 3.5368755c2.3233757 2.2558627 3.507141 5.283874 3.2683716 8.360336"/>'
+      + '<path d="m48.070736 69.82613l0 17.448822"/>'
+      + '<path d="m75.68718 65.24127l-20.472443 0"/>'
+      + '<path d="m20.478405 65.27671l20.472443 0"/>'
+      + '<path d="m44.093773 68.58621l-14.48819 16.7874"/>'
+      + '<path d="m66.35883 85.38227l-14.48819 -16.7874"/>'
+      + '<path d="m41.84398 67.18995l-13.44882 6.614174"/>'
+      + '<path d="m45.793278 69.244675l-5.6062965 15.653549"/>'
+      + '<path d="m54.276363 67.24213l13.448818 6.614174"/>'
+      + '<path d="m50.327065 69.29685l5.6063004 15.653549"/>'
+      + '<path d="m48.0827 89.29381l0 4.692917"/>'
+      + '</svg>'
+  };
+  // State-triggered glyphs: unlike the tile map above, these are looked
+  // up by what a card currently says, not which card it is, and slotted
+  // in at the specific builder that reads STATE_EMOJI for that group.
+  var ICON_URL_STATE = {
+    temp: {
+      'Very Cold': ['mdi', 'thermometer-low'],
+      Cold: ['lucide', 'thermometer'],
+      Cool: ['lucide', 'thermometer'],
+      Comfortable: ['lucide', 'thermometer']
+    },
+    hum: {
+      'Bone Dry': ['mdi', 'water-percent'],
+      'Very Dry': ['mdi', 'water-percent'],
+      Humid: ['mdi', 'water-percent'],
+      Muggy: ['mdi', 'water-percent'],
+      Oppressive: ['mdi', 'water-percent'],
+      'Miserable Humidity': ['mdi', 'water-percent']
+    },
+    sky: {
+      Fog: ['mdi', 'weather-fog'],
+      Sunny: ['lucide', 'sun'],
+      'Mostly Sunny': ['mdi', 'weather-partly-cloudy'],
+      'Partly Cloudy': ['mdi', 'weather-partly-cloudy'],
+      'Mostly Cloudy': ['mdi', 'weather-cloudy'],
+      Cloudy: ['mdi', 'weather-cloudy']
+    },
+    precip: {
+      hail: ['mdi', 'weather-hail'],
+      thunder: ['mdi', 'weather-lightning'],
+      freezing: ['mdi', 'weather-snowy-rainy'],
+      snow: ['mdi', 'weather-snowy'],
+      showers: ['mdi', 'weather-pouring'],
+      rain: ['lucide', 'cloud-rain'],
+      drizzle: ['lucide', 'cloud-drizzle']
+    },
+    moon: {
+      'New Moon': ['mdi', 'moon-new'],
+      'Waxing Crescent': ['mdi', 'moon-waxing-crescent'],
+      'First Quarter': ['mdi', 'moon-first-quarter'],
+      'Waxing Gibbous': ['mdi', 'moon-waxing-gibbous'],
+      'Full Moon': ['mdi', 'moon-full'],
+      'Waning Gibbous': ['mdi', 'moon-waning-gibbous'],
+      'Last Quarter': ['mdi', 'moon-last-quarter'],
+      'Waning Crescent': ['mdi', 'moon-waning-crescent']
+    },
+    allergy: {
+      Low: ['healthicons', 'nose'],
+      Moderate: ['healthicons', 'nose'],
+      High: ['healthicons', 'nose'],
+      none: ['healthicons', 'nose'],
+      season: ['healthicons', 'nose'],
+      quiet: ['healthicons', 'nose']
+    }
+  };
+  function stateIconUrl(group, key) {
+    var e = ICON_URL_STATE[group] && ICON_URL_STATE[group][key];
+    return e ? iconUrl(e[0], e[1]) : null;
+  }
+  function emoSpan(text, side, urls, inlineSvg) {
     var es = document.createElement('span'); es.className = 'emo' + (side === 'r' ? ' r' : '');
-    es.setAttribute('aria-hidden', 'true'); es.textContent = text; return es;
+    es.setAttribute('aria-hidden', 'true');
+    if (inlineSvg) {
+      // A custom drawing we authored ourselves, not fetched \u2014 inserted
+      // directly so its stroke="currentColor" can pick up the theme color
+      // the same way surrounding text does, no dark/light URL param needed.
+      var wrap = document.createElement('span');
+      wrap.style.display = 'inline-block'; wrap.style.width = '1.3em'; wrap.style.height = '1.3em';
+      wrap.style.verticalAlign = '-0.22em';
+      wrap.innerHTML = inlineSvg;
+      var svgEl = wrap.firstChild;
+      if (svgEl) { svgEl.style.width = '100%'; svgEl.style.height = '100%'; svgEl.style.display = 'block'; }
+      es.appendChild(wrap);
+      return es;
+    }
+    if (urls && urls.length) {
+      urls.forEach(function (u) {
+        if (!u) return;
+        var img = document.createElement('img');
+        img.src = u; img.alt = '';
+        img.style.width = '1.3em'; img.style.height = '1.3em'; img.style.verticalAlign = '-0.22em';
+        // A failed fetch removes just that image, nothing more \u2014 emoji is
+        // no longer a fallback, so a bad load means an empty span, not a
+        // decorative glyph substituting in behind the scenes.
+        img.onerror = function () { if (img.parentNode) img.parentNode.removeChild(img); };
+        es.appendChild(img);
+      });
+    }
+    return es;
   }
   function card(row, id) {
     var el = document.createElement((row.tip || (row.rows && row.rows.length)) ? 'button' : 'div');
@@ -4067,7 +4317,7 @@
       row.split.left.forEach(function (t) { var e2 = document.createElement('b'); e2.textContent = t; lb.appendChild(e2); });
       // Split faces put the pair at the two ends of the row, inside the
       // first line of each side so they stay on the same line as the time.
-      if (showEmoji() && row.icons && row.icons[0] && lb.firstChild) lb.firstChild.insertBefore(emoSpan(row.icons[0]), lb.firstChild.firstChild);
+      if (row.icons && row.icons[0] && lb.firstChild) lb.firstChild.insertBefore(emoSpan(row.icons[0], null, row.iconUrls ? row.iconUrls[0] : null), lb.firstChild.firstChild);
       line.appendChild(lb);
       // A middle column, so the phase sits dead centre between the two
       // times rather than centred on whatever space is left over.
@@ -4080,7 +4330,7 @@
       line.appendChild(mid);
       var rb = document.createElement('div'); rb.className = 'end right';
       row.split.right.forEach(function (t) { var e4 = document.createElement('b'); e4.textContent = t; rb.appendChild(e4); });
-      if (showEmoji() && row.icons && row.icons[1] && rb.firstChild) rb.firstChild.appendChild(emoSpan(row.icons[1], 'r'));
+      if (row.icons && row.icons[1] && rb.firstChild) rb.firstChild.appendChild(emoSpan(row.icons[1], 'r', row.iconUrls ? row.iconUrls[1] : null));
       line.appendChild(rb);
     } else {
       // A card's own state emoji wins; a tile with none falls back to its
@@ -4088,10 +4338,22 @@
       // Gated on one setting rather than at each of the ~20 call sites
       // that compute an icon \u2014 turning it off here is enough.
       var icons = showEmoji() ? (row.icons || [row.icon || (id && TILE_EMOJI[id]) || '', '']) : ['', ''];
-      if (icons[0]) line.appendChild(emoSpan(icons[0]));
+      // A real icon applies at four levels, most specific first: a card
+      // can name its own icon URL(s) directly (row.iconUrls, needed when
+      // a slot holds more than one glued-together emoji, like the feels
+      // card's temp+humidity pairing); otherwise a tile with no override
+      // in play falls back to its own identity icon \u2014 either a custom
+      // drawing embedded inline, or one fetched live, if we've decided one.
+      var tileDefault = showEmoji() && !row.icons && !row.icon && id;
+      var tileInlineSvg = (tileDefault && ICON_INLINE_TILE[id]) ? ICON_INLINE_TILE[id] : null;
+      var tileIconUrl = (tileDefault && !tileInlineSvg && ICON_URL_TILE[id])
+        ? iconUrl(ICON_URL_TILE[id][0], ICON_URL_TILE[id][1]) : null;
+      var urls0 = showEmoji() ? (row.iconUrls ? row.iconUrls[0] : (tileIconUrl ? [tileIconUrl] : null)) : null;
+      var urls1 = showEmoji() ? (row.iconUrls ? row.iconUrls[1] : null) : null;
+      if (icons[0]) line.appendChild(emoSpan(icons[0], null, urls0, tileInlineSvg));
       var b = document.createElement('b'); b.textContent = row.bold; line.appendChild(b);
       if (row.det) { var s2 = document.createElement('span'); s2.className = 'det'; s2.textContent = row.det; line.appendChild(s2); }
-      if (icons[1]) line.appendChild(emoSpan(icons[1], 'r'));
+      if (icons[1]) line.appendChild(emoSpan(icons[1], 'r', urls1));
     }
     if (row.tip || (row.rows && row.rows.length)) {
       var chev = document.createElement('span');
@@ -4234,14 +4496,19 @@
   var todos = [];
   function collectTodos(row, cardId) {
     if (!row) return;
+    // Every to-do from one card shares that card's icon by default \u2014
+    // fine almost everywhere, but Heat Risk needed its own (thermometer-sun,
+    // not the plain thermometer the rest of Feels Like uses), so a
+    // to-do can optionally name a specific one via `icon: [prefix, name]`,
+    // checked ahead of the card-level lookup in fillPill.
     if (row.todo) todos.push({ text: row.todo, when: row.todoWhen || 'out',
                                rank: row.todoRank == null ? 50 : row.todoRank,
                                outdoor: !!row.todoOutdoor, cardId: cardId });
     if (row.todo2) todos.push({ text: row.todo2.text, when: row.todo2.when, rank: row.todo2.rank,
-                                outdoor: !!row.todo2.outdoor, cardId: cardId });
+                                outdoor: !!row.todo2.outdoor, cardId: cardId, icon: row.todo2.icon });
     (row.todos || []).forEach(function (t) {
       todos.push({ text: t.text, when: t.when || 'out', rank: t.rank == null ? 50 : t.rank,
-                   outdoor: !!t.outdoor, blocksOutdoor: !!t.blocksOutdoor, cardId: cardId });
+                   outdoor: !!t.outdoor, blocksOutdoor: !!t.blocksOutdoor, cardId: cardId, icon: t.icon });
     });
   }
 
@@ -4447,10 +4714,21 @@
   function buildWiggleStrip() {
     var strip = document.createElement('div'); strip.className = 'wiggleStrip';
 
-    strip.appendChild(wiggleCheck('Use Emojis', showEmoji(), function (v) {
-      store.emoji = v; saveStore(); renderHome();
+    // Real icons instead of emoji now, but the same on/off people had
+    // for emoji is worth keeping \u2014 a checkbox, not a labelled group of
+    // its own, since it's one simple choice rather than several.
+    strip.appendChild(wiggleCheck('Show Icons', showEmoji(), function (v) {
+      store.icons = v; saveStore(); renderHome();
     }));
 
+    // Four genuinely separate preferences were sitting in this one strip
+    // with nothing between them \u2014 no header, no divider \u2014 so it read
+    // as one long wall of buttons rather than four distinct choices.
+    // Labelled groups now, reusing the same small caption style as the
+    // tile-order label below.
+    var appearanceLabel = document.createElement('div'); appearanceLabel.className = 'wiggleSortLabel';
+    appearanceLabel.textContent = 'Multi-day style';
+    strip.appendChild(appearanceLabel);
     // Lives here rather than under Across the Day, and always shows
     // rather than only when span > 1. It was conditional before, which
     // meant it only appeared in exactly the view where the rest of
@@ -4464,6 +4742,9 @@
     // the two shapes says it without needing a word for either.
     strip.appendChild(mdStyleToggle());
 
+    var dmLabel = document.createElement('div'); dmLabel.className = 'wiggleSortLabel';
+    dmLabel.textContent = 'Appearance';
+    strip.appendChild(dmLabel);
     var dm = document.createElement('div'); dm.className = 'presets';
     [['light', 'Light Mode'], ['dark', 'Dark Mode'], ['auto', 'Match System']].forEach(function (opt) {
       var b = document.createElement('button');
@@ -4478,6 +4759,9 @@
 
     var t = store.theme || {};
     var custom = t.cold || t.good || t.warm || t.danger || t.night || t.dawn || t.day;
+    var themeLabel = document.createElement('div'); themeLabel.className = 'wiggleSortLabel';
+    themeLabel.textContent = 'Color palette';
+    strip.appendChild(themeLabel);
     var pr = document.createElement('div'); pr.className = 'presets';
     Object.keys(PRESETS).forEach(function (k) {
       var b = document.createElement('button');
@@ -4508,11 +4792,20 @@
     });
     pr.appendChild(cb);
     strip.appendChild(pr);
+
+    // Not a preference like the three groups above \u2014 a one-off action
+    // (bring a hidden block back), so it gets its own visual separation
+    // rather than trailing invisibly off the end of the color group.
     var addBlk = addBlockAffordance();
-    if (addBlk) strip.appendChild(addBlk);
+    if (addBlk) {
+      addBlk.style.marginTop = '10px';
+      strip.appendChild(addBlk);
+    }
 
     if (custom || wiggleCustomOpen) {
       var pickers = document.createElement('div');
+      var swatchHead = document.createElement('h3'); swatchHead.textContent = 'Condition colors'; swatchHead.style.cssText = 'font-size:12px;margin:2px 0 4px;';
+      pickers.appendChild(swatchHead);
       var A = anchors();
       swatchRow('cold', 'Cold and dry', A.cold, pickers);
       swatchRow('good', 'Fine', A.good, pickers);
@@ -4813,7 +5106,7 @@
     var changed = ids.length !== before.length || ids.some(function (x, i) { return x !== before[i]; });
     if (changed) {
       if (which === 'hourly') store.orderH = ids; else store.order = ids;
-      if (which === 'tiles' && store.colorSort) store.colorSort = false;
+      if (which === 'tiles' && store.tileSort) store.tileSort = null;
       saveStore();
     }
     renderHome();
@@ -4986,8 +5279,21 @@
     var row = document.createElement('div'); row.className = 'quiet';
     row.setAttribute('role', 'list'); row.setAttribute('aria-label', 'Quiet today');
     ids.forEach(function (id) {
-      var s = document.createElement('span'); s.textContent = TILE_EMOJI[id];
       var label = cardMeta(id).name + ' \u2014 nothing to report today';
+      var s;
+      if (showEmoji() && ICON_INLINE_TILE[id]) {
+        s = document.createElement('span');
+        s.style.display = 'inline-block'; s.style.width = '1.3em'; s.style.height = '1.3em';
+        s.innerHTML = ICON_INLINE_TILE[id];
+        if (s.firstChild) { s.firstChild.style.width = '100%'; s.firstChild.style.height = '100%'; s.firstChild.style.display = 'block'; }
+      } else if (showEmoji() && ICON_URL_TILE[id]) {
+        s = document.createElement('img');
+        s.src = iconUrl(ICON_URL_TILE[id][0], ICON_URL_TILE[id][1]); s.alt = '';
+        s.style.width = '1.3em'; s.style.height = '1.3em';
+        s.onerror = function () { if (s.parentNode) s.parentNode.removeChild(s); };
+      } else {
+        s = document.createElement('span');
+      }
       s.title = label; s.setAttribute('role', 'listitem'); s.setAttribute('aria-label', label);
       row.appendChild(s);
     });
@@ -4995,20 +5301,26 @@
   }
 
   function addCard(host, id, build, which) {
-    if (id && !on(id)) return false;
+    var wantTile = id && on(id);
+    var wantPill = id && pillOn(id);
+    if (!wantTile && !wantPill) return false;
+    var row;
     try {
-      var row = build();
-      if (!row) return false;
-      collectTodos(row, id);
-      var el = card(row, id);
-      if (which) wireRearrange(el, id, which, host);
-      host.appendChild(el);
+      row = build();
     } catch (e) {
+      if (!wantTile) return false; // a hidden tile's broken build isn't worth surfacing
       var el2 = document.createElement('div');
       el2.className = 'card flat plain';
       el2.textContent = 'This card failed: ' + ((e && e.message) || e);
       host.appendChild(el2);
+      return true;
     }
+    if (!row) return false;
+    if (wantPill) collectTodos(row, id);
+    if (!wantTile) return false; // pill collected; no visible tile to add
+    var el = card(row, id);
+    if (which) wireRearrange(el, id, which, host);
+    host.appendChild(el);
     return true;
   }
   /* A digest of what the other cards told you to do. Built from their
@@ -5019,7 +5331,30 @@
      and full size \u2014 the one word someone needs at a glance. Detail, when
      present, renders small and dim underneath it: a number or a reason,
      never a second instruction competing for the same attention. */
-  function fillPill(li, text) {
+  function fillPill(li, text, cardId, iconOverride) {
+    // A pill previously showed as text alone, with no icon at all \u2014 an
+    // odd gap given every other card in the app got a real one. Lookup
+    // order: a specific override for this one to-do first (Heat Risk
+    // needs its own, distinct from the rest of Feels Like), then the
+    // card's own default \u2014 a custom drawing, then a fetched one, then
+    // nothing (not emoji \u2014 those are gone everywhere now).
+    var iconDef = showEmoji() && !iconOverride && cardId && ICON_INLINE_TILE[cardId];
+    var iconUrlDef = !iconDef && showEmoji() && cardId && (iconOverride || ICON_URL_TILE[cardId]);
+    if (iconDef || iconUrlDef) {
+      var ic = document.createElement('span');
+      ic.className = 'pillIcon'; ic.setAttribute('aria-hidden', 'true');
+      if (iconDef) {
+        ic.innerHTML = iconDef;
+        if (ic.firstChild) { ic.firstChild.style.width = '100%'; ic.firstChild.style.height = '100%'; ic.firstChild.style.display = 'block'; }
+      } else {
+        var img = document.createElement('img');
+        img.src = iconUrl(iconUrlDef[0], iconUrlDef[1]); img.alt = '';
+        img.style.width = '100%'; img.style.height = '100%';
+        img.onerror = function () { if (img.parentNode) img.parentNode.removeChild(img); };
+        ic.appendChild(img);
+      }
+      li.appendChild(ic);
+    }
     var parts = String(text).split(' \u2014 ');
     var lead = document.createElement('span'); lead.className = 'pillLead'; lead.textContent = parts[0];
     li.appendChild(lead);
@@ -5177,7 +5512,7 @@
       var seen = {};
       items.forEach(function (t) {
         if (seen[t.text]) return; seen[t.text] = 1;
-        var li = document.createElement('li'); fillPill(li, t.text);
+        var li = document.createElement('li'); fillPill(li, t.text, t.cardId, t.icon);
         // Tapping something you have dealt with fades it rather than
         // removing it, so the list still reads as complete. Kept for
         // today only \u2014 tomorrow it is a new list.
@@ -5795,7 +6130,7 @@
     // the neutral middle rather than being arbitrarily called green or
     // red.
     var renderTileOrder = tileOrder();
-    if (store.colorSort) {
+    if (store.tileSort === 'color') {
       /* Spectral sort: Blue \u2192 Gray \u2192 Green \u2192 Yellow \u2192 Orange \u2192 Red.
          Goal is visual harmony by hue, not urgency. Each tile's actual
          rendered background color is the source, so this follows the
@@ -5875,6 +6210,18 @@
       });
       ranked.sort(function (a, b) { return a.key - b.key; });
       renderTileOrder = ranked.map(function (r) { return r.id; });
+    } else if (store.tileSort === 'urgency') {
+      // Highest severity first \u2014 whatever most deserves attention today
+      // leads the grid. A tile with no severity of its own (informational,
+      // or currently quiet) sits at the bottom rather than being guessed at.
+      var urgencyRanked = renderTileOrder.map(function (id) {
+        var row = null;
+        if (on(id) && builders[id]) { try { row = builders[id](); } catch (e) {} }
+        var sev = (row && typeof row.severity === 'number') ? row.severity : -1;
+        return { id: id, sev: sev };
+      });
+      urgencyRanked.sort(function (a, b) { return b.sev - a.sev; });
+      renderTileOrder = urgencyRanked.map(function (r) { return r.id; });
     }
     // A tile that is on but returned nothing is quiet, not off: it goes
     // in the ghost row so the gap is explained. Notable Birds with no
@@ -6029,8 +6376,20 @@
         var extra = document.createElement('div'); extra.className = 'wiggleTileExtras';
         extra.appendChild(wiggleCheck('Move text below color blocks for enhanced legibility',
           !!store.stripTiles, function (v) { store.stripTiles = v; saveStore(); renderHome(); }));
-        extra.appendChild(wiggleCheck('Sort by Color',
-          !!store.colorSort, function (v) { store.colorSort = v; saveStore(); renderHome(); }));
+        var sortLabel = document.createElement('div'); sortLabel.className = 'wiggleSortLabel';
+        sortLabel.textContent = 'Tile order';
+        extra.appendChild(sortLabel);
+        var sortChoice = document.createElement('div'); sortChoice.className = 'presets';
+        [['color', 'Sort by Color'], ['urgency', 'Sort by Urgency'], ['custom', 'Keep Custom Order']].forEach(function (opt) {
+          var b = document.createElement('button');
+          b.className = 'preset' + ((store.tileSort || 'custom') === opt[0] ? ' sel' : '');
+          b.textContent = opt[1];
+          b.addEventListener('click', function () {
+            store.tileSort = opt[0] === 'custom' ? null : opt[0]; saveStore(); renderHome();
+          });
+          sortChoice.appendChild(b);
+        });
+        extra.appendChild(sortChoice);
         var orderReset = document.createElement('button'); orderReset.className = 'reset';
         orderReset.textContent = 'Reset Tile Order to Default';
         orderReset.addEventListener('click', function () {
@@ -6273,6 +6632,22 @@
       row.appendChild(box); row.appendChild(nm); container.appendChild(row);
     }
 
+    // These have their own tile (or, for Feels Like, always show) with
+    // its own on/off elsewhere \u2014 this checkbox is only about whether
+    // the reminder it can generate (sunscreen, kite conditions, and so
+    // on) shows up in the to-do list, independent of the tile.
+    function tileReminderRow(id, container) {
+      var meta = cardMeta(id);
+      var row = document.createElement('label'); row.className = 'opt';
+      var box = document.createElement('input'); box.type = 'checkbox'; box.checked = pillOn(id);
+      box.addEventListener('change', function () {
+        store.pillCards[id] = box.checked; saveStore(); renderHome();
+      });
+      var nm = document.createElement('span'); nm.textContent = meta.name;
+      if (meta.note) { var sm = document.createElement('small'); sm.textContent = meta.note; nm.appendChild(sm); }
+      row.appendChild(box); row.appendChild(nm); container.appendChild(row);
+    }
+
     // Masking, Swimming, and Shoes each turned out to be the only thing
     // left in their planned group (Health, Health, Prep) once Arthritis,
     // Migraine, Bug Spray, and Hair Frizz \u2014 also part of those groups
@@ -6291,6 +6666,19 @@
       collapseSection('todo-' + g[0], g[0], onCount + ' of ' + g[1].length + ' on', false, function (body) {
         g[1].forEach(function (id) { todoRow(id, body); });
       });
+    });
+
+    // Tile reminders: unlike the groups above, these ids each have a
+    // full tile of their own \u2014 hiding the tile used to silently take
+    // its reminder with it. This group is the fix: a separate on/off,
+    // so hiding Sunburn no longer means losing the sunscreen nudge.
+    var reminderIds = ['feels', 'sky', 'water', 'frostbite', 'wind', 'light', 'allergy', 'burn', 'aurora', 'meteor'];
+    var reminderOn = reminderIds.filter(function (id) { return pillOn(id); }).length;
+    collapseSection('todo-tile-reminders', 'Tile Reminders', reminderOn + ' of ' + reminderIds.length + ' on', false, function (body) {
+      var lede = document.createElement('p'); lede.className = 'lede';
+      lede.textContent = 'These tiles can add their own line to the to-do list \u2014 sunscreen, kite conditions, and so on. Separate from whether the tile itself shows on the main page.';
+      body.appendChild(lede);
+      reminderIds.forEach(function (id) { tileReminderRow(id, body); });
     });
   }
 
