@@ -4109,17 +4109,38 @@
   // Real icons for the tiles we've decided on, fetched live from each
   // library's own API rather than baked in \u2014 keeps the file dependency-free
   // in spirit (no npm, no build step) while trading a small runtime request
-  // for accuracy. Color tracks the current theme; a failed fetch (offline,
-  // API hiccup) falls back to the original emoji rather than a broken image.
-  function isDarkNow() {
-    var attr = document.documentElement.getAttribute('data-theme');
-    if (attr === 'dark') return true;
-    if (attr === 'light') return false;
-    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  }
+  // for accuracy. No color is requested here \u2014 the fetched SVG's own fill
+  // is irrelevant, since every icon renders as a CSS mask (see maskIcon)
+  // painted with currentColor, so it always matches whatever text color
+  // actually applies where it's placed \u2014 the theme's ink on a normal card,
+  // the always-dark text a coloured card forces regardless of theme, a
+  // dimmed quiet-row icon, all automatically, with no dark/light tracking
+  // needed here at all.
   function iconUrl(prefix, name) {
-    var color = isDarkNow() ? '%23E7E9EC' : '%2316232F';
-    return 'https://api.iconify.design/' + prefix + '/' + name + '.svg?color=' + color;
+    return 'https://api.iconify.design/' + prefix + '/' + name + '.svg';
+  }
+  // A fetched icon rendered as a CSS mask instead of an <img>: an element
+  // painted background:currentColor, shaped by the icon's alpha channel.
+  // This is what makes the icon always exactly match its surrounding
+  // text color, in any context, with zero per-context color logic \u2014 no
+  // threading through row.bg / stripMode / page theme required. A hidden
+  // probe Image() replicates the old img.onerror fallback: a bad fetch
+  // (offline, API hiccup) removes the icon rather than leaving an empty
+  // colored square.
+  function maskIcon(url, size) {
+    var el = document.createElement('span');
+    el.style.display = 'inline-block';
+    el.style.width = size; el.style.height = size;
+    el.style.backgroundColor = 'currentColor';
+    el.style.webkitMaskImage = 'url("' + url + '")';
+    el.style.maskImage = 'url("' + url + '")';
+    el.style.webkitMaskRepeat = el.style.maskRepeat = 'no-repeat';
+    el.style.webkitMaskPosition = el.style.maskPosition = 'center';
+    el.style.webkitMaskSize = el.style.maskSize = 'contain';
+    var probe = new Image();
+    probe.onerror = function () { if (el.parentNode) el.parentNode.removeChild(el); };
+    probe.src = url;
+    return el;
   }
   // Tile *identity* icons only \u2014 the glyph a card shows in its default
   // state. State-triggered glyphs (moon phases, temp/humidity/sky/precip
@@ -4272,14 +4293,9 @@
     if (urls && urls.length) {
       urls.forEach(function (u) {
         if (!u) return;
-        var img = document.createElement('img');
-        img.src = u; img.alt = '';
-        img.style.width = '1.3em'; img.style.height = '1.3em'; img.style.verticalAlign = '-0.22em';
-        // A failed fetch removes just that image, nothing more \u2014 emoji is
-        // no longer a fallback, so a bad load means an empty span, not a
-        // decorative glyph substituting in behind the scenes.
-        img.onerror = function () { if (img.parentNode) img.parentNode.removeChild(img); };
-        es.appendChild(img);
+        var icon = maskIcon(u, '1.3em');
+        icon.style.verticalAlign = '-0.22em';
+        es.appendChild(icon);
       });
     }
     return es;
@@ -5287,10 +5303,7 @@
         s.innerHTML = ICON_INLINE_TILE[id];
         if (s.firstChild) { s.firstChild.style.width = '100%'; s.firstChild.style.height = '100%'; s.firstChild.style.display = 'block'; }
       } else if (showEmoji() && ICON_URL_TILE[id]) {
-        s = document.createElement('img');
-        s.src = iconUrl(ICON_URL_TILE[id][0], ICON_URL_TILE[id][1]); s.alt = '';
-        s.style.width = '1.3em'; s.style.height = '1.3em';
-        s.onerror = function () { if (s.parentNode) s.parentNode.removeChild(s); };
+        s = maskIcon(iconUrl(ICON_URL_TILE[id][0], ICON_URL_TILE[id][1]), '1.3em');
       } else {
         s = document.createElement('span');
       }
@@ -5347,11 +5360,8 @@
         ic.innerHTML = iconDef;
         if (ic.firstChild) { ic.firstChild.style.width = '100%'; ic.firstChild.style.height = '100%'; ic.firstChild.style.display = 'block'; }
       } else {
-        var img = document.createElement('img');
-        img.src = iconUrl(iconUrlDef[0], iconUrlDef[1]); img.alt = '';
-        img.style.width = '100%'; img.style.height = '100%';
-        img.onerror = function () { if (img.parentNode) img.parentNode.removeChild(img); };
-        ic.appendChild(img);
+        var icon = maskIcon(iconUrl(iconUrlDef[0], iconUrlDef[1]), '100%');
+        ic.appendChild(icon);
       }
       li.appendChild(ic);
     }
