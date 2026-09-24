@@ -385,7 +385,7 @@
      it \u2014 they were relying on whatever the browser draws by default,
      which works but looks inconsistent with everywhere else this app
      bothered to style it on purpose. */
-  .tab:focus-visible, .opt input:focus-visible, .rearrangeBar button:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
+  .opt input:focus-visible, .subhead:focus-visible, .preset:focus-visible, .chip:focus-visible, .rearrangeBar button:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;
          padding:16px 18px;margin:0 0 12px;}
   .panel h2{font-size:17px;margin:0 0 4px;}
@@ -393,10 +393,10 @@
             margin:16px 0 6px;font-weight:600;}
   .panel p.lede{font-size:13.5px;color:var(--mid);margin:0 0 6px;line-height:1.45;}
   .opt{display:flex;align-items:flex-start;gap:10px;padding:7px 0;font-size:15px;
-       border-top:1px solid #E8E4DC;cursor:pointer;}
+       border-top:1px solid var(--line);cursor:pointer;}
   .opt:first-of-type{border-top:none;}
   .opt input{margin:3px 0 0;width:17px;height:17px;flex:0 0 auto;}
-  .opt.sub{padding-left:26px;border-top:1px solid #EFECE4;}
+  .opt.sub{padding-left:26px;border-top:1px solid var(--line);}
   .opt.sub span{font-size:14.5px;}
   .opt span small{display:block;font-size:12.5px;color:var(--mid);line-height:1.35;margin-top:1px;}
   /* A real toggle switch \u2014 same on/off semantics as a checkbox, just
@@ -421,12 +421,6 @@
   .legPreview > div{flex:1;min-width:0;}
   .panel input[type=text]{font:inherit;width:100%;padding:7px 9px;border:1px solid var(--line);
                           border-radius:8px;background:var(--input);color:inherit;margin-top:4px;}
-  .tabs{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 14px;
-        border-bottom:1px solid var(--line);padding-bottom:9px;}
-  .tab{background:var(--input);border:1px solid var(--line);border-radius:9px;padding:5px 10px;
-       font:inherit;font-size:13.5px;color:var(--mid);cursor:pointer;white-space:nowrap;}
-  .tab:hover{background:var(--card2);}
-  .tab.sel{background:var(--ink);border-color:var(--ink);color:var(--page);font-weight:600;}
   .steps{margin:4px 0 12px;padding-left:22px;font-size:13.5px;color:var(--mid);line-height:1.5;}
   .steps li{margin-bottom:6px;}
   .presets{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 12px;}
@@ -449,6 +443,7 @@
   .subhead .chev{width:16px;height:16px;flex:0 0 auto;opacity:.5;transition:transform .15s;}
   .subhead .chev svg{display:block;width:100%;height:100%;}
   .subhead.open .chev{transform:rotate(180deg);opacity:.7;}
+  .subhead:focus-visible{outline:2px solid var(--link);outline-offset:2px;border-radius:6px;}
   .subbody{display:none;padding-top:2px;}
   .subbody.open{display:block;}
   .preset .sw i{width:11px;height:11px;border-radius:3px;display:block;}
@@ -613,6 +608,91 @@
   .disc.xercesnote{border-top:none;margin-top:6px;padding-top:0;}
   .disc.xercesnote a{color:var(--faint);text-decoration:underline;}
 
+  /* ================= settings sheet =================
+     One modal sheet holds every setting. Full screen on a phone, a
+     centred sheet on anything wider. Each section is a native
+     <details>, so keyboard access and expanded state come for free. */
+  dialog.sheet{border:none;padding:0;margin:0;width:100%;max-width:100%;height:100%;max-height:100%;
+               background:var(--page);color:var(--ink);}
+  dialog.sheet::backdrop{background:rgba(10,14,20,.45);}
+  @media (min-width:600px){
+    dialog.sheet{margin:auto;width:560px;height:auto;max-height:88vh;border-radius:18px;
+                 border:1px solid var(--line);box-shadow:0 18px 50px rgba(0,0,0,.3);}
+  }
+  .sheetHead{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;
+             padding:12px 16px;background:var(--page);border-bottom:1px solid var(--line);}
+  .sheetHead h2{flex:1;margin:0;font-size:18px;}
+  .sheetHead button{background:var(--input);border:1px solid var(--line);border-radius:9px;
+                    padding:6px 14px;font:inherit;font-size:14px;font-weight:600;color:inherit;cursor:pointer;}
+  .sheetHead button:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
+  .sheetBody{padding:4px 16px 28px;}
+  details.sset{border-bottom:1px solid var(--line);}
+  details.sset > summary{list-style:none;display:flex;align-items:center;gap:10px;
+                         padding:15px 2px;cursor:pointer;-webkit-user-select:none;user-select:none;}
+  details.sset > summary::-webkit-details-marker{display:none;}
+  details.sset > summary:focus-visible{outline:2px solid var(--link);outline-offset:2px;border-radius:8px;}
+  details.sset > summary b{font-size:16px;font-weight:650;flex:0 0 auto;}
+  details.sset > summary .sum{flex:1;text-align:right;font-size:13px;color:var(--mid);
+                              white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  details.sset > summary .chev{width:16px;height:16px;flex:0 0 auto;opacity:.55;transition:transform .15s;}
+  details.sset > summary .chev svg{display:block;width:100%;height:100%;}
+  details.sset[open] > summary .chev{transform:rotate(180deg);}
+  .ssetBody{padding:0 0 18px;}
+  .ssetBody h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);
+               margin:18px 0 6px;font-weight:600;}
+  .ssetBody h3:first-child{margin-top:2px;}
+  .ssetBody p.lede{font-size:13.5px;color:var(--mid);margin:0 0 8px;line-height:1.45;}
+  .ssetBody input[type=text]{font:inherit;width:100%;padding:8px 10px;border:1px solid var(--line);
+                             border-radius:8px;background:var(--input);color:inherit;}
+  .ssetBody input[type=text]:focus-visible{outline:2px solid var(--link);outline-offset:1px;}
+  .btnRow{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 4px;}
+  .btn{background:var(--input);border:1px solid var(--line);border-radius:9px;padding:8px 13px;
+       font:inherit;font-size:14px;color:inherit;cursor:pointer;}
+  .btn.primary{background:var(--ink);border-color:var(--ink);color:var(--page);font-weight:600;}
+  .btn.danger{color:#B4432F;border-color:currentColor;}
+  :root[data-theme="dark"] .btn.danger{color:#F08A74;}
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .btn.danger{color:#F08A74;} }
+  .btn:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
+  /* "About you": yes/no facts as chips. Selected means "applies to me". */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px;}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--input);color:var(--mid);
+        border:1.5px dashed var(--line);border-radius:999px;padding:7px 13px;
+        font:inherit;font-size:14px;cursor:pointer;}
+  .chip .tick{width:14px;height:14px;display:none;}
+  .chip[aria-pressed="true"]{border-style:solid;border-color:var(--link);color:var(--ink);font-weight:600;}
+  .chip[aria-pressed="true"] .tick{display:block;color:var(--link);}
+  /* "What shows": one row per card, with its two independent switches. */
+  .showHead,.showRow{display:grid;grid-template-columns:1fr 54px 54px;align-items:center;gap:4px;}
+  .showHead{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--mid);
+            font-weight:600;padding:2px 0 4px;}
+  .showHead span:not(:first-child){text-align:center;}
+  .showRow{border-top:1px solid var(--line);padding:8px 0;font-size:15px;}
+  .showRow small{display:block;font-size:12.5px;color:var(--mid);line-height:1.35;margin-top:1px;}
+  .showRow .cell{display:flex;justify-content:center;}
+  .showRow input{width:19px;height:19px;margin:0;cursor:pointer;}
+  .showRow input:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
+  .showRow .na{font-size:12px;color:var(--faint);}
+  /* Data sources: a status line under each key. */
+  .keyBlock{border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin:10px 0;background:var(--panel);}
+  .keyBlock h4{margin:0 0 2px;font-size:15px;}
+  .keyStatus{font-size:13px;margin:6px 0 0;color:var(--mid);}
+  .keyStatus.ok{color:#3E7D32;}
+  .keyStatus.bad{color:#B4432F;}
+  :root[data-theme="dark"] .keyStatus.ok{color:#8BCB7E;}
+  :root[data-theme="dark"] .keyStatus.bad{color:#F08A74;}
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]) .keyStatus.ok{color:#8BCB7E;}
+    :root:not([data-theme="light"]) .keyStatus.bad{color:#F08A74;}
+  }
+  .keyBlock .subhead{margin-top:8px;}
+  /* The one-time "About you" prompt at the top of the page. */
+  .intro{background:var(--panel);border:1px solid var(--line);border-radius:18px;
+         padding:14px 16px;margin:0 0 12px;}
+  .intro h2{font-size:17px;margin:0 0 4px;}
+  .intro p{font-size:13.5px;color:var(--mid);margin:0 0 6px;line-height:1.45;}
+  .wiggleLink{background:none;border:none;font:inherit;font-size:14px;color:var(--link);
+              cursor:pointer;padding:6px 0;text-decoration:underline;text-underline-offset:3px;}
+
 </style>
 </head>
 <body>
@@ -630,13 +710,18 @@
   </div>
 
   <div class="bar">
-    <button id="settingsBtn" aria-expanded="false">Settings</button>
+    <button id="settingsBtn" aria-haspopup="dialog">Settings</button>
     <button id="aboutBtn" aria-expanded="false">About</button>
   </div>
 
-  <div id="settingsPanel" class="panel" style="display:none"></div>
+  <dialog id="settingsDlg" class="sheet" aria-labelledby="settingsTitle">
+    <div class="sheetHead"><h2 id="settingsTitle">Settings</h2>
+      <button type="button" id="settingsClose">Done</button></div>
+    <div class="sheetBody" id="settingsBody"></div>
+  </dialog>
   <div id="aboutPanel" class="panel" style="display:none"></div>
 
+  <div id="introBody"></div>
   <p class="tiphint" id="tipHint">Tap any card for the numbers behind it.</p>
   <div id="alertBody"></div>
   <div id="homeBody"></div>
@@ -663,6 +748,10 @@
     try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {}
   }
   var store = loadStore();
+  // The one-time About you prompt is for first visits only: anyone who
+  // already has a saved store has been here before.
+  if (store.introSeen == null) store.introSeen = Object.keys(store).length > 0;
+  delete store.tab; delete store.tabOpen;   // from the old tabbed Settings panel
   if (!store.cards) store.cards = {};          // absent means on
   if (!store.pillCards) store.pillCards = {};  // absent means on, independent of store.cards
   if (!store.recents) store.recents = [];
@@ -690,7 +779,7 @@
     { id: 'meteor',    name: 'Meteor Showers',    note: 'Only near a major shower\u2019s peak, from AMS' },
     { id: 'eclipse',   name: 'Eclipse',           note: 'Only on an eclipse day' },
     { id: 'bird',      name: 'Bird Migration',    note: 'A Lights Out reminder in migration season, links to BirdCast' },
-    { id: 'ebird',     name: 'Notable Birds',     note: 'Needs your own eBird key \u2014 see Settings' },
+    { id: 'ebird',     name: 'Notable Birds',     note: 'Needs your own eBird key, under Data sources' },
     // to-do list only
     { id: 'mask',      name: 'Masking',           note: 'Suggests a mask when the air or the viruses are bad' },
     { id: 'swim',      name: 'Swimming',          note: 'Suggests a swim, and flags good swimming days ahead' },
@@ -1556,7 +1645,7 @@
       else if (a > 100) out.push({ text: 'Shorten Your Workout \u2014 ' + aqiDet, when: 'day', rank: 12 });
     }
 
-    tip += ' Change your sensitive-group status in Settings.';
+    tip += ' Change your sensitive-group status in Settings \u2192 About you, or just below.';
     // Today's reading already covers current smoke \u2014 this is only for
     // the one real gap: whether more is coming. NOAA's HRRR-Smoke model
     // is the actual forecast, but it only publishes as raster imagery,
@@ -2096,7 +2185,7 @@
     if (!rows.length) return null;
     var tip = rows.length === 1 ? rows[0][0] + '.' : rows.length + ' orders in effect today.';
     if (!f.state && !(store.keys && store.keys.mast)) {
-      tip += ' If state flags are not showing up, follow the API Key instructions in Settings.';
+      tip += ' If state flags are not showing up, add a Mast key in Settings \u2192 Data sources.';
     }
     return { bg: bgFlat('risk', 55), bold: 'Why is the Flag at Half-Staff?',
              tip: tip, rows: rows.map(function (r) { return [r[0] + ' (' + r[1] + ')']; }),
@@ -3178,7 +3267,7 @@
       tip: 'Nocturnal migration runs nationwide through mid-' + (spring ? 'June' : 'November')
          + '. Turning off non-essential outdoor lighting overnight cuts collision risk on the '
          + 'heaviest migration nights. Want more \u2014 actual notable sightings near you, not just '
-         + 'the seasonal reminder? Add a free eBird key in Settings \u2192 API Key.',
+         + 'the seasonal reminder? Add a free eBird key in Settings \u2192 Data sources.',
       link: { href: 'https://alert.birdcast.org/?latLng=' + lat.toFixed(4) + ',' + lon.toFixed(4),
                text: 'Check tonight\u2019s migration forecast' },
       todo: 'Outside Lights Out \u2014 migration season', todoWhen: 'night', todoRank: 80 };
@@ -3351,7 +3440,7 @@
     var o = blockOrder(), i = o.indexOf(id), j = i + dir;
     if (i < 0 || j < 0 || j >= o.length) return;
     o.splice(j, 0, o.splice(i, 1)[0]);
-    store.blocks = o; saveStore(); buildSettings(); renderHome();
+    store.blocks = o; saveStore(); syncSettings(); renderHome();
   }
 
   var DEFAULT_TILE_ORDER = ['flag', 'air', 'allergy', 'migraine', 'arthritis', 'frostbite', 'bug', 'frizz', 'virus', 'burn', 'light', 'water', 'pavement', 'wind', 'aurora', 'meteor', 'eclipse', 'bird', 'ebird'];
@@ -3405,7 +3494,7 @@
     // for why this needs to happen here now, not just be implied by a
     // saved order existing.
     if (which === 'tiles' && store.tileSort) store.tileSort = null;
-    saveStore(); buildSettings(); renderHome();
+    saveStore(); syncSettings(); renderHome();
   }
 
   /* ================= data =================
@@ -4054,16 +4143,26 @@
 
   /* ================= render ================= */
   /* A collapsible row usable anywhere \u2014 inside a tile's own expanded
-     detail, or a Settings tab. Always starts closed and never persists
-     that state, unlike collapseSection() in Settings, which remembers
-     what's open across reopening the panel because that's a screen
-     people return to. This is for an occasional, in-place reveal
-     ("what's my skin type set to") that doesn't need to be remembered. */
+     detail, or a Settings section. Always starts closed and never
+     persists that state: it's for an occasional, in-place reveal
+     ("what's my skin type set to") that doesn't need remembering.
+     Not a <button>: a tile is itself a <button>, and a button can't
+     legally contain another one, so this is a focusable role=button
+     with its own Enter/Space handling. countText may be a function,
+     in which case it stays current as the settings inside it change. */
   function disclosureRow(container, title, countText, buildBody) {
     var head = document.createElement('div'); head.className = 'subhead';
+    head.tabIndex = 0;
+    head.setAttribute('role', 'button');
+    head.setAttribute('aria-expanded', 'false');
     var h = document.createElement('h3'); h.textContent = title;
     head.appendChild(h);
-    if (countText) { var c = document.createElement('span'); c.className = 'count'; c.textContent = countText; head.appendChild(c); }
+    if (countText) {
+      var c = document.createElement('span'); c.className = 'count';
+      if (typeof countText === 'function') synced(c, function () { c.textContent = countText(); });
+      else c.textContent = countText;
+      head.appendChild(c);
+    }
     var chev = document.createElement('span'); chev.className = 'chev';
     chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true">'
       + '<path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" '
@@ -4071,20 +4170,24 @@
     head.appendChild(chev);
     var body = document.createElement('div'); body.className = 'subbody';
     var built = false;
-    head.addEventListener('click', function (e) {
+    function flip(e) {
       e.stopPropagation();   // a nested reveal should not also close the tile underneath it
       var open = !head.classList.contains('open');
       head.classList.toggle('open', open);
       body.classList.toggle('open', open);
+      head.setAttribute('aria-expanded', open ? 'true' : 'false');
       if (open && !built) { buildBody(body); built = true; }
+    }
+    head.addEventListener('click', flip);
+    head.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); flip(e); }
     });
     container.appendChild(head);
     container.appendChild(body);
   }
   /* The allergen checklist, by category \u2014 built once, used both by the
-     Allergens tile's own nested disclosure and (from here on) wherever
-     else it's needed, so the two can never drift out of sync with each
-     other the way two hand-written copies eventually would. */
+     Allergens tile's own nested disclosure and Settings \u2192 About you,
+     so the two can never drift out of sync with each other. */
   function allergyCategoryRows(container) {
     if (!store.allergyPlants) store.allergyPlants = {};
     var lede = document.createElement('p'); lede.className = 'lede';
@@ -4095,17 +4198,14 @@
     ALLERGY_PLANTS.forEach(function (p) { (byCategory[ALLERGY_CAT[p]] = byCategory[ALLERGY_CAT[p]] || []).push(p); });
     ['Trees', 'Grass', 'Weeds', 'Mold'].forEach(function (catName) {
       var plants = byCategory[catName] || [];
-      var onCount = plants.filter(function (p) { return store.allergyPlants[p] !== false; }).length;
-      disclosureRow(container, catName, onCount + ' of ' + plants.length + ' on', function (body) {
+      var count = function () {
+        return plants.filter(function (p) { return store.allergyPlants[p] !== false; }).length + ' of ' + plants.length + ' on';
+      };
+      disclosureRow(container, catName, count, function (body) {
         plants.forEach(function (plant) {
-          var row = document.createElement('label'); row.className = 'opt';
-          var box = document.createElement('input'); box.type = 'checkbox';
-          box.checked = store.allergyPlants[plant] !== false;
-          box.addEventListener('change', function () {
-            store.allergyPlants[plant] = box.checked; saveStore(); renderHome();
-          });
-          var sp = document.createElement('span'); sp.textContent = cap(plant);
-          row.appendChild(box); row.appendChild(sp); body.appendChild(row);
+          body.appendChild(control({ type: 'check', label: cap(plant), after: 'render',
+            get: function () { return store.allergyPlants[plant] !== false; },
+            set: function (v) { store.allergyPlants[plant] = v; } }));
         });
       });
     });
@@ -4464,31 +4564,12 @@
       // with the card's actual weather information for attention.
       if (id === 'burn') {
         disclosureRow(t, 'Adjust Skin Type', null, function (body) {
-          SKIN.forEach(function (sk) {
-            var row = document.createElement('label'); row.className = 'opt sub';
-            var r = document.createElement('input'); r.type = 'radio'; r.name = 'skin';
-            r.checked = (store.skin || 2) === sk.id;
-            r.addEventListener('change', function () {
-              store.skin = sk.id; saveStore(); renderHome();
-            });
-            var sp = document.createElement('span'); sp.textContent = sk.label;
-            row.appendChild(r); row.appendChild(sp); body.appendChild(row);
-          });
+          body.appendChild(control(skinDef(true)));
         });
       }
       if (id === 'air') {
         disclosureRow(t, 'Air Quality Settings', null, function (body) {
-          var sRow = document.createElement('label'); sRow.className = 'opt sub';
-          var sBox = document.createElement('input'); sBox.type = 'checkbox'; sBox.checked = sensitive();
-          sBox.addEventListener('change', function () {
-            store.sensitive = sBox.checked; saveStore(); renderHome();
-          });
-          var sTx = document.createElement('span');
-          sTx.textContent = 'Air quality affects me sooner than most';
-          var sSm = document.createElement('small');
-          sSm.textContent = 'Asthma, COPD, heart conditions, pregnancy, or you are older or very young';
-          sTx.appendChild(sSm);
-          sRow.appendChild(sBox); sRow.appendChild(sTx); body.appendChild(sRow);
+          body.appendChild(control(sensitiveDef(true)));
         });
       }
       if (id === 'allergy') {
@@ -4496,6 +4577,7 @@
           allergyCategoryRows(body);
         });
       }
+      t.addEventListener('keydown', function (e) { e.stopPropagation(); });
       el.appendChild(t);
       el.setAttribute('aria-expanded', 'false');
       el.addEventListener('click', function () {
@@ -4711,142 +4793,23 @@
     renderHome();
   }
 
-  /* All of what follows \u2014 the page-level strip (emoji, light/dark,
-     color presets/Custom) and the per-block extras below Across the
-     Day and Tiles \u2014 render ONLY while rearrange mode is on. These are
-     settings people touch rarely, not on every visit; surfacing them
-     permanently was the clutter this whole redesign was about in the
-     first place. Wiggly mode is already "I'm here to change how the
-     page is arranged," so it's the one moment these earn their space.
-     Plain checkboxes throughout, no toggle switches, no preview
-     graphics \u2014 brevity over polish, matching how the rest of wiggly
-     mode already reads. */
-  function wiggleCheck(label, checked, onChange) {
-    var row = document.createElement('label'); row.className = 'opt';
-    var box = document.createElement('input'); box.type = 'checkbox'; box.checked = checked;
-    box.addEventListener('change', function () { onChange(box.checked); });
-    var sp = document.createElement('span'); sp.textContent = label;
-    row.appendChild(box); row.appendChild(sp);
-    return row;
-  }
-
-  var wiggleCustomOpen = false;
+  /* Rearrange mode is for layout only: drag, hide, add, tile order and
+     hour markers. Colours, light/dark, icons and the multi-day style
+     used to render here too, but they are appearance, not arrangement,
+     and hiding them behind a long-press made them the hardest settings
+     in the app to find. They live in Settings \u2192 Appearance now, and
+     this strip links straight there. */
   function buildWiggleStrip() {
     var strip = document.createElement('div'); strip.className = 'wiggleStrip';
-
-    // Real icons instead of emoji now, but the same on/off people had
-    // for emoji is worth keeping \u2014 a checkbox, not a labelled group of
-    // its own, since it's one simple choice rather than several.
-    strip.appendChild(wiggleCheck('Show Icons', showEmoji(), function (v) {
-      store.icons = v; saveStore(); renderHome();
-    }));
-
-    // Four genuinely separate preferences were sitting in this one strip
-    // with nothing between them \u2014 no header, no divider \u2014 so it read
-    // as one long wall of buttons rather than four distinct choices.
-    // Labelled groups now, reusing the same small caption style as the
-    // tile-order label below.
-    var appearanceLabel = document.createElement('div'); appearanceLabel.className = 'wiggleSortLabel';
-    appearanceLabel.textContent = 'Multi-day style';
-    strip.appendChild(appearanceLabel);
-    // Lives here rather than under Across the Day, and always shows
-    // rather than only when span > 1. It was conditional before, which
-    // meant it only appeared in exactly the view where the rest of
-    // wiggly mode didn't work at all \u2014 effectively unreachable. As a
-    // page-level control alongside the other always-present ones, the
-    // multi-day style can be set before switching into multi-day view,
-    // not only once already there.
-    // Shown as two labelled miniatures flanking a switch, not a
-    // sentence: "pills" tested badly \u2014 people didn't know what the word
-    // meant \u2014 and the difference is purely visual anyway, so showing
-    // the two shapes says it without needing a word for either.
-    strip.appendChild(mdStyleToggle());
-
-    var dmLabel = document.createElement('div'); dmLabel.className = 'wiggleSortLabel';
-    dmLabel.textContent = 'Appearance';
-    strip.appendChild(dmLabel);
-    var dm = document.createElement('div'); dm.className = 'presets';
-    [['light', 'Light Mode'], ['dark', 'Dark Mode'], ['auto', 'Match System']].forEach(function (opt) {
-      var b = document.createElement('button');
-      b.className = 'preset' + ((store.darkMode || 'auto') === opt[0] ? ' sel' : '');
-      b.textContent = opt[1];
-      b.addEventListener('click', function () {
-        store.darkMode = opt[0]; saveStore(); applyTheme();
-      });
-      dm.appendChild(b);
-    });
-    strip.appendChild(dm);
-
-    var t = store.theme || {};
-    var custom = t.cold || t.good || t.warm || t.danger || t.night || t.dawn || t.day;
-    var themeLabel = document.createElement('div'); themeLabel.className = 'wiggleSortLabel';
-    themeLabel.textContent = 'Color palette';
-    strip.appendChild(themeLabel);
-    var pr = document.createElement('div'); pr.className = 'presets';
-    Object.keys(PRESETS).forEach(function (k) {
-      var b = document.createElement('button');
-      b.className = 'preset' + ((t.preset || 'default') === k && !custom ? ' sel' : '');
-      b.textContent = PRESETS[k].name;
-      var sw = document.createElement('span'); sw.className = 'sw';
-      ['cold', 'good', 'warm', 'danger'].forEach(function (a) {
-        var d2 = document.createElement('i'); d2.style.background = PRESETS[k][a]; sw.appendChild(d2);
-      });
-      b.appendChild(sw);
-      b.addEventListener('click', function () {
-        store.theme = { preset: k }; saveStore(); buildRamps(); renderHome();
-      });
-      pr.appendChild(b);
-    });
-    var cb = document.createElement('button');
-    cb.className = 'preset' + (custom || wiggleCustomOpen ? ' sel' : '');
-    cb.textContent = 'Custom';
-    var cbsw = document.createElement('span'); cbsw.className = 'sw';
-    var A0 = anchors();
-    [A0.cold, A0.good, A0.warm, A0.danger].forEach(function (c) {
-      var d3 = document.createElement('i'); d3.style.background = custom ? c : 'transparent';
-      d3.style.border = '1px dashed currentColor'; cbsw.appendChild(d3);
-    });
-    cb.appendChild(cbsw);
-    cb.addEventListener('click', function () {
-      wiggleCustomOpen = !wiggleCustomOpen; renderHome();
-    });
-    pr.appendChild(cb);
-    strip.appendChild(pr);
-
-    // Not a preference like the three groups above \u2014 a one-off action
-    // (bring a hidden block back), so it gets its own visual separation
-    // rather than trailing invisibly off the end of the color group.
+    var link = document.createElement('button'); link.type = 'button'; link.className = 'wiggleLink';
+    link.textContent = 'Colours, dark mode and icons are in Settings \u2192 Appearance';
+    link.addEventListener('click', function () { openSettings('look'); });
+    strip.appendChild(link);
+    // A one-off action (bring a hidden block back), not a preference.
     var addBlk = addBlockAffordance();
     if (addBlk) {
       addBlk.style.marginTop = '10px';
       strip.appendChild(addBlk);
-    }
-
-    if (custom || wiggleCustomOpen) {
-      var pickers = document.createElement('div');
-      var swatchHead = document.createElement('h3'); swatchHead.textContent = 'Condition colors'; swatchHead.style.cssText = 'font-size:12px;margin:2px 0 4px;';
-      pickers.appendChild(swatchHead);
-      var A = anchors();
-      swatchRow('cold', 'Cold and dry', A.cold, pickers);
-      swatchRow('good', 'Fine', A.good, pickers);
-      swatchRow('warm', 'Warm', A.warm, pickers);
-      swatchRow('danger', 'Dangerous', A.danger, pickers);
-      var dh = document.createElement('h3'); dh.textContent = 'Sunrise and sunset'; dh.style.cssText = 'font-size:12px;margin:10px 0 4px;';
-      pickers.appendChild(dh);
-      var TH = store.theme || {};
-      swatchRow('night', 'Night', TH.night || rgb2hex(NIGHT), pickers);
-      swatchRow('dawn', 'Dawn and dusk', TH.dawn || rgb2hex(TWILIGHT), pickers);
-      swatchRow('day', 'Midday', TH.day || rgb2hex(DAYLIT), pickers);
-      var warn = document.createElement('p'); warn.className = 'lede contrast'; warn.id = 'contrastNote';
-      pickers.appendChild(warn);
-      var reset = document.createElement('button'); reset.className = 'reset';
-      reset.textContent = 'Reset colours';
-      reset.addEventListener('click', function () {
-        store.theme = { preset: 'default' }; saveStore(); buildRamps(); renderHome();
-      });
-      pickers.appendChild(reset);
-      strip.appendChild(pickers);
-      updateContrast();
     }
     return strip;
   }
@@ -4862,7 +4825,7 @@
      is the shape, not today's colors. */
   var PREVIEW_MD_BG = 'linear-gradient(90deg,#A8C89A,#9DBBD6,#A8C89A,#9DBBD6)';
   function mdStyleToggle() {
-    var pills = (store.mdStyle || 'strip') === 'pills';
+    function isPills() { return (store.mdStyle || 'strip') === 'pills'; }
     function mini(sep) {
       var box = document.createElement('div'); box.className = 'mdMini';
       if (sep) {
@@ -4878,30 +4841,35 @@
       }
       return box;
     }
-    function side(labelText, sep, active) {
-      var col = document.createElement('div'); col.className = 'mdSide' + (active ? ' sel' : '');
+    function side(labelText, sep) {
+      var col = document.createElement('div'); col.className = 'mdSide';
       col.appendChild(mini(sep));
       var lb = document.createElement('div'); lb.className = 'mdSideLabel'; lb.textContent = labelText;
       col.appendChild(lb);
       col.addEventListener('click', function () {
-        store.mdStyle = sep ? 'pills' : 'strip'; saveStore(); renderHome();
+        store.mdStyle = sep ? 'pills' : 'strip'; commit('render');
       });
       return col;
     }
     var row = document.createElement('div'); row.className = 'mdToggleRow';
-    row.appendChild(side('Day-by-Day', true, pills));
+    var left = side('Day-by-Day', true), right = side('Continuous', false);
+    row.appendChild(left);
     var sw = document.createElement('label'); sw.className = 'toggleSwitch';
-    var input = document.createElement('input'); input.type = 'checkbox'; input.checked = !pills;
+    var input = document.createElement('input'); input.type = 'checkbox';
     input.setAttribute('aria-label', 'Multi-day style: off is day-by-day, on is continuous');
     input.addEventListener('change', function () {
-      store.mdStyle = input.checked ? 'strip' : 'pills'; saveStore(); renderHome();
+      store.mdStyle = input.checked ? 'strip' : 'pills'; commit('render');
     });
     var track = document.createElement('span'); track.className = 'track';
     var thumb = document.createElement('span'); thumb.className = 'thumb';
     sw.appendChild(input); sw.appendChild(track); sw.appendChild(thumb);
     row.appendChild(sw);
-    row.appendChild(side('Continuous', false, !pills));
-    return row;
+    row.appendChild(right);
+    return synced(row, function () {
+      var pills = isPills();
+      input.checked = !pills;
+      left.classList.toggle('sel', pills); right.classList.toggle('sel', !pills);
+    });
   }
 
   function hourMarkerSlider() {
@@ -4909,19 +4877,26 @@
     var label = document.createElement('div'); label.className = 'hmLabel'; label.textContent = 'Hour Markers';
     wrap.appendChild(label);
     var track = document.createElement('div'); track.className = 'hmTrack';
-    [[0, 'none'], [3, '3 hr'], [4, '4 hr'], [6, '6 hr']].forEach(function (opt, i, arr) {
-      var dot = document.createElement('button'); dot.type = 'button';
-      dot.className = 'hmDot' + ((store.tickHours || 0) === opt[0] ? ' sel' : '');
+    track.setAttribute('role', 'group'); track.setAttribute('aria-label', 'Hour markers');
+    var OPTS = [[0, 'none'], [3, '3 hr'], [4, '4 hr'], [6, '6 hr']];
+    var dots = OPTS.map(function (opt) {
+      var dot = document.createElement('button'); dot.type = 'button'; dot.className = 'hmDot';
       var circ = document.createElement('span'); circ.className = 'hmCirc';
       var txt = document.createElement('span'); txt.className = 'hmTxt'; txt.textContent = opt[1];
       dot.appendChild(circ); dot.appendChild(txt);
       dot.addEventListener('click', function () {
-        store.tickHours = opt[0]; saveStore(); renderHome();
+        store.tickHours = opt[0]; commit('render');
       });
       track.appendChild(dot);
+      return dot;
     });
     wrap.appendChild(track);
-    return wrap;
+    return synced(wrap, function () {
+      dots.forEach(function (d, i) {
+        var sel = (store.tickHours || 0) === OPTS[i][0];
+        d.classList.toggle('sel', sel); d.setAttribute('aria-pressed', sel ? 'true' : 'false');
+      });
+    });
   }
 
   /* The other half of rearrange mode: dragging only ever works on a
@@ -5404,7 +5379,7 @@
     var o = sectionOrder(), i = o.indexOf(id), j = i + dir;
     if (i < 0 || j < 0 || j >= o.length) return;
     o.splice(j, 0, o.splice(i, 1)[0]);
-    store.sections = o; saveStore(); buildSettings(); renderHome();
+    store.sections = o; saveStore(); syncSettings(); renderHome();
   }
   function todoCard(weekItems) {
     var shutIn = todos.some(function (t) { return t.blocksOutdoor; });
@@ -6382,14 +6357,10 @@
       if (!el || (b === 'tiles' && !el.children.length)) return;
       el.insertBefore(blockHead(b, el), el.firstChild);
       if (rearrange.active && b === 'cards') {
-        el.appendChild(wiggleCheck('Move text below color blocks for enhanced legibility',
-          !!store.stripHourly, function (v) { store.stripHourly = v; saveStore(); renderHome(); }));
         el.appendChild(hourMarkerSlider());
       }
       if (rearrange.active && b === 'tiles') {
         var extra = document.createElement('div'); extra.className = 'wiggleTileExtras';
-        extra.appendChild(wiggleCheck('Move text below color blocks for enhanced legibility',
-          !!store.stripTiles, function (v) { store.stripTiles = v; saveStore(); renderHome(); }));
         var sortLabel = document.createElement('div'); sortLabel.className = 'wiggleSortLabel';
         sortLabel.textContent = 'Tile order';
         extra.appendChild(sortLabel);
@@ -6557,233 +6528,662 @@
   }
   wireSearch(qIn, results, function (x) { searchBox.style.display = 'none'; loadHome(x); });
 
-  /* ================= settings ================= */
-  var settingsPanel = document.getElementById('settingsPanel');
+  /* ================= settings =================
+     One sheet, six sections, and every setting in the app has its home
+     in one of them. The on-page shortcuts (a card's own disclosure,
+     rearrange mode's drag and + Add) still work, but they are shortcuts
+     to a setting that also lives here, never the only way to reach it.
+     "Rarely touched" is exactly why a setting needs a findable home:
+     nobody remembers where a thing they change twice a year is hidden. */
+  var settingsDlg = document.getElementById('settingsDlg');
+  var settingsBody = document.getElementById('settingsBody');
   var aboutPanel = document.getElementById('aboutPanel');
 
-  var TABS = [['todo', 'To-Do List'], ['key', 'API Key']];
-
-  function buildSettings() {
-    settingsPanel.innerHTML = '';
-    var tab = store.tab || 'todo';
-    if (!TABS.some(function (t) { return t[0] === tab; })) tab = 'todo';
-    var isOpen = store.tabOpen !== false;
-
-    var bar = document.createElement('div'); bar.className = 'tabs';
-    TABS.forEach(function (t) {
-      var b = document.createElement('button');
-      b.className = 'tab' + (tab === t[0] && isOpen ? ' sel' : '');
-      b.textContent = t[1];
-      b.addEventListener('click', function () {
-        // Tapping the tab that's already open collapses just its
-        // content, leaving the row of tab names in place \u2014 the
-        // confusion this fixes was people not realizing "Settings"
-        // itself is the only thing that closes the whole panel, and
-        // expecting a tab to be able to tuck itself away instead.
-        if (store.tab === t[0] && isOpen) { store.tabOpen = false; }
-        else { store.tab = t[0]; store.tabOpen = true; }
-        saveStore(); buildSettings();
-      });
-      bar.appendChild(b);
+  /* Every control, in Settings or on a card, is drawn by control() from
+     a small definition: what it reads, what it writes, and what has to
+     be redrawn afterwards. Each keeps itself current through el._sync,
+     so a change made in one place (a chip in About you) shows up in
+     every other control reading the same value (that card's row in
+     What shows) without rebuilding anything \u2014 which is also what
+     keeps keyboard focus where it was. */
+  function syncSettings() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-sync]'), function (el) {
+      if (el._sync) el._sync();
     });
-    settingsPanel.appendChild(bar);
-    if (!isOpen) return;
+  }
+  function synced(el, sync) {
+    el.setAttribute('data-sync', '');
+    el._sync = sync; sync();
+    return el;
+  }
+  // after: 'render' redraws the page, 'ramps' rebuilds the colour ramps
+  // first, 'theme' only swaps light/dark (no redraw needed).
+  function commit(after) {
+    saveStore();
+    if (after === 'ramps') buildRamps();
+    if (after === 'theme') applyTheme(); else renderHome();
+    syncSettings();
+  }
+  var TICK_SVG = '<svg class="tick" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" '
+               + 'fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var CHEV_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" '
+               + 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var controlSeq = 0;
 
-    if (tab === 'todo') buildTodoTab();
-    else buildKeyTab();
+  function control(def) {
+    var el;
+    if (def.type === 'check') {
+      el = document.createElement('label'); el.className = 'opt' + (def.sub ? ' sub' : '');
+      var box = document.createElement('input'); box.type = 'checkbox';
+      box.addEventListener('change', function () { def.set(box.checked); commit(def.after); });
+      var sp = document.createElement('span'); sp.textContent = def.label;
+      if (def.note) { var sm = document.createElement('small'); sm.textContent = def.note; sp.appendChild(sm); }
+      el.appendChild(box); el.appendChild(sp);
+      return synced(el, function () { box.checked = !!def.get(); });
+    }
+    if (def.type === 'radio') {
+      el = document.createElement('div'); el.setAttribute('role', 'radiogroup');
+      if (def.label) el.setAttribute('aria-label', def.label);
+      var name = 'ctl' + (++controlSeq);
+      var radios = def.options.map(function (o) {
+        var row = document.createElement('label'); row.className = 'opt' + (def.sub ? ' sub' : '');
+        var r = document.createElement('input'); r.type = 'radio'; r.name = name;
+        r.addEventListener('change', function () { if (r.checked) { def.set(o[0]); commit(def.after); } });
+        var sp2 = document.createElement('span'); sp2.textContent = o[1];
+        row.appendChild(r); row.appendChild(sp2); el.appendChild(row);
+        return r;
+      });
+      return synced(el, function () {
+        var v = def.get();
+        radios.forEach(function (r, i) { r.checked = def.options[i][0] === v; });
+      });
+    }
+    if (def.type === 'buttons') {
+      el = document.createElement('div'); el.className = 'presets'; el.setAttribute('role', 'group');
+      if (def.label) el.setAttribute('aria-label', def.label);
+      var btns = def.options.map(function (o) {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'preset';
+        b.textContent = o[1];
+        if (o[2]) b.appendChild(o[2]);
+        b.addEventListener('click', function () { def.set(o[0]); commit(def.after); });
+        el.appendChild(b);
+        return b;
+      });
+      return synced(el, function () {
+        var v = def.get();
+        btns.forEach(function (b, i) {
+          var sel = def.options[i][0] === v;
+          b.classList.toggle('sel', sel); b.setAttribute('aria-pressed', sel ? 'true' : 'false');
+        });
+      });
+    }
+    if (def.type === 'chip') {
+      el = document.createElement('button'); el.type = 'button'; el.className = 'chip';
+      el.innerHTML = TICK_SVG;
+      el.appendChild(document.createTextNode(def.label));
+      el.addEventListener('click', function () {
+        def.set(el.getAttribute('aria-pressed') !== 'true'); commit(def.after);
+      });
+      return synced(el, function () { el.setAttribute('aria-pressed', def.get() ? 'true' : 'false'); });
+    }
+    if (def.type === 'color') {
+      el = document.createElement('label'); el.className = 'opt';
+      var inp = document.createElement('input'); inp.type = 'color';
+      inp.style.cssText = 'width:38px;height:26px;padding:0;border:1px solid var(--line);border-radius:5px;background:none;flex:0 0 auto';
+      inp.addEventListener('input', function () { def.set(inp.value); commit(def.after); });
+      var sp3 = document.createElement('span'); sp3.textContent = def.label;
+      el.appendChild(inp); el.appendChild(sp3);
+      return synced(el, function () { if (document.activeElement !== inp) inp.value = def.get(); });
+    }
+    throw new Error('Unknown control type ' + def.type);
   }
 
-  /* A named, collapsible group within a settings tab. Closed by default
-     unless defaultOpen says otherwise (typically: something inside it is
-     already customized, so the person sees their own settings without an
-     extra tap). State persists per key across reopening Settings, the
-     same way the top-level tabs already remember what's open. buildBody
-     receives the container to append into \u2014 append there, not to
-     settingsPanel directly, or it'll land outside the collapsible. */
-  function collapseSection(key, title, countText, defaultOpen, buildBody) {
+  function h3(container, text) {
+    var h = document.createElement('h3'); h.textContent = text; container.appendChild(h); return h;
+  }
+  function lede(container, text) {
+    var p = document.createElement('p'); p.className = 'lede'; p.textContent = text; container.appendChild(p); return p;
+  }
+  function btn(container, text, cls, onClick) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'btn' + (cls ? ' ' + cls : '');
+    b.textContent = text; b.addEventListener('click', onClick); container.appendChild(b); return b;
+  }
+
+  /* ---- shared definitions: used here and on the cards themselves ---- */
+  function skinDef(sub) {
+    return { type: 'radio', label: 'How your skin handles sun', sub: sub, after: 'render',
+             options: SKIN.map(function (sk) { return [sk.id, sk.label]; }),
+             get: function () { return skin().id; }, set: function (v) { store.skin = v; } };
+  }
+  function sensitiveDef(sub) {
+    return { type: 'check', sub: sub, after: 'render', label: 'Air quality affects me sooner than most',
+             note: 'Asthma, COPD, heart conditions, pregnancy, or you are older or very young',
+             get: sensitive, set: function (v) { store.sensitive = v; } };
+  }
+
+  /* ---- About you ----
+     Facts about the person, not a list of cards. Each chip is only a
+     shortcut: it switches its cards (and their reminders) on or off in
+     the same store What shows reads, so the card list stays the single
+     source of truth and any one card can still be switched back alone. */
+  var TILE_IDS = DEFAULT_HOURLY_ORDER.concat(DEFAULT_TILE_ORDER);
+  function isTile(id) { return TILE_IDS.indexOf(id) > -1; }
+  // A tile counts as showing if either its tile or its reminder is on;
+  // a to-do-only card has just the one switch.
+  function anyOn(id) { return on(id) || (isTile(id) && pillOn(id)); }
+  function setCard(id, v) { store.cards[id] = v; if (isTile(id)) store.pillCards[id] = v; }
+
+  var ABOUT_CHIPS = [
+    { label: 'A car',             cards: ['frost', 'rust'] },
+    { label: 'A dog',             cards: ['pavement'] },
+    { label: 'A lawn',            cards: ['mow'] },
+    { label: 'A garden',          cards: ['garden'] },
+    { label: 'A basement',        cards: ['mold'] },
+    { label: 'Exposed pipes',     cards: ['pipe'] },
+    { label: 'Somewhere to swim', cards: ['swim', 'water'] },
+    { label: 'Pollen allergies',  cards: ['allergy'] },
+    { label: 'Migraines',         cards: ['migraine'] },
+    { label: 'Arthritis',         cards: ['arthritis'] },
+    { label: 'Sensitive to air quality',
+      get: sensitive, set: function (v) { store.sensitive = v; } }
+  ];
+  function chipDef(c) {
+    return { type: 'chip', label: c.label, after: 'render',
+      get: c.get || function () { return c.cards.some(anyOn); },
+      set: c.set || function (v) { c.cards.forEach(function (id) { setCard(id, v); }); } };
+  }
+  function aboutChips(container) {
+    var wrap = document.createElement('div'); wrap.className = 'chips';
+    wrap.setAttribute('role', 'group'); wrap.setAttribute('aria-label', 'What applies to you');
+    ABOUT_CHIPS.forEach(function (c) { wrap.appendChild(control(chipDef(c))); });
+    container.appendChild(wrap);
+    lede(container, '\u201CSensitive to air quality\u201D means asthma, COPD, a heart condition, '
+      + 'pregnancy, or being older or very young. The air quality card warns sooner.');
+  }
+  function aboutSummary() {
+    var n = ABOUT_CHIPS.filter(function (c) { return chipDef(c).get(); }).length;
+    return n + ' of ' + ABOUT_CHIPS.length + ' apply';
+  }
+  function buildAboutSection(body) {
+    lede(body, 'Everything starts switched on. Untick what doesn\u2019t apply to you and those cards '
+      + 'and reminders go away. You can still switch single cards on or off under What shows.');
+    aboutChips(body);
+    h3(body, 'How your skin handles sun');
+    body.appendChild(control(skinDef(false)));
+    h3(body, 'Pollen');
+    allergyCategoryRows(body);
+  }
+
+  /* The one-time version of the same chips, at the top of the page on
+     a first visit only. Existing visitors are marked as having seen it
+     when the store loads, so it never appears for them. */
+  function buildIntro() {
+    var host = document.getElementById('introBody');
+    host.innerHTML = '';
+    if (store.introSeen) return;
+    var box = document.createElement('section'); box.className = 'intro';
+    box.setAttribute('aria-labelledby', 'introTitle');
+    var h = document.createElement('h2'); h.id = 'introTitle'; h.textContent = 'Make it yours';
+    box.appendChild(h);
+    var p = document.createElement('p');
+    p.textContent = 'Everything starts switched on. Untick anything that doesn\u2019t apply to you and its '
+      + 'cards and reminders go away. You can change this any time in Settings \u2192 About you.';
+    box.appendChild(p);
+    aboutChips(box);
+    var row = document.createElement('div'); row.className = 'btnRow';
+    function finish() { store.introSeen = true; saveStore(); host.innerHTML = ''; }
+    btn(row, 'Done', 'primary', finish);
+    btn(row, 'Skip for now', '', finish);
+    box.appendChild(row);
+    host.appendChild(box);
+  }
+
+  /* ---- What shows ----
+     One row per card and both of its switches side by side: the tile on
+     the page, and the reminder it can add to the to-do list. Two stores
+     underneath (cards / pillCards) because they genuinely are
+     independent, but one row, so nobody has to learn that hiding a tile
+     and muting its reminder live in two different places. */
+  // Tiles whose builder can produce a to-do. A tile not listed here has
+  // no reminder to switch, so its row shows a dash instead of a box
+  // that would do nothing. Add a card's id here when it gains a to-do.
+  var HAS_TODO = ['feels', 'sky', 'burn', 'air', 'allergy', 'migraine', 'arthritis', 'water', 'virus',
+                  'bug', 'frostbite', 'pavement', 'wind', 'light', 'aurora', 'meteor', 'bird'];
+  function cellBox(label, get, set) {
+    var cell = document.createElement('span'); cell.className = 'cell';
+    var box = document.createElement('input'); box.type = 'checkbox';
+    box.setAttribute('aria-label', label);
+    box.addEventListener('change', function () { set(box.checked); commit('render'); });
+    cell.appendChild(synced(box, function () { box.checked = !!get(); }));
+    return cell;
+  }
+  function naCell(text) {
+    var c = document.createElement('span'); c.className = 'cell';
+    var s = document.createElement('span'); s.className = 'na'; s.textContent = text;
+    c.appendChild(s); return c;
+  }
+  function showRow(container, id) {
+    var meta = cardMeta(id);
+    var row = document.createElement('div'); row.className = 'showRow';
+    var nm = document.createElement('span'); nm.textContent = meta.name;
+    if (meta.note) { var sm = document.createElement('small'); sm.textContent = meta.note; nm.appendChild(sm); }
+    row.appendChild(nm);
+    if (!isTile(id)) {
+      row.appendChild(naCell('\u2014'));
+      row.appendChild(cellBox(meta.name + ' reminder', function () { return on(id); },
+        function (v) { store.cards[id] = v; }));
+    } else {
+      row.appendChild(meta.always ? naCell('Always')
+        : cellBox(meta.name + ' tile', function () { return on(id); }, function (v) { store.cards[id] = v; }));
+      row.appendChild(HAS_TODO.indexOf(id) > -1
+        ? cellBox(meta.name + ' reminder', function () { return pillOn(id); }, function (v) { store.pillCards[id] = v; })
+        : naCell('\u2014'));
+    }
+    container.appendChild(row);
+  }
+  function showHead(container, tileWord) {
+    var hd = document.createElement('div'); hd.className = 'showHead'; hd.setAttribute('aria-hidden', 'true');
+    ['', tileWord, 'To-do'].forEach(function (t) { var s = document.createElement('span'); s.textContent = t; hd.appendChild(s); });
+    container.appendChild(hd);
+  }
+  function byName(a, b) { return cardMeta(a).name.localeCompare(cardMeta(b).name); }
+  var SHOW_GROUPS = [
+    ['Across the day', DEFAULT_HOURLY_ORDER, 'Card'],
+    ['Tiles', DEFAULT_TILE_ORDER.slice().sort(byName), 'Tile'],
+    ['To-do only', PILL_ONLY.slice().sort(byName), '']
+  ];
+  function groupCount(ids) {
+    return function () { return ids.filter(anyOn).length + ' of ' + ids.length + ' on'; };
+  }
+  function showSummary() {
+    var all = TILE_IDS.concat(PILL_ONLY);
+    return all.filter(anyOn).length + ' of ' + all.length + ' on';
+  }
+  function buildShowSection(body) {
+    lede(body, 'Tile is the card on the page. To-do is the reminder it can add to your list \u2014 '
+      + 'sunscreen, a kite day, and so on. Each can be switched on its own.');
+    SHOW_GROUPS.forEach(function (g) {
+      disclosureRow(body, g[0], groupCount(g[1]), function (inner) {
+        showHead(inner, g[2]);
+        g[1].forEach(function (id) { showRow(inner, id); });
+      });
+    });
+  }
+
+  /* ---- Appearance ---- */
+  var MODE_NAME = { light: 'Light', dark: 'Dark', auto: 'Match system' };
+  function isCustomPalette() {
+    var t = store.theme || {};
+    return !!(t.cold || t.good || t.warm || t.danger || t.night || t.dawn || t.day);
+  }
+  var customOpen = false;
+  function paletteValue() {
+    return isCustomPalette() || customOpen ? 'custom' : ((store.theme || {}).preset || 'default');
+  }
+  function lookSummary() {
+    var pv = paletteValue();
+    return MODE_NAME[store.darkMode || 'auto'] + ' \u00B7 ' + (pv === 'custom' ? 'Custom' : PRESETS[pv].name);
+  }
+  function paletteSwatch(cols, dashed) {
+    var sw = document.createElement('span'); sw.className = 'sw';
+    cols.forEach(function (c) {
+      var i2 = document.createElement('i'); i2.style.background = c;
+      if (dashed) i2.style.border = '1px dashed currentColor';
+      sw.appendChild(i2);
+    });
+    return sw;
+  }
+  function themeColorDef(key, label, fallback) {
+    return { type: 'color', label: label, after: 'ramps',
+      get: function () { return (store.theme || {})[key] || fallback(); },
+      set: function (v) { store.theme = store.theme || {}; store.theme[key] = v; } };
+  }
+  function buildLookSection(body) {
+    h3(body, 'Light or dark');
+    body.appendChild(control({ type: 'buttons', label: 'Light or dark', after: 'theme',
+      options: [['light', 'Light'], ['dark', 'Dark'], ['auto', 'Match system']],
+      get: function () { return store.darkMode || 'auto'; }, set: function (v) { store.darkMode = v; } }));
+
+    h3(body, 'Colour palette');
+    var opts = Object.keys(PRESETS).map(function (k) {
+      var P = PRESETS[k];
+      return [k, PRESETS[k].name, paletteSwatch([P.cold, P.good, P.warm, P.danger])];
+    });
+    opts.push(['custom', 'Custom', paletteSwatch(['transparent', 'transparent', 'transparent', 'transparent'], true)]);
+    body.appendChild(control({ type: 'buttons', label: 'Colour palette', after: 'ramps', options: opts,
+      get: paletteValue,
+      set: function (v) {
+        if (v === 'custom') { customOpen = true; return; }
+        customOpen = false; store.theme = { preset: v };
+      } }));
+
+    var pickers = document.createElement('div');
+    h3(pickers, 'Condition colours');
+    var A = function (k) { return function () { return anchors()[k]; }; };
+    pickers.appendChild(control(themeColorDef('cold', 'Cold and dry', A('cold'))));
+    pickers.appendChild(control(themeColorDef('good', 'Fine', A('good'))));
+    pickers.appendChild(control(themeColorDef('warm', 'Warm', A('warm'))));
+    pickers.appendChild(control(themeColorDef('danger', 'Dangerous', A('danger'))));
+    h3(pickers, 'Sunrise and sunset');
+    pickers.appendChild(control(themeColorDef('night', 'Night', function () { return rgb2hex(NIGHT); })));
+    pickers.appendChild(control(themeColorDef('dawn', 'Dawn and dusk', function () { return rgb2hex(TWILIGHT); })));
+    pickers.appendChild(control(themeColorDef('day', 'Midday', function () { return rgb2hex(DAYLIT); })));
+    var warn = document.createElement('p'); warn.className = 'lede contrast'; warn.id = 'contrastNote';
+    pickers.appendChild(synced(warn, updateContrast));
+    var resetRow = document.createElement('div'); resetRow.className = 'btnRow';
+    btn(resetRow, 'Reset colours', '', function () {
+      customOpen = false; store.theme = { preset: 'default' }; commit('ramps');
+    });
+    pickers.appendChild(resetRow);
+    body.appendChild(synced(pickers, function () { pickers.style.display = paletteValue() === 'custom' ? '' : 'none'; }));
+
+    h3(body, 'Icons');
+    body.appendChild(control({ type: 'check', label: 'Show icons', after: 'render',
+      get: showEmoji, set: function (v) { store.icons = v; } }));
+
+    h3(body, 'Daily cards');
+    body.appendChild(control({ type: 'check', label: 'Move text below the colour',
+      note: 'Easier to read, whatever the palette', after: 'render',
+      get: function () { return store.stripHourly; }, set: function (v) { store.stripHourly = v; } }));
+    body.appendChild(hourMarkerSlider());
+
+    h3(body, 'Tiles');
+    body.appendChild(control({ type: 'check', label: 'Move text below the colour', after: 'render',
+      get: function () { return store.stripTiles; }, set: function (v) { store.stripTiles = v; } }));
+
+    h3(body, 'Several days at once');
+    body.appendChild(mdStyleToggle());
+  }
+
+  /* ---- Layout ---- */
+  var SORT_NAME = { color: 'Sorted by colour', urgency: 'Sorted by urgency', custom: 'Your own order' };
+  function layoutSummary() { return SORT_NAME[store.tileSort || 'custom']; }
+  function editLayoutNow() {
+    settingsDlg.close();
+    if (!rearrange.active) enterRearrangeMode();
+    renderHome();
+    window.scrollTo(0, 0);
+  }
+  function buildLayoutSection(body) {
+    lede(body, 'Drag cards into your own order, hide them, or add them back, right on the page. '
+      + 'Long-pressing any card does the same thing.');
+    var row = document.createElement('div'); row.className = 'btnRow';
+    btn(row, 'Edit layout on the page', 'primary', editLayoutNow);
+    body.appendChild(row);
+
+    h3(body, 'Sections');
+    DEFAULT_BLOCKS.forEach(function (b) {
+      body.appendChild(control({ type: 'check', label: BLOCK_NAME[b], after: 'render',
+        get: function () { return on('block-' + b); }, set: function (v) { store.cards['block-' + b] = v; } }));
+    });
+    TODO_ALL.forEach(function (x) {
+      body.appendChild(control({ type: 'check', sub: true, label: x[1], after: 'render',
+        get: function () { return on('sec-' + x[0]); }, set: function (v) { store.cards['sec-' + x[0]] = v; } }));
+    });
+
+    h3(body, 'Tile order');
+    body.appendChild(control({ type: 'buttons', label: 'Tile order', after: 'render',
+      options: [['color', 'By colour'], ['urgency', 'By urgency'], ['custom', 'My own order']],
+      get: function () { return store.tileSort || 'custom'; },
+      set: function (v) { store.tileSort = v === 'custom' ? null : v; } }));
+
+    var rrow = document.createElement('div'); rrow.className = 'btnRow';
+    btn(rrow, 'Reset layout to default', '', function () {
+      if (!window.confirm('Put every card and section back in its original order? Nothing is hidden or shown by this.')) return;
+      store.order = null; store.orderH = null; store.blocks = null; store.sections = null; store.tileSort = null;
+      commit('render');
+    });
+    body.appendChild(rrow);
+  }
+
+  /* ---- Data sources ----
+     Each key gets a status line, so pasting one is no longer an act of
+     faith: it is checked once against the real service as soon as it
+     changes, and the answer is kept so reopening Settings shows it
+     without spending another request. */
+  function keyPlace() {
+    return state.place || { lat: 42.33, lon: -83.05 };
+  }
+  // Resolves to { ok: true|false, msg } or null when the service could
+  // not be reached at all (offline, or an error without CORS headers).
+  function httpVerdict(r, who) {
+    if (r.ok) return { ok: true, msg: who + ' accepted the key.' };
+    if (r.status === 401 || r.status === 403) return { ok: false, msg: who + ' rejected this key. Check it was copied in full.' };
+    if (r.status === 429) return { ok: false, msg: who + ' says this key is over its usage limit for now.' };
+    return { ok: false, msg: who + ' answered with an error (HTTP ' + r.status + ').' };
+  }
+  function googleCheck(label, req) {
+    return req.then(function (r) {
+      if (r.ok) return { ok: true, label: label };
+      return r.json().catch(function () { return {}; }).then(function (jj) {
+        var m = (jj && jj.error && jj.error.message) || ('HTTP ' + r.status);
+        if (/not valid/i.test(m)) m = 'the key isn\u2019t valid';
+        else if (/not been used|disabled|not enabled/i.test(m)) m = 'the ' + label + ' API isn\u2019t enabled for this key';
+        else if (/billing/i.test(m)) m = 'billing isn\u2019t turned on for the project';
+        else if (m.length > 120) m = m.slice(0, 117) + '\u2026';
+        return { ok: false, label: label, msg: m };
+      });
+    });
+  }
+  var KEY_SERVICES = [
+    { id: 'mast', title: 'Mast', purpose: 'state half-staff orders',
+      without: 'Without a key, the flag card covers federal orders and dates set by law.',
+      placeholder: 'Paste Mast key',
+      how: [
+        'The free tier allows 250 requests a month. This app uses up to four a day per state, cached for six hours, so there\u2019s plenty of headroom.',
+        'This is the easiest of the three: sign up at mast.today with just your email, no payment method, and they\u2019ll email you the key. Copy and paste it above.'
+      ],
+      onChange: function () { try { localStorage.removeItem('morningbrief.flag.v1'); } catch (e) {} },
+      test: function (k) {
+        return fetch('https://www.mast.today/api/v1/status?countryCode=US&stateCode=NY',
+          { headers: { 'x-mast-license-key': k } }).then(function (r) { return httpVerdict(r, 'Mast'); });
+      } },
+    { id: 'ebird', title: 'eBird', purpose: 'notable birds nearby',
+      without: 'Without a key, the Notable Birds tile doesn\u2019t appear.',
+      placeholder: 'Paste eBird key',
+      how: [
+        'eBird counts a sighting as notable when the bird is locally or nationally rare, or out of season for the area.',
+        'Free and simple: create an eBird account if you don\u2019t have one (the same account works across all the Cornell Lab apps), then request a key at ebird.org/api/keygen. Copy and paste it above.'
+      ],
+      test: function (k) {
+        var pl = keyPlace();
+        return fetch('https://api.ebird.org/v2/data/obs/geo/recent/notable?lat=' + pl.lat.toFixed(2)
+          + '&lng=' + pl.lon.toFixed(2) + '&back=1&dist=5', { headers: { 'X-eBirdApiToken': k } })
+          .then(function (r) { return httpVerdict(r, 'eBird'); });
+      } },
+    { id: 'google', title: 'Google', purpose: 'measured pollen and fine-grid air quality',
+      without: 'Without a key, allergens come from a regional bloom calendar and air quality from Copernicus CAMS at about 45 km.',
+      placeholder: 'Paste Google key',
+      how: [
+        'With a key you get measured pollen that names the actual plants in season, and air quality on a 500 m grid. It takes more steps than the others, since it goes through Google Cloud Console:'
+      ],
+      steps: [
+        'Go to console.cloud.google.com and create a project.',
+        'In APIs & Services, enable both the Pollen API and the Air Quality API.',
+        'Turn on billing for the project. Both are paid-tier products, so a card is required even though you are unlikely to be charged.',
+        'Under Credentials, create an API key.',
+        'Restrict the key to those two APIs so it cannot be used for anything else.',
+        'Under Google Maps Platform, then Quotas, set a daily cap of about 100 on each so a mistake cannot run up a bill.',
+        'Paste the key above.'
+      ],
+      after: 'Each API allows 5,000 free calls a month, and this app uses a handful a day, cached for 30 minutes \u2014 a personal bill should be zero. The key is billed to whoever created it.',
+      test: function (k) {
+        var pl = keyPlace();
+        return Promise.all([
+          googleCheck('Pollen', fetch('https://pollen.googleapis.com/v1/forecast:lookup?key=' + encodeURIComponent(k)
+            + '&location.latitude=' + pl.lat + '&location.longitude=' + pl.lon + '&days=1&plantsDescription=0')),
+          googleCheck('Air Quality', fetch('https://airquality.googleapis.com/v1/currentConditions:lookup?key='
+            + encodeURIComponent(k), { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ location: { latitude: pl.lat, longitude: pl.lon } }) }))
+        ]).then(function (res) {
+          var bad = res.filter(function (x) { return !x.ok; });
+          if (!bad.length) return { ok: true, msg: 'Pollen and Air Quality both answered.' };
+          var good = res.filter(function (x) { return x.ok; });
+          return { ok: false, msg: (good.length ? good[0].label + ' works, but ' : '') + bad.map(function (x) {
+            return x.label + ': ' + x.msg; }).join('; ') + '.' };
+        });
+      } }
+  ];
+  var keyChecking = {};
+  function keyStatusText(svc) {
+    var k = store.keys[svc.id];
+    if (!k) return { cls: '', text: 'Not set. ' + svc.without };
+    if (keyChecking[svc.id]) return { cls: '', text: 'Checking the key\u2026' };
+    var st = (store.keyStatus || {})[svc.id];
+    if (!st || st.key !== k.slice(-6)) return { cls: '', text: 'Saved.' };
+    if (st.ok === null) return { cls: '', text: 'Saved and in use, but ' + svc.title + ' couldn\u2019t be reached to check it. It will be checked again next time you open this.' };
+    return { cls: st.ok ? 'ok' : 'bad', text: (st.ok ? '\u2713 Working. ' : '\u2717 Not working: ') + st.msg };
+  }
+  function checkKey(svc) {
+    var k = store.keys[svc.id];
+    if (!k) return;
+    keyChecking[svc.id] = true; syncSettings();
+    svc.test(k).catch(function () { return null; }).then(function (v) {
+      delete keyChecking[svc.id];
+      if (store.keys[svc.id] !== k) return;   // edited again while this was in flight
+      store.keyStatus = store.keyStatus || {};
+      store.keyStatus[svc.id] = { key: k.slice(-6), ok: v ? v.ok : null, msg: v ? v.msg : '', at: Date.now() };
+      saveStore(); syncSettings();
+    });
+  }
+  function keysSummary() {
+    var n = KEY_SERVICES.filter(function (s) { return store.keys[s.id]; }).length;
+    return n ? n + ' of 3 keys added' : 'All optional';
+  }
+  function buildKeysSection(body) {
+    lede(body, 'Everything works without these. Each free key adds one thing, is stored only in this '
+      + 'browser, and is billed (if ever) to whoever created it.');
+    KEY_SERVICES.forEach(function (svc) {
+      var box = document.createElement('div'); box.className = 'keyBlock';
+      var h = document.createElement('h4'); h.textContent = svc.title + ' \u2014 ' + svc.purpose;
+      box.appendChild(h);
+      var inp = document.createElement('input'); inp.type = 'text';
+      inp.placeholder = svc.placeholder; inp.value = store.keys[svc.id] || '';
+      inp.autocomplete = 'off'; inp.spellcheck = false;
+      inp.setAttribute('autocapitalize', 'off'); inp.setAttribute('autocorrect', 'off');
+      inp.setAttribute('aria-label', svc.title + ' key');
+      inp.addEventListener('change', function () {
+        store.keys[svc.id] = inp.value.trim(); saveStore();
+        if (svc.onChange) svc.onChange();
+        checkKey(svc);
+        syncSettings();
+        if (state.place) loadHome(state.place);
+      });
+      box.appendChild(inp);
+      var st = document.createElement('p'); st.className = 'keyStatus'; st.setAttribute('role', 'status');
+      box.appendChild(synced(st, function () {
+        var s = keyStatusText(svc); st.textContent = s.text; st.className = 'keyStatus' + (s.cls ? ' ' + s.cls : '');
+      }));
+      // A key saved while offline never got a verdict; try once more now.
+      var prev = (store.keyStatus || {})[svc.id];
+      if (store.keys[svc.id] && (!prev || prev.ok === null || prev.key !== store.keys[svc.id].slice(-6))) checkKey(svc);
+      disclosureRow(box, 'How to get a key', null, function (inner) {
+        svc.how.forEach(function (t) { lede(inner, t); });
+        if (svc.steps) {
+          var ol = document.createElement('ol'); ol.className = 'steps';
+          svc.steps.forEach(function (t) { var li = document.createElement('li'); li.textContent = t; ol.appendChild(li); });
+          inner.appendChild(ol);
+        }
+        if (svc.after) lede(inner, svc.after);
+      });
+      body.appendChild(box);
+    });
+  }
+
+  /* ---- Your data ----
+     Everything lives in this one browser, so moving to a new phone, or
+     using the app on two devices, means carrying a file across. */
+  function buildDataSection(body) {
+    lede(body, 'Settings, saved places and keys live only in this browser. There is no account to sync them.');
+    var row = document.createElement('div'); row.className = 'btnRow';
+    btn(row, 'Export settings', '', function () {
+      var data = JSON.stringify({ app: 'morningbrief', version: 1, exported: new Date().toISOString(),
+                                  settings: store }, null, 2);
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+      a.download = 'morning-brief-settings.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    });
+    var file = document.createElement('input'); file.type = 'file'; file.accept = 'application/json,.json';
+    file.style.display = 'none';
+    file.addEventListener('change', function () {
+      var f = file.files && file.files[0]; file.value = '';
+      if (!f) return;
+      var rd = new FileReader();
+      rd.onload = function () {
+        var obj; try { obj = JSON.parse(rd.result); } catch (e) { obj = null; }
+        var s = obj && obj.app === 'morningbrief' && obj.settings;
+        if (!s || typeof s !== 'object' || Array.isArray(s)) {
+          window.alert('That file isn\u2019t a Morning Brief settings export.'); return;
+        }
+        if (!window.confirm('Replace everything here with the settings in this file?')) return;
+        s.introSeen = true;
+        try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {}
+        location.reload();
+      };
+      rd.readAsText(f);
+    });
+    btn(row, 'Import settings', '', function () { file.click(); });
+    body.appendChild(row); body.appendChild(file);
+    lede(body, 'The export includes any API keys you\u2019ve added, so keep the file somewhere private.');
+
+    h3(body, 'Start over');
+    var row2 = document.createElement('div'); row2.className = 'btnRow';
+    btn(row2, 'Reset everything', 'danger', function () {
+      if (!window.confirm('Erase every setting, saved place and key in this browser? This can\u2019t be undone.')) return;
+      try {
+        Object.keys(localStorage).forEach(function (k) { if (k.indexOf('morningbrief.') === 0) localStorage.removeItem(k); });
+      } catch (e) {}
+      location.reload();
+    });
+    body.appendChild(row2);
+  }
+
+  var SECTIONS = [
+    { key: 'about',  title: 'About you',    summary: aboutSummary,  build: buildAboutSection },
+    { key: 'show',   title: 'What shows',   summary: showSummary,   build: buildShowSection },
+    { key: 'look',   title: 'Appearance',   summary: lookSummary,   build: buildLookSection },
+    { key: 'layout', title: 'Layout',       summary: layoutSummary, build: buildLayoutSection },
+    { key: 'keys',   title: 'Data sources', summary: keysSummary,   build: buildKeysSection },
+    { key: 'data',   title: 'Your data',    summary: function () { return 'Export, import, reset'; },
+      build: buildDataSection }
+  ];
+  function buildSettings(openKey) {
+    settingsBody.innerHTML = '';
     store.settingsOpen = store.settingsOpen || {};
-    var isOpen = key in store.settingsOpen ? store.settingsOpen[key] : defaultOpen;
-    var head = document.createElement('div'); head.className = 'subhead' + (isOpen ? ' open' : '');
-    var h = document.createElement('h3'); h.textContent = title;
-    head.appendChild(h);
-    if (countText) { var c = document.createElement('span'); c.className = 'count'; c.textContent = countText; head.appendChild(c); }
-    var chev = document.createElement('span'); chev.className = 'chev';
-    chev.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true">'
-      + '<path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" '
-      + 'stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    head.appendChild(chev);
-    var body = document.createElement('div'); body.className = 'subbody' + (isOpen ? ' open' : '');
-    head.addEventListener('click', function () {
-      store.settingsOpen[key] = !isOpen; saveStore(); buildSettings();
+    if (openKey) { store.settingsOpen[openKey] = true; saveStore(); }
+    SECTIONS.forEach(function (sec) {
+      var d = document.createElement('details'); d.className = 'sset'; d.id = 'sset-' + sec.key;
+      d.open = !!store.settingsOpen[sec.key];
+      var sm = document.createElement('summary');
+      var b = document.createElement('b'); b.textContent = sec.title;
+      var sum = document.createElement('span'); sum.className = 'sum';
+      var chev = document.createElement('span'); chev.className = 'chev'; chev.innerHTML = CHEV_SVG;
+      sm.appendChild(b); sm.appendChild(synced(sum, function () { sum.textContent = sec.summary(); })); sm.appendChild(chev);
+      d.appendChild(sm);
+      var body = document.createElement('div'); body.className = 'ssetBody';
+      sec.build(body);
+      d.appendChild(body);
+      d.addEventListener('toggle', function () { store.settingsOpen[sec.key] = d.open; saveStore(); });
+      settingsBody.appendChild(d);
     });
-    settingsPanel.appendChild(head);
-    settingsPanel.appendChild(body);
-    if (isOpen) buildBody(body);
   }
-
-  /* What's left of these two tabs once ordering moved to the page.
-     The reorder lists (checkbox + name + up/down arrows, one row per
-     card) are gone \u2014 rearrange mode does all of it now, including
-     turning cards back on via "+ Add", so the rows were a second way
-     to do something already done better elsewhere. What stayed is what
-     rearrange mode has no equivalent for and never did: time markers,
-     multi-day style, color-sort, and the order reset. */
-  /* Alphabetical, and no arrows: order in the to-do list comes from how
-     urgent a thing is, not from a list you drag. */
-  function buildTodoTab() {
-    var h = document.createElement('h3'); h.textContent = 'To-do list';
-    settingsPanel.appendChild(h);
-
-    function todoRow(id, container) {
-      var meta = cardMeta(id);
-      var row = document.createElement('label'); row.className = 'opt';
-      var box = document.createElement('input'); box.type = 'checkbox'; box.checked = on(id);
-      box.addEventListener('change', function () {
-        store.cards[id] = box.checked; saveStore(); renderHome();
-      });
-      var nm = document.createElement('span'); nm.textContent = meta.name;
-      if (meta.note) { var sm = document.createElement('small'); sm.textContent = meta.note; nm.appendChild(sm); }
-      row.appendChild(box); row.appendChild(nm); container.appendChild(row);
+  function openSettings(openKey) {
+    customOpen = false;
+    buildSettings(openKey);
+    if (!settingsDlg.open) settingsDlg.showModal();
+    if (openKey) {
+      var target = document.getElementById('sset-' + openKey);
+      if (target) target.scrollIntoView({ block: 'start' });
     }
-
-    // These have their own tile (or, for Feels Like, always show) with
-    // its own on/off elsewhere \u2014 this checkbox is only about whether
-    // the reminder it can generate (sunscreen, kite conditions, and so
-    // on) shows up in the to-do list, independent of the tile.
-    function tileReminderRow(id, container) {
-      var meta = cardMeta(id);
-      var row = document.createElement('label'); row.className = 'opt';
-      var box = document.createElement('input'); box.type = 'checkbox'; box.checked = pillOn(id);
-      box.addEventListener('change', function () {
-        store.pillCards[id] = box.checked; saveStore(); renderHome();
-      });
-      var nm = document.createElement('span'); nm.textContent = meta.name;
-      if (meta.note) { var sm = document.createElement('small'); sm.textContent = meta.note; nm.appendChild(sm); }
-      row.appendChild(box); row.appendChild(nm); container.appendChild(row);
-    }
-
-    // Masking, Swimming, and Shoes each turned out to be the only thing
-    // left in their planned group (Health, Health, Prep) once Arthritis,
-    // Migraine, Bug Spray, and Hair Frizz \u2014 also part of those groups
-    // in the original sort, but full tiles with their own on/off on the
-    // main page, not entries in this list \u2014 are set aside. A one-item
-    // group header saves nothing over just showing the item, so these
-    // three sit plainly instead of under a heading of their own.
-    ['mask', 'swim', 'shoe'].forEach(function (id) { todoRow(id, settingsPanel); });
-
-    [
-      ['Home, Yard & Vehicle', ['mow', 'garden', 'pipe', 'mold', 'rust', 'frost']],
-      ['Safety', ['fire', 'ice', 'power']],
-      ['Outdoor', ['tick', 'firefly', 'leaves']]
-    ].forEach(function (g) {
-      var onCount = g[1].filter(function (id) { return on(id); }).length;
-      collapseSection('todo-' + g[0], g[0], onCount + ' of ' + g[1].length + ' on', false, function (body) {
-        g[1].forEach(function (id) { todoRow(id, body); });
-      });
-    });
-
-    // Tile reminders: unlike the groups above, these ids each have a
-    // full tile of their own \u2014 hiding the tile used to silently take
-    // its reminder with it. This group is the fix: a separate on/off,
-    // so hiding Sunburn no longer means losing the sunscreen nudge.
-    var reminderIds = ['feels', 'sky', 'water', 'frostbite', 'wind', 'light', 'allergy', 'burn', 'aurora', 'meteor'];
-    var reminderOn = reminderIds.filter(function (id) { return pillOn(id); }).length;
-    collapseSection('todo-tile-reminders', 'Tile Reminders', reminderOn + ' of ' + reminderIds.length + ' on', false, function (body) {
-      var lede = document.createElement('p'); lede.className = 'lede';
-      lede.textContent = 'These tiles can add their own line to the to-do list \u2014 sunscreen, kite conditions, and so on. Separate from whether the tile itself shows on the main page.';
-      body.appendChild(lede);
-      reminderIds.forEach(function (id) { tileReminderRow(id, body); });
-    });
   }
-
-  function swatchRow(key, label, value, container) {
-    container = container || settingsPanel;
-    var row = document.createElement('label'); row.className = 'opt';
-    var inp = document.createElement('input'); inp.type = 'color'; inp.value = value;
-    inp.style.cssText = 'width:38px;height:26px;padding:0;border:1px solid #D6D0C4;border-radius:5px;background:none;flex:0 0 auto';
-    inp.addEventListener('input', function () {
-      store.theme = store.theme || {};
-      store.theme[key] = inp.value;
-      saveStore(); buildRamps(); renderHome(); updateContrast();
-    });
-    var sp = document.createElement('span'); sp.textContent = label;
-    row.appendChild(inp); row.appendChild(sp); container.appendChild(row);
-  }
-
-  function buildKeyTab() {
-    var mh = document.createElement('h3'); mh.textContent = 'Mast key, for state flag orders';
-    settingsPanel.appendChild(mh);
-    var ml = document.createElement('p'); ml.className = 'lede';
-    ml.textContent = 'The Flag at Half-Staff card works right out of the box for federal orders \u2014 presidential proclamations and the dates set by law. To also catch state-specific orders, you\u2019ll need a free API key from Mast, which maintains a reader for each state governor\u2019s office.';
-    settingsPanel.appendChild(ml);
-    var mCost = document.createElement('p'); mCost.className = 'lede';
-    mCost.textContent = 'The free tier allows 250 requests a month. This app uses up to four a day per state, cached for six hours, so that\u2019s a generous amount of headroom.';
-    settingsPanel.appendChild(mCost);
-    var mEase = document.createElement('p'); mEase.className = 'lede';
-    mEase.textContent = 'This is a great first API to try, since getting the key is genuinely simple: sign up at mast.today with just your email, no payment method required, and they\u2019ll email you the key directly. Copy and paste it below.';
-    settingsPanel.appendChild(mEase);
-    var mi = document.createElement('input'); mi.type = 'text';
-    mi.placeholder = 'Paste Mast key, or leave blank';
-    mi.value = (store.keys && store.keys.mast) || '';
-    mi.addEventListener('change', function () {
-      store.keys.mast = mi.value.trim(); saveStore();
-      try { localStorage.removeItem('morningbrief.flag.v1'); } catch (e) {}
-      if (state.place) loadHome(state.place);
-    });
-    settingsPanel.appendChild(mi);
-
-    var eh = document.createElement('h3'); eh.textContent = 'eBird key, for notable birds nearby';
-    settingsPanel.appendChild(eh);
-    var el2 = document.createElement('p'); el2.className = 'lede';
-    el2.textContent = 'The Notable Birds card only appears with a key. eBird defines "notable" as locally or nationally rare, or a species out of season for the area.';
-    settingsPanel.appendChild(el2);
-    var eEase = document.createElement('p'); eEase.className = 'lede';
-    eEase.textContent = 'Getting a key is free and simple: create an eBird account if you don\u2019t already have one (the same account works across all the Cornell Lab apps), then request a key at ebird.org/api/keygen. Copy and paste it below.';
-    settingsPanel.appendChild(eEase);
-    var ei = document.createElement('input'); ei.type = 'text';
-    ei.placeholder = 'Paste eBird key, or leave blank';
-    ei.value = (store.keys && store.keys.ebird) || '';
-    ei.addEventListener('change', function () {
-      store.keys.ebird = ei.value.trim(); saveStore();
-      if (state.place) loadHome(state.place);
-    });
-    settingsPanel.appendChild(ei);
-
-    var gh = document.createElement('h3'); gh.textContent = 'Google key, for measured pollen and fine-grid air quality';
-    settingsPanel.appendChild(gh);
-    var lede = document.createElement('p'); lede.className = 'lede';
-    lede.textContent = 'The Allergens and Air Quality cards work right out of the box, using a regional bloom calendar and Copernicus CAMS data at about 45 km resolution. Adding a free Google key upgrades both: measured pollen that names the actual plants in season, and air quality on a much finer 500 m grid.';
-    settingsPanel.appendChild(lede);
-
-    var stepsIntro = document.createElement('p'); stepsIntro.className = 'lede';
-    stepsIntro.textContent = 'This one takes a few more steps than the others above, since it goes through Google Cloud Console rather than a simple signup form:';
-    settingsPanel.appendChild(stepsIntro);
-    var steps = [
-      'Go to console.cloud.google.com and create a project.',
-      'In APIs & Services, enable both the Pollen API and the Air Quality API.',
-      'Turn on billing for the project. Both are paid-tier products, so a card is required even though you are unlikely to be charged.',
-      'Under Credentials, create an API key.',
-      'Restrict the key to those two APIs so it cannot be used for anything else.',
-      'Under Google Maps Platform, then Quotas, set a daily cap of about 100 on each so a mistake cannot run up a bill.',
-      'Paste the key below.'
-    ];
-    var ol = document.createElement('ol'); ol.className = 'steps';
-    steps.forEach(function (t) { var li = document.createElement('li'); li.textContent = t; ol.appendChild(li); });
-    settingsPanel.appendChild(ol);
-
-    var cost = document.createElement('p'); cost.className = 'lede';
-    cost.textContent = 'Each API allows 5,000 free calls a month, and this app only uses a handful a day, cached for 30 minutes \u2014 a personal bill should be zero. The key is stored only in this browser and billed to whoever created it.';
-    settingsPanel.appendChild(cost);
-
-    var input = document.createElement('input'); input.type = 'text';
-    input.placeholder = 'Paste key, or leave blank';
-    input.value = store.keys.google || '';
-    input.addEventListener('change', function () {
-      store.keys.google = input.value.trim(); saveStore();
-      if (state.place) loadHome(state.place);
-    });
-    settingsPanel.appendChild(input);
-  }
+  document.getElementById('settingsBtn').addEventListener('click', function () { openSettings(); });
+  document.getElementById('settingsClose').addEventListener('click', function () { settingsDlg.close(); });
+  // A tap on the dimmed backdrop (the dialog box itself, outside its content) closes it.
+  settingsDlg.addEventListener('click', function (e) { if (e.target === settingsDlg) settingsDlg.close(); });
+  // Its contents are rebuilt on every open, so nothing stale needs to stay in the page.
+  settingsDlg.addEventListener('close', function () { settingsBody.innerHTML = ''; });
 
   function updateContrast() {
     var el = document.getElementById('contrastNote');
@@ -6885,7 +7285,7 @@
       + (h2.pollen && h2.pollen.days ? 'measured, from the Google Pollen API.' : 'from a bloom calendar, not measured.')
       + ' Air quality ' + (h2.airGoogle && h2.airGoogle.days ? 'from Google at 500 m.' : 'from Copernicus CAMS at about 45 km.')
       + (h2.water ? ' Water temperature ' + (h2.water.kind === 'marine' ? 'modelled for open water.' : 'measured at ' + h2.water.station + '.') : '')
-      + ' Notable birds ' + (store.keys && store.keys.ebird ? 'from your own eBird key.' : 'not shown \u2014 add a free eBird key in Settings to turn this on.');
+      + ' Notable birds ' + (store.keys && store.keys.ebird ? 'from your own eBird key.' : 'not shown \u2014 add a free eBird key in Settings \u2192 Data sources to turn this on.');
     aboutPanel.appendChild(live);
   }
 
@@ -6897,8 +7297,6 @@
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
   }
-  function openSettingsFresh() { store.tabOpen = true; buildSettings(); }
-  toggle(document.getElementById('settingsBtn'), settingsPanel, openSettingsFresh);
   toggle(document.getElementById('aboutBtn'), aboutPanel, buildAbout);
 
   document.getElementById('disclaimer').innerHTML =
@@ -6930,6 +7328,7 @@
   window.addEventListener('resize', onViewportChange);
   window.addEventListener('orientationchange', onViewportChange);
   if (store.tapped) document.getElementById('tipHint').style.display = 'none';
+  buildIntro();
   buildDays(); buildSpan(); buildPlaces();
     if (state.place) loadHome(state.place);
   else if (navigator.geolocation) {
