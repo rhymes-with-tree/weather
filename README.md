@@ -61,10 +61,17 @@ read from Open-Meteo's separate current-conditions estimate rather than the
 day's forecast rollup, so a shower the forecast didn't predict still shows up
 somewhere on the page.
 
-Settings turn off whatever doesn't apply to you — no lawn, no car, no
-basement, no dog, conditions you don't have, or a whole category if you'd
-rather not see it. Four colour themes are built in, including a
-colourblind-safe one, plus custom colour pickers if none of them fit.
+Settings turn off whatever doesn't apply to you. **About you** asks in
+plain terms — no lawn, no car, no basement, no dog, conditions you don't
+have — and switches the matching cards off for you; first-time visitors
+get the same question once, at the top of the page. **What shows** lists
+every card with two switches side by side, the tile and the reminder it
+adds to the to-do list. **Appearance** has light and dark, four colour
+themes including a colourblind-safe one, and custom colour pickers if
+none of them fit. **Layout** jumps straight into rearranging the page
+(or long-press any card). **Data sources** holds the optional keys and
+checks each one as soon as it's pasted, and **Your data** exports,
+imports or resets everything.
 
 ## Where the numbers come from
 
@@ -105,7 +112,7 @@ the services above.
 
 ## Optional API keys
 
-Three, all pasted in Settings → API Key, all stored in the visitor's own
+Three, all pasted in Settings → Data sources, all stored in the visitor's own
 browser, all billed to whoever pasted them — hosting this costs the host
 nothing either way.
 
