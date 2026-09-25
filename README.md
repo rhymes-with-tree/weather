@@ -66,12 +66,13 @@ plain terms — no lawn, no car, no basement, no dog, conditions you don't
 have — and switches the matching cards off for you; first-time visitors
 get the same question once, at the top of the page. **What shows** lists
 every card with two switches side by side, the tile and the reminder it
-adds to the to-do list. **Appearance** has light and dark, four colour
+adds to the to-do list. **Appearance** has text size (following the
+device's own setting by default, up to 200%), light and dark, four colour
 themes including a colourblind-safe one, and custom colour pickers if
 none of them fit. **Layout** jumps straight into rearranging the page
 (or long-press any card). **Data sources** holds the optional keys and
-checks each one as soon as it's pasted, and **Your data** exports,
-imports or resets everything.
+checks each one as soon as it's pasted, and **Your data** copies your
+settings to paste on another device, or resets everything.
 
 ## Where the numbers come from
 
