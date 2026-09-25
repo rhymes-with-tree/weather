@@ -143,11 +143,22 @@
   .more svg{display:block;width:100%;height:100%;}
   .card.open .more{transform:rotate(180deg);opacity:.7;}
   .card.sm .more{top:9px;right:7px;width:15px;height:15px;}
+  /* The chevron is absolutely placed, so nothing in the face knew to
+     keep clear of it: a long face (sunset time plus its icon) ran
+     straight underneath. Daily cards that have one reserve a gutter on
+     BOTH sides, so centred text stays centred. The hour lines inside
+     the face are positioned against its padding box, so they don't move. */
+  .card.hasMore:not(.sm) .face{padding-left:24px;padding-right:24px;}
   /* Sunrise to the left, sunset to the right, so the card reads the way
      the day runs. Wraps to two lines rather than crushing on a narrow
      phone. */
   .face.split{display:flex;align-items:center;gap:10px;}
-  .face.split .end{display:flex;flex-direction:column;line-height:1.2;flex:0 0 auto;}
+  .face.split .end{display:flex;flex-direction:column;line-height:1.2;flex:0 1 auto;min-width:0;}
+  /* Each end may wrap, but only between the time and its label, never
+     inside "7:08 AM" — and the icon stays glued to its neighbour. */
+  .face.split .end .nw{white-space:nowrap;}
+  /* Read aloud, not shown: the label an icon already says visually. */
+  .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
   .face.split .end.mid{flex:1 1 auto;text-align:center;font-weight:600;opacity:.78;}
   .face.split .end.right{text-align:right;margin-left:0;}
   .face.split .end b{display:block;}
@@ -674,6 +685,9 @@
   .showRow .na{font-size:12px;color:var(--faint);}
   /* Data sources: a status line under each key. */
   .keyBlock{border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin:10px 0;background:var(--panel);}
+  .jsonBox{display:block;width:100%;min-height:120px;margin:6px 0 4px;padding:8px 10px;
+           font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:inherit;
+           background:var(--input);border:1px solid var(--line);border-radius:8px;resize:vertical;}
   .keyBlock h4{margin:0 0 2px;font-size:15px;}
   .keyStatus{font-size:13px;margin:6px 0 0;color:var(--mid);}
   .keyStatus.ok{color:#3E7D32;}
@@ -722,7 +736,7 @@
   <div id="aboutPanel" class="panel" style="display:none"></div>
 
   <div id="introBody"></div>
-  <p class="tiphint" id="tipHint">Tap any card for the numbers behind it.</p>
+  <p class="tiphint" id="tipHint">Tap any card to show more.</p>
   <div id="alertBody"></div>
   <div id="homeBody"></div>
 
@@ -4433,11 +4447,28 @@
     var line = document.createElement('div');
     line.className = 'face' + (row.split ? ' split' : '');
     if (row.split) {
+      // "7:08 AM Sunrise" becomes two no-wrap pieces, time and label, so
+      // a narrow screen or a large font wraps between them and nowhere else.
+      var splitEnd = function (t, iconEl, iconFirst) {
+        var e2 = document.createElement('b');
+        var m = /^(.*?[AP]M)\s+(.*)$/.exec(t) || [null, t, ''];
+        var tm = document.createElement('span'); tm.className = 'nw'; tm.textContent = m[1];
+        // With its icon showing, "Sunrise" is said twice; the word stays
+        // for screen readers only. Icons off, it shows as before.
+        var lbl = document.createElement('span'); lbl.className = iconEl ? 'vh' : 'nw'; lbl.textContent = m[2];
+        if (iconEl && iconFirst) tm.insertBefore(iconEl, tm.firstChild);
+        if (iconEl && !iconFirst) tm.appendChild(iconEl);
+        e2.appendChild(tm);
+        if (m[2]) { e2.appendChild(document.createTextNode(' ')); e2.appendChild(lbl); }
+        return e2;
+      };
       var lb = document.createElement('div'); lb.className = 'end left';
-      row.split.left.forEach(function (t) { var e2 = document.createElement('b'); e2.textContent = t; lb.appendChild(e2); });
-      // Split faces put the pair at the two ends of the row, inside the
-      // first line of each side so they stay on the same line as the time.
-      if (row.icons && row.icons[0] && lb.firstChild) lb.firstChild.insertBefore(emoSpan(row.icons[0], null, row.iconUrls ? row.iconUrls[0] : null), lb.firstChild.firstChild);
+      // Split faces put the pair at the two ends of the row, each icon
+      // on the outer edge of its own end.
+      row.split.left.forEach(function (t, i) {
+        lb.appendChild(splitEnd(t, i === 0 && showEmoji() && row.iconUrls && row.iconUrls[0]
+          ? emoSpan(row.icons[0], null, row.iconUrls ? row.iconUrls[0] : null) : null, true));
+      });
       line.appendChild(lb);
       // A middle column, so the phase sits dead centre between the two
       // times rather than centred on whatever space is left over.
@@ -4449,8 +4480,10 @@
       }
       line.appendChild(mid);
       var rb = document.createElement('div'); rb.className = 'end right';
-      row.split.right.forEach(function (t) { var e4 = document.createElement('b'); e4.textContent = t; rb.appendChild(e4); });
-      if (row.icons && row.icons[1] && rb.firstChild) rb.firstChild.appendChild(emoSpan(row.icons[1], 'r', row.iconUrls ? row.iconUrls[1] : null));
+      row.split.right.forEach(function (t, i) {
+        rb.appendChild(splitEnd(t, i === 0 && showEmoji() && row.iconUrls && row.iconUrls[1]
+          ? emoSpan(row.icons[1], 'r', row.iconUrls ? row.iconUrls[1] : null) : null, false));
+      });
       line.appendChild(rb);
     } else {
       // A card's own state emoji wins; a tile with none falls back to its
@@ -4482,6 +4515,7 @@
         + '<path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" '
         + 'stroke-linecap="round" stroke-linejoin="round"/></svg>';
       el.appendChild(chev);
+      el.classList.add('hasMore');
     }
     // Belongs on the gradient, not the text below it: these mark a
     // position in the day, which is what the strip represents now
@@ -5015,7 +5049,7 @@
       hint.appendChild(lines); hint.appendChild(done);
     } else {
       hint.className = 'tiphint';
-      hint.textContent = 'Tap any card for the numbers behind it.';
+      hint.textContent = 'Tap any card to show more.';
       hint.style.display = store.tapped ? 'none' : '';
     }
   }
@@ -7093,45 +7127,97 @@
   /* ---- Your data ----
      Everything lives in this one browser, so moving to a new phone, or
      using the app on two devices, means carrying a file across. */
+  /* Settings travel as JSON, either as text (copy here, paste on the
+     other device — handy when a file is awkward, as it is on a phone)
+     or as a file. Both go through applySettingsText(). */
+  function settingsJSON() {
+    return JSON.stringify({ app: 'morningbrief', version: 1, exported: new Date().toISOString(),
+                            settings: store }, null, 2);
+  }
+  // Accepts the export wrapper, or a bare settings object someone
+  // copied out of it. Returns an error message, or reloads the page.
+  function applySettingsText(text) {
+    var obj; try { obj = JSON.parse(text); } catch (e) { obj = null; }
+    var s = obj && (obj.app === 'morningbrief' ? obj.settings : obj);
+    if (!s || typeof s !== 'object' || Array.isArray(s)) {
+      return 'That isn’t Morning Brief settings. Copy the whole thing, from the first { to the last }.';
+    }
+    if (!window.confirm('Replace everything here with these settings?')) return '';
+    s.introSeen = true;
+    try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {}
+    location.reload();
+    return '';
+  }
   function buildDataSection(body) {
-    lede(body, 'Settings, saved places and keys live only in this browser. There is no account to sync them.');
+    lede(body, 'Settings, saved places and keys live only in this browser. There is no account to sync them, '
+      + 'so to move them to another device, copy them here and paste them there.');
+
     var row = document.createElement('div'); row.className = 'btnRow';
-    btn(row, 'Export settings', '', function () {
-      var data = JSON.stringify({ app: 'morningbrief', version: 1, exported: new Date().toISOString(),
-                                  settings: store }, null, 2);
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
-      a.download = 'morning-brief-settings.json';
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    var note = document.createElement('p'); note.className = 'keyStatus'; note.setAttribute('role', 'status');
+    var copyBox = document.createElement('textarea'); copyBox.className = 'jsonBox'; copyBox.readOnly = true;
+    copyBox.setAttribute('aria-label', 'Your settings as text'); copyBox.style.display = 'none';
+    btn(row, 'Copy settings', 'primary', function () {
+      var text = settingsJSON();
+      function manual() {
+        // No clipboard access (an older browser, or permission refused):
+        // show the text already selected so a long-press can copy it.
+        copyBox.value = text; copyBox.style.display = '';
+        copyBox.focus(); copyBox.select();
+        note.className = 'keyStatus'; note.textContent = 'Select all of this text and copy it.';
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+          copyBox.style.display = 'none';
+          note.className = 'keyStatus ok';
+          note.textContent = '✓ Copied. On the other device, open Settings → Your data → Paste settings.';
+        }, manual);
+      } else manual();
     });
-    var file = document.createElement('input'); file.type = 'file'; file.accept = 'application/json,.json';
+    var pasteWrap = document.createElement('div'); pasteWrap.style.display = 'none';
+    var pasteBox = document.createElement('textarea'); pasteBox.className = 'jsonBox';
+    pasteBox.placeholder = 'Paste settings here'; pasteBox.setAttribute('aria-label', 'Paste settings');
+    pasteBox.spellcheck = false;
+    var pasteRow = document.createElement('div'); pasteRow.className = 'btnRow';
+    btn(pasteRow, 'Use these settings', 'primary', function () {
+      var err = applySettingsText(pasteBox.value);
+      if (err) { note.className = 'keyStatus bad'; note.textContent = err; }
+    });
+    btn(pasteRow, 'Cancel', '', function () { pasteBox.value = ''; pasteWrap.style.display = 'none'; note.textContent = ''; });
+    pasteWrap.appendChild(pasteBox); pasteWrap.appendChild(pasteRow);
+    btn(row, 'Paste settings', '', function () {
+      copyBox.style.display = 'none'; note.textContent = '';
+      pasteWrap.style.display = ''; pasteBox.focus();
+    });
+    body.appendChild(row); body.appendChild(note); body.appendChild(copyBox); body.appendChild(pasteWrap);
+
+    var file = document.createElement('input'); file.type = 'file'; file.accept = 'application/json,.json,.txt';
     file.style.display = 'none';
     file.addEventListener('change', function () {
       var f = file.files && file.files[0]; file.value = '';
       if (!f) return;
       var rd = new FileReader();
       rd.onload = function () {
-        var obj; try { obj = JSON.parse(rd.result); } catch (e) { obj = null; }
-        var s = obj && obj.app === 'morningbrief' && obj.settings;
-        if (!s || typeof s !== 'object' || Array.isArray(s)) {
-          window.alert('That file isn\u2019t a Morning Brief settings export.'); return;
-        }
-        if (!window.confirm('Replace everything here with the settings in this file?')) return;
-        s.introSeen = true;
-        try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {}
-        location.reload();
+        var err = applySettingsText(rd.result);
+        if (err) { note.className = 'keyStatus bad'; note.textContent = err; }
       };
       rd.readAsText(f);
     });
-    btn(row, 'Import settings', '', function () { file.click(); });
-    body.appendChild(row); body.appendChild(file);
-    lede(body, 'The export includes any API keys you\u2019ve added, so keep the file somewhere private.');
+    var row1 = document.createElement('div'); row1.className = 'btnRow';
+    btn(row1, 'Save as a file', '', function () {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([settingsJSON()], { type: 'application/json' }));
+      a.download = 'morning-brief-settings.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    });
+    btn(row1, 'Open a file', '', function () { file.click(); });
+    body.appendChild(row1); body.appendChild(file);
+    lede(body, 'Copies and files include any API keys you’ve added, so keep them somewhere private.');
 
     h3(body, 'Start over');
     var row2 = document.createElement('div'); row2.className = 'btnRow';
     btn(row2, 'Reset everything', 'danger', function () {
-      if (!window.confirm('Erase every setting, saved place and key in this browser? This can\u2019t be undone.')) return;
+      if (!window.confirm('Erase every setting, saved place and key in this browser? This can’t be undone.')) return;
       try {
         Object.keys(localStorage).forEach(function (k) { if (k.indexOf('morningbrief.') === 0) localStorage.removeItem(k); });
       } catch (e) {}
@@ -7146,7 +7232,7 @@
     { key: 'look',   title: 'Appearance',   summary: lookSummary,   build: buildLookSection },
     { key: 'layout', title: 'Layout',       summary: layoutSummary, build: buildLayoutSection },
     { key: 'keys',   title: 'Data sources', summary: keysSummary,   build: buildKeysSection },
-    { key: 'data',   title: 'Your data',    summary: function () { return 'Export, import, reset'; },
+    { key: 'data',   title: 'Your data',    summary: function () { return 'Copy, paste, reset'; },
       build: buildDataSection }
   ];
   function buildSettings(openKey) {
