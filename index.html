@@ -28,7 +28,13 @@
   :root{ --page:#FFF; --ink:#16232F; --mid:#5B6B7A; --line:#E4E4E4; --link:#1B57C8;
          --card2:#F2F0EB; --panel:#F7F5F1; --panel2:#F3F0E8; --input:#FFF;
          --faint:#8A97A3; --alertbg:#FBE9E9; --alertborder:#F1D2D2;
-         --rowh:62px; --tileh:52px; --gap:7px; }
+         --rowh:calc(62px*var(--fs-cap)); --tileh:calc(52px*var(--fs-cap)); --gap:7px;
+         /* Text size. --fs is set by applyTextSize(): the device's own
+            text size, or the override in Settings → Appearance. Every
+            font size is a multiple of it. --fs-cap is for text that sits
+            in boxes of fixed width (day segments, the hour axis, the
+            header selects), which grows more slowly so it can't collide. */
+         --fs:1; --fs-cap:min(var(--fs), 1.4); }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]){
       --page:#14171B; --ink:#E7E9EC; --mid:#98A2AD; --line:#4A505A; --link:#7FB0FF;
@@ -50,8 +56,8 @@
   .hdr{background:var(--page);border:1px solid var(--line);border-radius:16px;
        padding:11px 16px 12px;text-align:center;margin:0 0 8px;}
   .hdr.section{margin-top:22px;}
-  .hdr .l1{font-size:19px;color:var(--mid);margin-bottom:5px;}
-  .hdr .l2{font-size:24px;font-weight:700;letter-spacing:-.015em;}
+  .hdr .l1{font-size:calc(19px*var(--fs-cap));color:var(--mid);margin-bottom:5px;}
+  .hdr .l2{font-size:calc(24px*var(--fs-cap));font-weight:700;letter-spacing:-.015em;}
   select{font:inherit;color:inherit;background:transparent;border:none;
          border-bottom:1.5px dashed #B9C4CC;padding:0 2px 3px;cursor:pointer;
          -webkit-appearance:none;appearance:none;text-align:center;text-align-last:center;max-width:100%;}
@@ -71,8 +77,8 @@
      sideways \u2014 width is the whole constraint here. */
   .mdstrip{cursor:pointer;text-align:left;display:block;width:100%;}
   .mdexpand{margin-top:10px;padding-top:9px;border-top:1px solid rgba(22,35,47,.14);}
-  .mdday{font-size:14px;line-height:1.4;margin:0 0 6px;}
-  .mdopen{display:inline-block;margin-top:4px;font-size:13.5px;color:var(--link);
+  .mdday{font-size:calc(14px*var(--fs));line-height:1.4;margin:0 0 6px;}
+  .mdopen{display:inline-block;margin-top:4px;font-size:calc(13.5px*var(--fs));color:var(--link);
           text-decoration:none;font-weight:600;}
   .mdday:last-child{margin-bottom:0;}
   .mdday b{font-weight:700;}
@@ -85,17 +91,17 @@
   .mdpillrow{margin-bottom:12px;}
   .mdpills{display:flex;flex-wrap:nowrap;}
   .mdpill{flex:0 0 auto;min-width:0;border:none;border-right:2px solid var(--page);
-          border-radius:0;padding:8px 3px;font:inherit;font-size:12px;font-weight:700;
+          border-radius:0;padding:8px 3px;font:inherit;font-size:calc(12px*var(--fs-cap));font-weight:700;
           color:var(--ink);cursor:pointer;text-align:center;overflow:hidden;
           display:flex;flex-direction:column;gap:2px;line-height:1.15;}
   .mdpills .mdpill:first-child{border-top-left-radius:12px;border-bottom-left-radius:12px;}
   .mdpills .mdpill:last-child{border-top-right-radius:12px;border-bottom-right-radius:12px;border-right:none;}
-  .mdpilltip{font-size:12.5px;font-weight:400;line-height:1.35;margin:6px 0 0;
+  .mdpilltip{font-size:calc(12.5px*var(--fs));font-weight:400;line-height:1.35;margin:6px 0 0;
              text-align:left;color:var(--ink);}
   /* Always visible, no tap \u2014 for values that are just numbers. */
-  .mdsub{font-size:11.5px;font-weight:600;opacity:.75;margin-top:2px;}
+  .mdsub{font-size:calc(11.5px*var(--fs));font-weight:600;opacity:.75;margin-top:2px;}
   .mdpill.withsub{cursor:default;}
-  @media (max-width:430px){ .mdpill{font-size:10.5px;padding:7px 2px;} }
+  @media (max-width:430px){ .mdpill{font-size:calc(10.5px*var(--fs-cap));padding:7px 2px;} }
   /* No flex gap: with a gap, each segment's true edge is not at i/N of
      the row's width (gaps eat width unevenly as items shrink to fit),
      which is why the day lines below drifted out of alignment with
@@ -107,12 +113,12 @@
           border-radius:14px;min-height:var(--rowh);padding:6px 3px;cursor:pointer;
           display:flex;flex-direction:column;align-items:center;justify-content:center;
           line-height:1.15;overflow:hidden;}
-  .dayseg .dsname{font-size:14px;font-weight:700;white-space:nowrap;}
-  .dayseg .dsdate{font-size:12px;opacity:.75;margin-top:1px;}
+  .dayseg .dsname{font-size:calc(14px*var(--fs-cap));font-weight:700;white-space:nowrap;}
+  .dayseg .dsdate{font-size:calc(12px*var(--fs-cap));opacity:.75;margin-top:1px;}
   .dayseg:last-child{border-right:none;}
   .dayseg.today{box-shadow:0 0 0 2px rgba(22,35,47,.45) inset;}
   @media (max-width:430px){
-    .dayseg .dsname{font-size:12px;} .dayseg .dsdate{font-size:11px;}
+    .dayseg .dsname{font-size:calc(12px*var(--fs-cap));} .dayseg .dsdate{font-size:calc(11px*var(--fs-cap));}
   }
   /* Lines live inside each card's own .face, not a shared overlay
      outside the cards. That is what lets them sit above the card's
@@ -130,7 +136,7 @@
   /* Same weight as the card labels, because people could not find the
      time when it was small and grey. */
   .timeaxis{position:relative;height:22px;margin:3px 2px 0;}
-  .timeaxis span{position:absolute;top:0;font-size:15px;font-weight:700;color:var(--ink);
+  .timeaxis span{position:absolute;top:0;font-size:calc(15px*var(--fs-cap));font-weight:700;color:var(--ink);
                  transform:translateX(-50%);white-space:nowrap;}
   /* A tappable card says so: a small chevron that rotates when open.
      Only appears on cards that actually have something behind them, so
@@ -138,17 +144,17 @@
   /* Top-right, same line as the text, sized and weighted like a normal
      iOS/Android disclosure chevron rather than a decorative hint \u2014
      visible at a glance, including while a card is open. */
-  .more{position:absolute;right:10px;top:14px;width:18px;height:18px;
+  .more{position:absolute;right:10px;top:14px;width:calc(18px*var(--fs));height:calc(18px*var(--fs));
         opacity:.55;pointer-events:none;}
   .more svg{display:block;width:100%;height:100%;}
   .card.open .more{transform:rotate(180deg);opacity:.7;}
-  .card.sm .more{top:9px;right:7px;width:15px;height:15px;}
+  .card.sm .more{top:9px;right:7px;width:calc(15px*var(--fs));height:calc(15px*var(--fs));}
   /* The chevron is absolutely placed, so nothing in the face knew to
      keep clear of it: a long face (sunset time plus its icon) ran
      straight underneath. Daily cards that have one reserve a gutter on
      BOTH sides, so centred text stays centred. The hour lines inside
      the face are positioned against its padding box, so they don't move. */
-  .card.hasMore:not(.sm) .face{padding-left:24px;padding-right:24px;}
+  .card.hasMore:not(.sm) .face{padding-left:calc(24px*var(--fs));padding-right:calc(24px*var(--fs));}
   /* Sunrise to the left, sunset to the right, so the card reads the way
      the day runs. Wraps to two lines rather than crushing on a narrow
      phone. */
@@ -162,18 +168,18 @@
   .face.split .end.mid{flex:1 1 auto;text-align:center;font-weight:600;opacity:.78;}
   .face.split .end.right{text-align:right;margin-left:0;}
   .face.split .end b{display:block;}
-  .caption{font-size:13.5px;opacity:.72;text-align:center;margin-top:5px;}
+  .caption{font-size:calc(13.5px*var(--fs));opacity:.72;text-align:center;margin-top:5px;}
   /* A small aligned table under the prose \u2014 time, then whatever else
      (compass point, level, authority), then a label. First column stays
      a fixed width so times line up down the list. */
   .tiprows{margin-top:8px;}
   .tiprow{display:flex;gap:8px;padding:2px 0;align-items:baseline;}
-  .tc{font-size:13.5px;}
+  .tc{font-size:calc(13.5px*var(--fs));}
   .tc0{min-width:52px;font-weight:700;flex:0 0 auto;}
   .tc1{min-width:24px;flex:0 0 auto;opacity:.65;font-weight:600;}
   .tc2{flex:1 1 auto;}
   .tcfull{flex:1 1 auto;font-weight:500;}
-  .tiprow.head .tc{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;
+  .tiprow.head .tc{font-size:calc(11.5px*var(--fs));text-transform:uppercase;letter-spacing:.04em;
                    opacity:.55;font-weight:700;}
   /* Whichever column ends up last \u2014 tc1 in a 2-column row, tc2 in a
      3-column one \u2014 takes the remaining width and reads at full opacity.
@@ -195,7 +201,7 @@
   .card{border-radius:14px;padding:9px 16px;margin:0 0 var(--gap);width:100%;
         min-height:var(--rowh);display:flex;flex-direction:column;justify-content:center;
         border:none;font:inherit;color:var(--ink);text-align:center;
-        font-size:17.5px;display:block;cursor:pointer;padding-right:34px;
+        font-size:calc(17.5px*var(--fs));display:block;cursor:pointer;padding-right:34px;
         -webkit-user-select:none;-webkit-touch-callout:none;user-select:none;}
   /* Risk-gradient tile backgrounds are unchanged pastels regardless of
      theme, by direct decision \u2014 they were only ever designed against
@@ -284,7 +290,7 @@
         grid-auto-rows:minmax(var(--tileh),auto);align-content:start;align-items:start;}
   .card.sm{min-height:var(--tileh);display:flex;flex-direction:column;
            align-items:center;justify-content:center;text-align:center;
-           padding:8px 26px 8px 11px;font-size:14px;border-radius:12px;margin:0;width:auto;
+           padding:8px calc(26px*var(--fs)) 8px 11px;font-size:calc(14px*var(--fs));border-radius:12px;margin:0;width:auto;
            line-height:1.22;}
   /* Tapped open, a tile takes the full row so the detail has somewhere
      to go instead of straining the square. */
@@ -298,10 +304,10 @@
   .det{font-weight:400;opacity:.72;}
   .alert{background:var(--alertbg);border:1px solid var(--alertborder);}
   .plain{background:var(--card2);}
-  .tip{font-size:14.5px;line-height:1.45;text-align:left;margin:11px 0 0;padding-top:10px;
+  .tip{font-size:calc(14.5px*var(--fs));line-height:1.45;text-align:left;margin:11px 0 0;padding-top:10px;
        border-top:1px solid rgba(22,35,47,.16);opacity:.82;}
   .linkcard{background:var(--card2);border-radius:15px;padding:14px;text-align:center;margin:0 0 8px;}
-  .linkcard a{color:var(--link);font-weight:700;font-size:17px;text-decoration:underline;}
+  .linkcard a{color:var(--link);font-weight:700;font-size:calc(17px*var(--fs));text-decoration:underline;}
   .skel{background:var(--card2);height:48px;}
   .card.sm.skel{height:38px;}
   /* One emoji per tile, ahead of the label: a glance says which tile
@@ -315,10 +321,10 @@
      here as grey ghosts, so a short grid reads as "quiet" rather than
      "turned off". Spans every column at any width. */
   .quiet{grid-column:1 / -1;display:flex;flex-wrap:wrap;justify-content:center;
-         align-items:center;gap:4px 12px;padding:6px 10px;font-size:20px;line-height:1;}
+         align-items:center;gap:4px 12px;padding:6px 10px;font-size:calc(20px*var(--fs));line-height:1;}
   .quiet span{filter:grayscale(1);opacity:.4;cursor:help;}
   .busy{opacity:.45;}
-  .foot{font-size:11.5px;color:var(--faint);line-height:1.5;margin:14px 4px 0;}
+  .foot{font-size:calc(11.5px*var(--fs));color:var(--faint);line-height:1.5;margin:14px 4px 0;}
   /* Phone stays as it was: one column, tiles two across. From tablet
      width up, the hourly cards become a column of their own beside a
      three-across tile grid \u2014 the tiles carry one fact each, so they
@@ -326,9 +332,9 @@
      width their gradients need. */
   @media (min-width:760px){
     .wrap{max-width:1080px;}
-    :root{--rowh:74px;--tileh:60px;--gap:8px;}
+    :root{--rowh:calc(74px*var(--fs-cap));--tileh:calc(60px*var(--fs-cap));--gap:8px;}
     .card{padding:12px 18px;}
-    .card.sm{padding:10px 12px;font-size:15px;}
+    .card.sm{padding:10px calc(26px*var(--fs)) 10px 12px;font-size:calc(15px*var(--fs));}
     /* Left column is the day: four full-width cards, then the tiles
        under them. Right column is the to-do list, which is the longest
        single element and now has somewhere to be. Anything that
@@ -356,15 +362,35 @@
                     display:flex;flex-direction:column;justify-content:center;}
     .hourly > .card:not(.open){height:var(--rowh);}
     .hourly > .card.open{height:auto;}
-    .card.sm{aspect-ratio:auto;min-height:var(--tileh);font-size:15px;}
+    .card.sm{aspect-ratio:auto;min-height:var(--tileh);font-size:calc(15px*var(--fs));}
     .grid{grid-template-columns:repeat(3,1fr);margin-top:0;}
     .card.sm.open{grid-column:span 3;min-height:0;}
   }
   @media (min-width:1180px){
     .wrap{max-width:1180px;}
   }
-  @media (max-width:370px){ .card{font-size:16px;padding:12px 14px;} .hdr .l2{font-size:21px;}
-    .card.sm{font-size:13px;padding:9px 10px;} }
+  /* Larger text: classes set by applyTextSize() at 130% (.fs-l) and
+     175% (.fs-xl). Tiles give up columns rather than wrap every label
+     onto three lines, and daily cards stop holding a fixed height,
+     since their text may now need more than two lines. (Daily cards
+     also switch to text-below-colour at .fs-l; that's in JS, because
+     it changes their markup.) */
+  .fs-l .grid{grid-template-columns:1fr;}
+  /* Sunrise and sunset stop fitting side by side: sunset drops to its
+     own line, still on the right, so the pair still reads left to right. */
+  .fs-l .face.split{flex-wrap:wrap;row-gap:2px;}
+  .fs-l .face.split .end.mid{display:none;}
+  .fs-l .face.split .end.right{margin-left:auto;}
+  .fs-l .card.sm.open{grid-column:1 / -1;}
+  @media (min-width:760px){
+    .fs-l .grid{grid-template-columns:repeat(2,1fr);}
+    .fs-l .hourly > .card:not(.open){height:auto;}
+  }
+  @media (min-width:760px) and (max-width:1179px){
+    .fs-xl .grid{grid-template-columns:1fr;}
+  }
+  @media (max-width:370px){ .card{font-size:calc(16px*var(--fs));padding:12px 14px;} .hdr .l2{font-size:calc(21px*var(--fs-cap));}
+    .card.sm{font-size:calc(13px*var(--fs));padding:9px calc(24px*var(--fs)) 9px 10px;} }
 
   /* Phone, turned sideways. Two separate problems, both from the same
      cause: none of the widths above were chosen with landscape phones
@@ -389,7 +415,7 @@
 
   /* ---- public build additions ---- */
   .bar{display:flex;align-items:center;justify-content:center;gap:14px;margin:0 0 10px;}
-  .bar button{background:none;border:none;font:inherit;font-size:14px;color:var(--mid);
+  .bar button{background:none;border:none;font:inherit;font-size:calc(14px*var(--fs));color:var(--mid);
               cursor:pointer;padding:4px 8px;border-bottom:1px dashed #C3CCD4;}
   .bar button:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
   /* Same focus ring, extended to the Settings controls that never got
@@ -399,17 +425,17 @@
   .opt input:focus-visible, .subhead:focus-visible, .preset:focus-visible, .chip:focus-visible, .rearrangeBar button:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;
          padding:16px 18px;margin:0 0 12px;}
-  .panel h2{font-size:17px;margin:0 0 4px;}
-  .panel h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);
+  .panel h2{font-size:calc(17px*var(--fs));margin:0 0 4px;}
+  .panel h3{font-size:calc(12px*var(--fs));letter-spacing:.08em;text-transform:uppercase;color:var(--mid);
             margin:16px 0 6px;font-weight:600;}
-  .panel p.lede{font-size:13.5px;color:var(--mid);margin:0 0 6px;line-height:1.45;}
-  .opt{display:flex;align-items:flex-start;gap:10px;padding:7px 0;font-size:15px;
+  .panel p.lede{font-size:calc(13.5px*var(--fs));color:var(--mid);margin:0 0 6px;line-height:1.45;}
+  .opt{display:flex;align-items:flex-start;gap:10px;padding:7px 0;font-size:calc(15px*var(--fs));
        border-top:1px solid var(--line);cursor:pointer;}
   .opt:first-of-type{border-top:none;}
   .opt input{margin:3px 0 0;width:17px;height:17px;flex:0 0 auto;}
   .opt.sub{padding-left:26px;border-top:1px solid var(--line);}
-  .opt.sub span{font-size:14.5px;}
-  .opt span small{display:block;font-size:12.5px;color:var(--mid);line-height:1.35;margin-top:1px;}
+  .opt.sub span{font-size:calc(14.5px*var(--fs));}
+  .opt span small{display:block;font-size:calc(12.5px*var(--fs));color:var(--mid);line-height:1.35;margin-top:1px;}
   /* A real toggle switch \u2014 same on/off semantics as a checkbox, just
      the visual a switch-driven row deserves instead of a small square. */
   .toggleSwitch{position:relative;display:inline-block;width:42px;height:25px;flex:0 0 auto;}
@@ -427,16 +453,16 @@
      switch state and the preview itself are the explanation. */
   .legRow{margin:14px 0;}
   .legRow .legHead{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-  .legRow .legHead b{font-size:15px;font-weight:600;}
+  .legRow .legHead b{font-size:calc(15px*var(--fs));font-weight:600;}
   .legPreview{display:flex;gap:10px;}
   .legPreview > div{flex:1;min-width:0;}
   .panel input[type=text]{font:inherit;width:100%;padding:7px 9px;border:1px solid var(--line);
                           border-radius:8px;background:var(--input);color:inherit;margin-top:4px;}
-  .steps{margin:4px 0 12px;padding-left:22px;font-size:13.5px;color:var(--mid);line-height:1.5;}
+  .steps{margin:4px 0 12px;padding-left:22px;font-size:calc(13.5px*var(--fs));color:var(--mid);line-height:1.5;}
   .steps li{margin-bottom:6px;}
   .presets{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 12px;}
   .preset{background:var(--input);border:1px solid var(--line);border-radius:10px;padding:7px 10px;
-          font:inherit;font-size:13.5px;cursor:pointer;display:flex;align-items:center;gap:8px;color:inherit;}
+          font:inherit;font-size:calc(13.5px*var(--fs));cursor:pointer;display:flex;align-items:center;gap:8px;color:inherit;}
   .preset.sel{background:var(--ink);border-color:var(--ink);color:var(--page);font-weight:600;}
   .preset .sw{display:flex;gap:2px;}
   /* Collapsible group within a settings tab \u2014 for a section with enough
@@ -448,9 +474,9 @@
            cursor:pointer;-webkit-user-select:none;user-select:none;
            border-top:1px solid var(--line);}
   .subhead:first-child{border-top:none;margin-top:0;}
-  .subhead h3{margin:0;flex:0 0 auto;font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  .subhead h3{margin:0;flex:0 0 auto;font-size:calc(12px*var(--fs));letter-spacing:.08em;text-transform:uppercase;
               color:var(--mid);font-weight:600;}
-  .subhead .count{font-size:13px;color:var(--mid);flex:1;text-align:right;}
+  .subhead .count{font-size:calc(13px*var(--fs));color:var(--mid);flex:1;text-align:right;}
   .subhead .chev{width:16px;height:16px;flex:0 0 auto;opacity:.5;transition:transform .15s;}
   .subhead .chev svg{display:block;width:100%;height:100%;}
   .subhead.open .chev{transform:rotate(180deg);opacity:.7;}
@@ -462,10 +488,10 @@
   .contrast.ok{border-left-color:#7FA86B;}
   .contrast.bad{border-left-color:#C4703F;}
   .reset{margin-top:10px;background:var(--input);border:1px solid var(--line);border-radius:9px;
-         padding:7px 12px;font:inherit;font-size:14px;cursor:pointer;}
+         padding:7px 12px;font:inherit;font-size:calc(14px*var(--fs));cursor:pointer;}
   .card.todo{background:var(--panel2);border:1px solid var(--line);display:block;
              padding:12px 15px 13px;min-height:0;margin-bottom:10px;}
-  .todohead{font-size:12.5px;letter-spacing:.07em;text-transform:uppercase;
+  .todohead{font-size:calc(12.5px*var(--fs));letter-spacing:.07em;text-transform:uppercase;
             color:var(--ink);opacity:.62;font-weight:700;margin-bottom:7px;position:relative;}
   /* Sections are wrapped elements now, so the divider between them
      hangs off the wrapper rather than off a `ul + .todohead` sibling
@@ -477,7 +503,7 @@
      each to-do section's own heading double as their rearrange handle
      \u2014 focusable and clickable rather than just a label, once either
      is picked up via the same grab pattern the cards use. */
-  .blockHead{font-size:13px;letter-spacing:.06em;text-transform:uppercase;
+  .blockHead{font-size:calc(13px*var(--fs));letter-spacing:.06em;text-transform:uppercase;
              color:var(--mid);font-weight:700;margin:0 2px 8px;cursor:pointer;
              display:flex;align-items:center;gap:6px;}
   /* .grid is itself a CSS grid container, so a heading dropped in as
@@ -492,7 +518,7 @@
      new row styles. */
   .wiggleStrip{margin-bottom:14px;padding-bottom:10px;border-bottom:1px dashed var(--line);}
   .wiggleTileExtras{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);}
-  .wiggleSortLabel{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mid);margin:10px 0 4px;}
+  .wiggleSortLabel{font-size:calc(12px*var(--fs));letter-spacing:.06em;text-transform:uppercase;color:var(--mid);margin:10px 0 4px;}
   .hourly > .wiggleTileExtras{border-top:1px solid var(--line);}
   /* A stepped dot-slider: same idea as a range input, but with named
      stops instead of a continuous drag, since there are only four
@@ -504,13 +530,13 @@
                margin:12px 0;flex-wrap:wrap;}
   .mdSide{cursor:pointer;text-align:center;opacity:.5;transition:opacity .15s;}
   .mdSide.sel{opacity:1;}
-  .mdSideLabel{font-size:13px;font-weight:600;margin-top:5px;}
+  .mdSideLabel{font-size:calc(13px*var(--fs));font-weight:600;margin-top:5px;}
   .mdSide.sel .mdSideLabel{color:var(--link);}
   .mdMini{display:flex;gap:3px;width:110px;height:30px;}
   .mdMiniSeg{flex:1;border-radius:5px;display:block;}
   .mdMiniBar{flex:1;border-radius:5px;display:block;}
   .hmSlider{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);}
-  .hmLabel{font-size:13px;font-weight:600;margin-bottom:8px;}
+  .hmLabel{font-size:calc(13px*var(--fs));font-weight:600;margin-bottom:8px;}
   .hmTrack{display:flex;align-items:flex-start;position:relative;}
   .hmTrack::before{content:'';position:absolute;top:7px;left:7px;right:7px;height:2px;
                    background:var(--line);z-index:0;}
@@ -520,7 +546,7 @@
   .hmCirc{width:15px;height:15px;border-radius:50%;border:2px solid var(--mid);
           background:var(--page);}
   .hmDot.sel .hmCirc{background:var(--link);border-color:var(--link);}
-  .hmTxt{font-size:12px;color:var(--mid);}
+  .hmTxt{font-size:calc(12px*var(--fs-cap));color:var(--mid);}
   .hmDot.sel .hmTxt{color:var(--link);font-weight:600;}
   /* The dashed boundary wraps the whole block now, not just its
      heading \u2014 reads as "this whole section moves/hides together"
@@ -539,7 +565,7 @@
   .blockHead.grabbed, .todosection.grabbed{outline:3px solid var(--link) !important;
              outline-offset:4px;background:var(--card2);}
   .blockChip{position:fixed;z-index:60;background:var(--ink);color:var(--page);
-             font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+             font-size:calc(13px*var(--fs));font-weight:700;letter-spacing:.06em;text-transform:uppercase;
              padding:8px 14px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.28);
              pointer-events:none;}
   .blockPlaceholder{background:rgba(0,0,0,.05);border:2px dashed var(--line);
@@ -549,9 +575,9 @@
      detail worth hiding behind a tap; no chip shape, no toggle. */
   .weekgroup{margin:12px 0 0;text-align:left;}
   .weekgroup:first-child{margin-top:0;}
-  .weekday{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;
+  .weekday{font-size:calc(11.5px*var(--fs));text-transform:uppercase;letter-spacing:.06em;
            opacity:.55;font-weight:700;margin:0 2px 5px;}
-  .weeknote{font-size:14.5px;line-height:1.45;margin:0 2px 8px;}
+  .weeknote{font-size:calc(14.5px*var(--fs));line-height:1.45;margin:0 2px 8px;}
   .weeknote:last-child{margin-bottom:0;}
   .card.todo ul{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:7px 9px;}
   .card.todo li{position:relative;background:var(--input);border:1px solid var(--line);
@@ -561,14 +587,14 @@
   /* The word that matters, bold and full size. Whatever else the pill
      carries \u2014 a number, a reason \u2014 goes in .pillDetail instead, so the
      two never compete for the same glance. */
-  .pillLead{font-weight:600;font-size:14.5px;}
-  .pillDetail{font-weight:400;font-size:11px;opacity:.75;letter-spacing:.01em;}
+  .pillLead{font-weight:600;font-size:calc(14.5px*var(--fs));}
+  .pillDetail{font-weight:400;font-size:calc(11px*var(--fs));opacity:.75;letter-spacing:.01em;}
   .pillIcon{display:inline-block;width:1.4em;height:1.4em;vertical-align:-0.28em;margin-right:6px;}
   .card.todo li:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
   .card.todo li.done{opacity:.38;text-decoration:line-through;background:transparent;}
   .card.todo li.done .pillLead{font-weight:400;}
   .card.todo .tip{text-align:left;}
-  .tiphint{font-size:13px;color:var(--mid);text-align:center;margin:0 0 10px;}
+  .tiphint{font-size:calc(13px*var(--fs));color:var(--mid);text-align:center;margin:0 0 10px;}
   /* Rearrange mode: one long-press activates it wherever it starts, and
      it covers both the hourly cards and the tile grid together \u2014 no
      reason for two different mechanisms to learn. No motion as the
@@ -593,17 +619,17 @@
      tile grid. */
   .addCardWide{border:2px dashed var(--line);border-radius:12px;padding:9px 12px;
                cursor:pointer;margin-top:10px;}
-  .addCardWide .face b{color:var(--mid);font-weight:600;font-size:14px;}
+  .addCardWide .face b{color:var(--mid);font-weight:600;font-size:calc(14px*var(--fs));}
   .addCardList{display:none;flex-direction:column;gap:4px;width:100%;margin-top:8px;}
   .card.addCard.open .addCardList, .addCardWide.open .addCardList{display:flex;}
-  .addCardItem{font:inherit;font-size:13px;text-align:left;background:var(--input);
+  .addCardItem{font:inherit;font-size:calc(13px*var(--fs));text-align:left;background:var(--input);
               border:1px solid var(--line);border-radius:8px;padding:6px 10px;
               color:var(--ink);cursor:pointer;}
   .cardPlaceholder{background:rgba(0,0,0,.05);border:2px dashed var(--line);
                    box-shadow:none;margin:0 0 var(--gap);}
   .dismissBadge{display:none;position:absolute;top:-7px;left:-7px;width:22px;height:22px;
                 border-radius:50%;background:#E24;color:#FFF;border:2px solid var(--page);
-                font-size:15px;line-height:18px;text-align:center;font-weight:700;
+                font-size:calc(15px*var(--fs));line-height:18px;text-align:center;font-weight:700;
                 cursor:pointer;z-index:51;}
   .rearranging .dismissBadge{display:block;}
   .rearrangeBar{display:flex;align-items:flex-start;justify-content:space-between;
@@ -611,9 +637,9 @@
   .rearrangeBar button{font:inherit;font-weight:700;color:var(--link);background:none;
                        border:none;padding:6px 4px;cursor:pointer;flex:0 0 auto;}
   .rearrangeLines{flex:1;min-width:0;}
-  .rearrangeLines p{margin:0 0 2px;font-size:13px;line-height:1.35;color:var(--mid);}
+  .rearrangeLines p{margin:0 0 2px;font-size:calc(13px*var(--fs));line-height:1.35;color:var(--mid);}
   .rearrangeLines p:last-child{margin-bottom:0;}
-  .disc{font-size:12px;color:var(--faint);line-height:1.55;margin:16px 4px 0;
+  .disc{font-size:calc(12px*var(--fs));color:var(--faint);line-height:1.55;margin:16px 4px 0;
         border-top:1px solid var(--line);padding-top:12px;}
   .disc b{color:var(--mid);}
   .disc.xercesnote{border-top:none;margin-top:6px;padding-top:0;}
@@ -632,9 +658,9 @@
   }
   .sheetHead{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;
              padding:12px 16px;background:var(--page);border-bottom:1px solid var(--line);}
-  .sheetHead h2{flex:1;margin:0;font-size:18px;}
+  .sheetHead h2{flex:1;margin:0;font-size:calc(18px*var(--fs));}
   .sheetHead button{background:var(--input);border:1px solid var(--line);border-radius:9px;
-                    padding:6px 14px;font:inherit;font-size:14px;font-weight:600;color:inherit;cursor:pointer;}
+                    padding:6px 14px;font:inherit;font-size:calc(14px*var(--fs));font-weight:600;color:inherit;cursor:pointer;}
   .sheetHead button:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
   .sheetBody{padding:4px 16px 28px;}
   details.sset{border-bottom:1px solid var(--line);}
@@ -642,23 +668,28 @@
                          padding:15px 2px;cursor:pointer;-webkit-user-select:none;user-select:none;}
   details.sset > summary::-webkit-details-marker{display:none;}
   details.sset > summary:focus-visible{outline:2px solid var(--link);outline-offset:2px;border-radius:8px;}
-  details.sset > summary b{font-size:16px;font-weight:650;flex:0 0 auto;}
-  details.sset > summary .sum{flex:1;text-align:right;font-size:13px;color:var(--mid);
+  details.sset > summary b{font-size:calc(16px*var(--fs));font-weight:650;flex:0 0 auto;}
+  details.sset > summary .sum{flex:1;text-align:right;font-size:calc(13px*var(--fs));color:var(--mid);
                               white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   details.sset > summary .chev{width:16px;height:16px;flex:0 0 auto;opacity:.55;transition:transform .15s;}
   details.sset > summary .chev svg{display:block;width:100%;height:100%;}
   details.sset[open] > summary .chev{transform:rotate(180deg);}
+  /* At large text there's no room for the summary beside the title, so
+     it moves underneath rather than being cut off. */
+  .fs-l details.sset > summary{flex-wrap:wrap;row-gap:2px;}
+  .fs-l details.sset > summary .chev{order:2;margin-left:auto;}
+  .fs-l details.sset > summary .sum{order:3;flex-basis:100%;text-align:left;white-space:normal;}
   .ssetBody{padding:0 0 18px;}
-  .ssetBody h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);
+  .ssetBody h3{font-size:calc(12px*var(--fs));letter-spacing:.08em;text-transform:uppercase;color:var(--mid);
                margin:18px 0 6px;font-weight:600;}
   .ssetBody h3:first-child{margin-top:2px;}
-  .ssetBody p.lede{font-size:13.5px;color:var(--mid);margin:0 0 8px;line-height:1.45;}
+  .ssetBody p.lede{font-size:calc(13.5px*var(--fs));color:var(--mid);margin:0 0 8px;line-height:1.45;}
   .ssetBody input[type=text]{font:inherit;width:100%;padding:8px 10px;border:1px solid var(--line);
                              border-radius:8px;background:var(--input);color:inherit;}
   .ssetBody input[type=text]:focus-visible{outline:2px solid var(--link);outline-offset:1px;}
   .btnRow{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 4px;}
   .btn{background:var(--input);border:1px solid var(--line);border-radius:9px;padding:8px 13px;
-       font:inherit;font-size:14px;color:inherit;cursor:pointer;}
+       font:inherit;font-size:calc(14px*var(--fs));color:inherit;cursor:pointer;}
   .btn.primary{background:var(--ink);border-color:var(--ink);color:var(--page);font-weight:600;}
   .btn.danger{color:#B4432F;border-color:currentColor;}
   :root[data-theme="dark"] .btn.danger{color:#F08A74;}
@@ -668,28 +699,28 @@
   .chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px;}
   .chip{display:inline-flex;align-items:center;gap:6px;background:var(--input);color:var(--mid);
         border:1.5px dashed var(--line);border-radius:999px;padding:7px 13px;
-        font:inherit;font-size:14px;cursor:pointer;}
+        font:inherit;font-size:calc(14px*var(--fs));cursor:pointer;}
   .chip .tick{width:14px;height:14px;display:none;}
   .chip[aria-pressed="true"]{border-style:solid;border-color:var(--link);color:var(--ink);font-weight:600;}
   .chip[aria-pressed="true"] .tick{display:block;color:var(--link);}
   /* "What shows": one row per card, with its two independent switches. */
   .showHead,.showRow{display:grid;grid-template-columns:1fr 54px 54px;align-items:center;gap:4px;}
-  .showHead{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--mid);
+  .showHead{font-size:calc(11.5px*var(--fs));letter-spacing:.06em;text-transform:uppercase;color:var(--mid);
             font-weight:600;padding:2px 0 4px;}
   .showHead span:not(:first-child){text-align:center;}
-  .showRow{border-top:1px solid var(--line);padding:8px 0;font-size:15px;}
-  .showRow small{display:block;font-size:12.5px;color:var(--mid);line-height:1.35;margin-top:1px;}
+  .showRow{border-top:1px solid var(--line);padding:8px 0;font-size:calc(15px*var(--fs));}
+  .showRow small{display:block;font-size:calc(12.5px*var(--fs));color:var(--mid);line-height:1.35;margin-top:1px;}
   .showRow .cell{display:flex;justify-content:center;}
   .showRow input{width:19px;height:19px;margin:0;cursor:pointer;}
   .showRow input:focus-visible{outline:2px solid var(--link);outline-offset:2px;}
-  .showRow .na{font-size:12px;color:var(--faint);}
+  .showRow .na{font-size:calc(12px*var(--fs));color:var(--faint);}
   /* Data sources: a status line under each key. */
   .keyBlock{border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin:10px 0;background:var(--panel);}
   .jsonBox{display:block;width:100%;min-height:120px;margin:6px 0 4px;padding:8px 10px;
            font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:inherit;
            background:var(--input);border:1px solid var(--line);border-radius:8px;resize:vertical;}
-  .keyBlock h4{margin:0 0 2px;font-size:15px;}
-  .keyStatus{font-size:13px;margin:6px 0 0;color:var(--mid);}
+  .keyBlock h4{margin:0 0 2px;font-size:calc(15px*var(--fs));}
+  .keyStatus{font-size:calc(13px*var(--fs));margin:6px 0 0;color:var(--mid);}
   .keyStatus.ok{color:#3E7D32;}
   .keyStatus.bad{color:#B4432F;}
   :root[data-theme="dark"] .keyStatus.ok{color:#8BCB7E;}
@@ -702,9 +733,9 @@
   /* The one-time "About you" prompt at the top of the page. */
   .intro{background:var(--panel);border:1px solid var(--line);border-radius:18px;
          padding:14px 16px;margin:0 0 12px;}
-  .intro h2{font-size:17px;margin:0 0 4px;}
-  .intro p{font-size:13.5px;color:var(--mid);margin:0 0 6px;line-height:1.45;}
-  .wiggleLink{background:none;border:none;font:inherit;font-size:14px;color:var(--link);
+  .intro h2{font-size:calc(17px*var(--fs));margin:0 0 4px;}
+  .intro p{font-size:calc(13.5px*var(--fs));color:var(--mid);margin:0 0 6px;line-height:1.45;}
+  .wiggleLink{background:none;border:none;font:inherit;font-size:calc(14px*var(--fs));color:var(--link);
               cursor:pointer;padding:6px 0;text-decoration:underline;text-underline-offset:3px;}
 
 </style>
@@ -719,7 +750,7 @@
     <div id="searchBox" style="display:none;margin-top:10px">
       <input id="q" type="search" placeholder="Search any US town" autocomplete="off"
              style="font:inherit;width:100%;text-align:center;border:none;border-bottom:1.5px dashed #B9C4CC;padding:4px;background:transparent;color:inherit">
-      <ul id="results" style="list-style:none;margin:8px 0 0;padding:0;font-size:16px"></ul>
+      <ul id="results" style="list-style:none;margin:8px 0 0;padding:0;font-size:calc(16px*var(--fs))"></ul>
     </div>
   </div>
 
@@ -954,6 +985,41 @@
      prefers-color-scheme media query decide, so a manual choice is
      the only thing that ever overrides the device's own setting \u2014
      there's no third state to keep in sync by hand. */
+  /* Text size. "Match device" reads iOS Dynamic Type through the
+     -apple-system-body font (17px at the default size), or elsewhere the
+     browser's own default font size (16px unless someone changed it).
+     Android's system font scale needs nothing from us: Chrome already
+     applies it to every page. A number in store.textSize overrides both. */
+  var TEXT_SIZES = [1, 1.15, 1.3, 1.5, 1.75, 2];
+  var textScale = 1;
+  function deviceTextScale() {
+    try {
+      var ios = window.CSS && CSS.supports && CSS.supports('font', '-apple-system-body');
+      var probe = document.createElement('span');
+      probe.style.cssText = 'position:absolute;visibility:hidden;' + (ios ? 'font:-apple-system-body' : 'font-size:medium');
+      document.body.appendChild(probe);
+      var px = parseFloat(getComputedStyle(probe).fontSize);
+      probe.remove();
+      return px ? px / (ios ? 17 : 16) : 1;
+    } catch (e) { return 1; }
+  }
+  // Returns true when the scale actually changed, so callers can redraw.
+  function applyTextSize() {
+    var f = typeof store.textSize === 'number' ? store.textSize : deviceTextScale();
+    f = Math.max(0.85, Math.min(2, Math.round(f * 100) / 100));
+    var changed = f !== textScale;
+    textScale = f;
+    var root = document.documentElement;
+    root.style.setProperty('--fs', String(f));
+    root.classList.toggle('fs-l', f >= 1.3);
+    root.classList.toggle('fs-xl', f >= 1.75);
+    return changed;
+  }
+  // From 130% up, daily cards always put their text below the colour:
+  // wrapped onto three or four lines, text on the gradient hides the very
+  // colour it's there to explain.
+  function stripHourlyOn() { return !!store.stripHourly || textScale >= 1.3; }
+
   function applyTheme() {
     var mode = store.darkMode || 'auto';
     if (mode === 'auto') document.documentElement.removeAttribute('data-theme');
@@ -4431,7 +4497,7 @@
     // surface, so text there is never fighting a colored background
     // for contrast, and normal theme-adaptive ink applies rather than
     // the forced-dark text colored cards need.
-    var stripMode = !!row.bg && !row.alert && (row.timeline ? store.stripHourly : store.stripTiles);
+    var stripMode = !!row.bg && !row.alert && (row.timeline ? stripHourlyOn() : store.stripTiles);
     var strip = null;
     if (row.bg) {
       if (stripMode) {
@@ -6613,7 +6679,11 @@
       var sp = document.createElement('span'); sp.textContent = def.label;
       if (def.note) { var sm = document.createElement('small'); sm.textContent = def.note; sp.appendChild(sm); }
       el.appendChild(box); el.appendChild(sp);
-      return synced(el, function () { box.checked = !!def.get(); });
+      return synced(el, function () {
+        box.checked = !!def.get();
+        box.disabled = !!(def.disabled && def.disabled());
+        el.style.opacity = box.disabled ? '.6' : '';
+      });
     }
     if (def.type === 'radio') {
       el = document.createElement('div'); el.setAttribute('role', 'radiogroup');
@@ -6856,7 +6926,8 @@
   }
   function lookSummary() {
     var pv = paletteValue();
-    return MODE_NAME[store.darkMode || 'auto'] + ' \u00B7 ' + (pv === 'custom' ? 'Custom' : PRESETS[pv].name);
+    return (textScale !== 1 ? Math.round(textScale * 100) + '% \u00B7 ' : '')
+      + MODE_NAME[store.darkMode || 'auto'] + ' \u00B7 ' + (pv === 'custom' ? 'Custom' : PRESETS[pv].name);
   }
   function paletteSwatch(cols, dashed) {
     var sw = document.createElement('span'); sw.className = 'sw';
@@ -6873,6 +6944,21 @@
       set: function (v) { store.theme = store.theme || {}; store.theme[key] = v; } };
   }
   function buildLookSection(body) {
+    h3(body, 'Text size');
+    body.appendChild(control({ type: 'buttons', label: 'Text size', after: 'render',
+      options: [['auto', 'Match device']].concat(TEXT_SIZES.map(function (f) { return [f, Math.round(f * 100) + '%']; })),
+      get: function () { return typeof store.textSize === 'number' ? store.textSize : 'auto'; },
+      set: function (v) {
+        if (v === 'auto') delete store.textSize; else store.textSize = v;
+        applyTextSize();
+      } }));
+    var sizeNote = document.createElement('p'); sizeNote.className = 'lede';
+    body.appendChild(synced(sizeNote, function () {
+      var dev = Math.round(deviceTextScale() * 100);
+      sizeNote.textContent = (typeof store.textSize === 'number' ? '' : 'Your device is set to ' + dev + '%. ')
+        + 'From 130% up, tiles go one to a row on a phone and daily cards put their text below the colour.';
+    }));
+
     h3(body, 'Light or dark');
     body.appendChild(control({ type: 'buttons', label: 'Light or dark', after: 'theme',
       options: [['light', 'Light'], ['dark', 'Dark'], ['auto', 'Match system']],
@@ -6917,8 +7003,9 @@
 
     h3(body, 'Daily cards');
     body.appendChild(control({ type: 'check', label: 'Move text below the colour',
-      note: 'Easier to read, whatever the palette', after: 'render',
-      get: function () { return store.stripHourly; }, set: function (v) { store.stripHourly = v; } }));
+      note: 'Easier to read, whatever the palette. Always on at 130% text and larger.', after: 'render',
+      get: stripHourlyOn, disabled: function () { return textScale >= 1.3; },
+      set: function (v) { store.stripHourly = v; } }));
     body.appendChild(hourMarkerSlider());
 
     h3(body, 'Tiles');
@@ -7277,9 +7364,9 @@
     var r = contrastReport();
     if (!r) { el.textContent = ''; return; }
     var text = r.text;
-    if (store.stripHourly || store.stripTiles) {
-      var which = store.stripHourly && store.stripTiles ? 'the daily cards and tiles'
-                : store.stripHourly ? 'the daily cards' : 'tiles';
+    if (stripHourlyOn() || store.stripTiles) {
+      var which = stripHourlyOn() && store.stripTiles ? 'the daily cards and tiles'
+                : stripHourlyOn() ? 'the daily cards' : 'tiles';
       text += ' With the accent-strip setting on for ' + which
             + ', this check only still applies to whatever hasn\u2019t moved off the color \u2014 to-do pills, for instance, and anything with the strip setting off.';
     }
@@ -7346,7 +7433,7 @@
     aboutPanel.innerHTML = '';
     ABOUT.forEach(function (group) {
       var h = document.createElement('h2'); h.textContent = group[0];
-      h.style.cssText = 'font-size:16px;margin:18px 0 2px;';
+      h.style.cssText = 'font-size:calc(16px*var(--fs));margin:18px 0 2px;';
       aboutPanel.appendChild(h);
       group[1].forEach(function (item) {
         if (item[0]) {
@@ -7397,6 +7484,7 @@
     'Please take <a href="https://tally.so/r/obj48V" target="_blank" rel="noopener">this two minute survey</a>!';
 
   /* ================= start ================= */
+  applyTextSize();
   applyTheme();
   buildRamps();
   pruneDone();
@@ -7408,9 +7496,15 @@
   function onViewportChange() {
     clearTimeout(relayout);
     relayout = setTimeout(function () {
+      applyTextSize();
       if (state.home) { renderHome(); }
     }, 180);
   }
+  // iOS changes Dynamic Type while the app is in the background, so check
+  // again on the way back rather than waiting for a resize.
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && applyTextSize() && state.home) { renderHome(); syncSettings(); }
+  });
   window.addEventListener('resize', onViewportChange);
   window.addEventListener('orientationchange', onViewportChange);
   if (store.tapped) document.getElementById('tipHint').style.display = 'none';
