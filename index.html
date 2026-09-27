@@ -34,7 +34,11 @@
             font size is a multiple of it. --fs-cap is for text that sits
             in boxes of fixed width (day segments, the hour axis, the
             header selects), which grows more slowly so it can't collide. */
-         --fs:1; --fs-cap:min(var(--fs), 1.4); }
+         --fs:1; --fs-cap:min(var(--fs), 1.4);
+         /* The page's own greys, captured once so a coloured card (which
+            swaps them for dark ones, below) can hand them back to a
+            neutral panel inside it. Resolved here, after light/dark. */
+         --page-mid:var(--mid); --page-faint:var(--faint); --page-line:var(--line); }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]){
       --page:#14171B; --ink:#E7E9EC; --mid:#98A2AD; --line:#4A505A; --link:#7FB0FF;
@@ -209,7 +213,14 @@
      on the page, which would otherwise land pale text on these same
      unchanged pale backgrounds. Hardcoded, not a variable, since it
      must NOT follow the theme the way the rest of the page's text does. */
-  .card.coloured{color:#16232F;}
+  .card.coloured{color:#16232F;
+    /* A coloured card is always light, whatever the theme, so its greys
+       have to be dark ones too. Without this, everything inside that
+       uses the theme's greys (disclosure headings, "16 of 16 on" counts,
+       small notes) came out light grey on yellow in dark mode.
+       color-scheme makes Safari draw its checkboxes light here as well. */
+    --mid:rgba(22,35,47,.74); --faint:rgba(22,35,47,.58); --line:rgba(22,35,47,.2);
+    color-scheme:light;}
   /* Three independent legibility options, all optional. Color as an
      accent strip: corrected after the first version was too thin and
      read as decorative rather than "still a real part of what we're
@@ -267,7 +278,8 @@
      reads as the lower half of one card rather than a second box
      dropped inside it. Color specificity beats .card.coloured's forced
      dark text without relying on stylesheet order to decide the tie. */
-  .card.coloured .tip.neutralDetail{color:var(--ink);}
+  .card.coloured .tip.neutralDetail{color:var(--ink);
+    --mid:var(--page-mid); --faint:var(--page-faint); --line:var(--page-line); color-scheme:light dark;}
   .tip.neutralDetail{background:var(--card2);margin:11px -16px -9px;
                      padding:11px 16px 9px;border-radius:0 0 14px 14px;}
   /* Sunrise/sunset keep their own left/right alignment inside the split
